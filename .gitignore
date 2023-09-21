@@ -1,0 +1,28 @@
+# 忽略生成的文件
+*.class
+*.jar
+*.o
+*.pyc
+*.dll
+
+# 忽略敏感信息
+*.key
+*.pem
+*.env
+*.config
+
+# 忽略用户特定文件
+*.log
+*.swp
+*.DS_Store
+Thumbs.db
+
+# 忽略构建产物和输出
+/bin
+/build
+/dist
+/target
+
+# jihao set
+__pycache__/
+test.py

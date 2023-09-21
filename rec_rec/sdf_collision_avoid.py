@@ -158,8 +158,8 @@ class Collision_Avoidance:
         # writergif = animation.PillowWriter(fps=30) 
         # self.ani.save('pig.gif', writer=writergif)
 
-        # writer = animation.PillowWriter(fps=15, metadata=dict(artist='Me'), bitrate=1800)
-        # ani.save('scatter.gif', writer=writer)
+        writer = animation.PillowWriter(fps=15, metadata=dict(artist='Me'), bitrate=1800)
+        self.ani.save('scene2.gif', writer=writer)
         plt.show()
 
     def animation_init(self):
