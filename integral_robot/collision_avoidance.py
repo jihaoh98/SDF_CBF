@@ -90,10 +90,8 @@ class Collision_Avoidance:
             # for plot
             self.cir_obs = [None for i in range(self.cir_obs_num)]
 
-        self.clf1t = np.zeros((1, self.time_steps))
-        self.clf2t = np.zeros((1, self.time_steps))
-        self.slack1t = np.zeros((1, self.time_steps))
-        self.slack2t = np.zeros((1, self.time_steps))
+        self.clft = np.zeros((1, self.time_steps))
+        self.slackt = np.zeros((1, self.time_steps))
 
         # plot
         self.fig, self.ax = plt.subplots()
@@ -115,7 +113,7 @@ class Collision_Avoidance:
         while np.linalg.norm(self.robot_cur_state[0:2] - self.robot_target_state[0:2]) >= self.destination_margin and t - self.time_steps < 0.0:
 
             start_time = time.time()
-            u, clf1, clf2, feas = self.cbf_qp.clf_qp(self.robot_cur_state)
+            u, clf, feas = self.cbf_qp.clf_qp(self.robot_cur_state)
             process_time.append(time.time() - start_time)
             if not feas:
                 print('This problem is infeasible, we can not get a feasible solution!')
@@ -125,8 +123,7 @@ class Collision_Avoidance:
 
             self.xt[:, t] = np.copy(self.robot_cur_state)
             self.ut[:, t] = u
-            self.clf1t[:, t] = clf1
-            self.clf2t[:, t] = clf2
+            self.clft[:, t] = clf
             # update the state of robot
             self.robot_cur_state = self.cbf_qp.robot.next_state(self.robot_cur_state, u, self.step_time)
 
@@ -147,8 +144,8 @@ class Collision_Avoidance:
         # approach the destination or exceed the maximum time
         while np.linalg.norm(self.robot_cur_state[0:2] - self.robot_target_state[0:2]) >= self.destination_margin and t - self.time_steps < 0.0:
             # assign nominal controls （usually for no clf）
-            u_ref = np.array([1.0, 0.0])
-            add_clf = False
+            u_ref = np.array([0.0, 0.0])
+            add_clf = True
 
             # get the current optimal controls
             obs_vertexes_list = None
@@ -156,7 +153,7 @@ class Collision_Avoidance:
                 obs_vertexes_list = [self.obs_list[i].vertexes for i in range(self.obs_num)]
 
             start_time = time.time()
-            u, clf1, clf2, slack1, slack2, feas, cbf_list, cir_cbf_list = self.cbf_qp.cbf_clf_qp(self.robot_cur_state, self.obs_states_list, obs_vertexes_list, self.cir_obs_states_list, add_clf=add_clf, u_ref=u_ref)                                   
+            u, clf, slack, feas, cbf_list, cir_cbf_list = self.cbf_qp.cbf_clf_qp(self.robot_cur_state, self.obs_states_list, obs_vertexes_list, self.cir_obs_states_list, add_clf=add_clf, u_ref=u_ref)                                   
             process_time.append(time.time() - start_time)
             if not feas:
                 print('This problem is infeasible, we can not get a feasible solution!')
@@ -165,10 +162,8 @@ class Collision_Avoidance:
                 pass
 
             self.ut[:, t] = u
-            self.clf1t[:, t] = clf1
-            self.clf2t[:, t] = clf2
-            self.slack1t[:, t] = slack1
-            self.slack2t[:, t] = slack2
+            self.clft[:, t] = clf
+            self.slackt[:, t] = slack
 
             # storage and update the state of robot and obstacle
             self.xt[:, t] = np.copy(self.robot_cur_state)
@@ -356,43 +351,18 @@ class Collision_Avoidance:
         # plt.savefig('figure/{}.png'.format(indx), format='png', dpi=300)
         return self.ax.patches + self.ax.texts + self.ax.artists
 
-    def show_clf1(self):
-        """ show clf1 """
+    def show_clf(self):
+        """ show clf1"""
         # add an extra moment   
         t = np.arange(0, self.terminal_time / 10, self.step_time)
-        plt.plot(t, self.clf1t[:, 0:self.terminal_time].reshape(self.terminal_time), linewidth=3, color='grey')
+        plt.plot(t, self.clft[:, 0:self.terminal_time].reshape(self.terminal_time), linewidth=3, color='grey')
 
         # set the label in Times New Roman and size
         label_font = {'family': 'Times New Roman',
                       'weight': 'normal',
                       'size': 16,
                       }
-        plt.title('CLF 1 for distance', label_font)
-        plt.ylabel('clf ', label_font)
-        plt.xlabel('Time (s)', label_font)
-
-        # set the tick in Times New Roman and size
-        self.ax.tick_params(labelsize=16)
-        labels = self.ax.get_xticklabels() + self.ax.get_yticklabels()
-        [label.set_fontname('Times New Roman') for label in labels]
-
-        plt.grid() 
-        # plt.savefig('state_v.png', format='png', dpi=300)
-        plt.show()
-        plt.close(self.fig)
-
-    def show_clf2(self):
-        """ show clf2 """
-        # add an extra moment   
-        t = np.arange(0, self.terminal_time / 10, self.step_time)
-        plt.plot(t, self.clf2t[:, 0:self.terminal_time].reshape(self.terminal_time), linewidth=3, color='grey')
-
-        # set the label in Times New Roman and size
-        label_font = {'family': 'Times New Roman',
-                      'weight': 'normal',
-                      'size': 16,
-                      }
-        plt.title('CLF 2 for orientation', label_font)
+        plt.title('CLF', label_font)
         plt.ylabel('clf ', label_font)
         plt.xlabel('Time (s)', label_font)
 
@@ -462,5 +432,4 @@ if __name__ == '__main__':
     test_target.collision_avoidance()
     test_target.render()
     # test_target.show_cbf()
-    # test_target.show_clf1()
-    # test_target.show_clf2()
+    # test_target.show_clf()
