@@ -12,13 +12,11 @@ class Robot_Sdf:
         controls: v, w
         circle_obstacle_state: ox, oy, ovx, ovy, o_radius
         polytope_obstacle_state: ox, oy, ovx, ovy
-        define the clf and cbf based on sdf for rectangle-shaped robot with respect to any-shaped obstacle
+        define the clf and cbf based on sdf for L-shaped robot with respect to any-shaped obstacle
         """
         # robot system states, half width with half height
         self.state_dim = 3
         self.control_dim = 2
-        self.rec_width = params['width']
-        self.rec_height = params['height']
         self.margin = params['margin']
         self.e0 = float(params['e0'])
 
@@ -27,6 +25,15 @@ class Robot_Sdf:
         self.robot_state = sp.Matrix([x, y, theta])
         e_x, e_y, e_theta = sp.symbols('e_x e_y, e_theta')
         self.target_state = sp.Matrix([e_x, e_y, e_theta])
+
+        # parameter for L-shaped robot
+        # half width and height
+        width, height = sp.symbols('width height')
+        self.robot_param = sp.Matrix([width, height])
+
+        # two center of L-shape robot
+        x1, y1, x2, y2 = sp.symbols('x1, y1, x2, y2')
+        self.two_center = sp.Matrix([x1, y1, x2, y2])
 
         # obstacle state
         o_x, o_y, o_vx, o_vy, o_radius = sp.symbols('o_x o_y o_vx o_vy o_radius')
@@ -156,9 +163,9 @@ class Robot_Sdf:
 
     def init_cbf(self):
         """
-        init the cbf based on sdf, thus to calculate the sdf between the rectangle-shaped robot and the obstacle
+        init the cbf based on sdf, thus to calculate the sdf between the L-shaped robot and the obstacle
         Args:
-        rectangle robot params: center_pose (x, y, theta), half width and height
+        L-shaped robot params: center_pose (x, y, theta), half width and height, two center of L-shaped robot
         obs params: state of a point in the edge of the obstacle (ox, oy, ovx, ovy) (in world frame)
         circle obs params: state of the circular obstacle (ox, oy, ovx, ovy, o_radius) (in the world frame)
         Returns:
@@ -172,20 +179,31 @@ class Robot_Sdf:
                                        [self.obstacle_state[1] - self.robot_state[1]]])
         relative_position = R_inverse @ relative_position
 
-        dx = sp.Abs(relative_position[0]) - self.rec_width
-        dy = sp.Abs(relative_position[1]) - self.rec_height
+        # diatance with the first rectangle (L-shaped robot combined by two rectangles)
+        # robot_params: [width and height]
+        dx1 = sp.Abs(relative_position[0] - self.two_center[0]) - self.robot_param[0] / 2
+        dy1 = sp.Abs(relative_position[1] - self.two_center[1]) - self.robot_param[1] / 2
+        distance_inside1 = sp.Min(sp.Max(dx1, dy1), 0.0)
+        distance_outside1 = sp.sqrt(sp.Max(dx1, 0) ** 2 + sp.Max(dy1, 0) ** 2)
+        distance1 = distance_outside1 + distance_inside1
 
-        distance_inside = sp.Min(sp.Max(dx, dy), 0.0)
-        distance_outside = sp.sqrt(sp.Max(dx, 0) ** 2 + sp.Max(dy, 0) ** 2)
-        distance = distance_outside + distance_inside
+        # diatance with the second rectangle
+        dx2 = sp.Abs(relative_position[0] - self.two_center[2]) - self.robot_param[1] / 2
+        dy2 = sp.Abs(relative_position[1] - self.two_center[3]) - self.robot_param[0] / 2
+        distance_inside2 = sp.Min(sp.Max(dx2, dy2), 0.0)
+        distance_outside2 = sp.sqrt(sp.Max(dx2, 0) ** 2 + sp.Max(dy2, 0) ** 2)
+        distance2 = distance_outside2 + distance_inside2
+
+        # both distance small than zero is not considered (have some defects, however, not important)
+        distance = sp.Min(distance1, distance2)
 
         # for point of obstacle, without minus obstacle_radius, add margin for collision aviodance
         self.cbf_symbolic = distance - self.margin
-        self.cbf = lambdify([self.robot_state, self.obstacle_state], self.cbf_symbolic)
+        self.cbf = lambdify([self.robot_state, self.robot_param, self.two_center, self.obstacle_state], self.cbf_symbolic)
 
         # for circlular-shaped obstacle, minus radius
         self.cir_cbf_symbolic = distance - self.cir_obstacle_state[4] - self.margin
-        self.cir_cbf = lambdify([self.robot_state, self.cir_obstacle_state], self.cir_cbf_symbolic)
+        self.cir_cbf = lambdify([self.robot_state, self.robot_param, self.two_center, self.cir_obstacle_state], self.cir_cbf_symbolic)
 
     def get_relative_position(self, robot_state, obstacle_state):
         """ get the coordinate of obstacle in the robot frame """
@@ -200,14 +218,25 @@ class Robot_Sdf:
         # in shape (2, )
         return relative_position
 
-    def get_cbf_value(self, relative_position, obs_shape=None, obstacle_radius=None):
+    def get_cbf_value(self, relative_position, robot_params, two_center, obs_shape=None, obstacle_radius=None):
         """ get the cbf_value based on the relative position """
-        dx = abs(relative_position[0]) - self.rec_width
-        dy = abs(relative_position[1]) - self.rec_height
+        # diatance with the first rectangle (L-shaped robot combined by two rectangles)
+        # robot_params: [width and height]
+        dx1 = abs(relative_position[0] - two_center[0]) - robot_params[0] / 2
+        dy1 = abs(relative_position[1] - two_center[1]) - robot_params[1] / 2
+        distance_inside1 = min(max(dx1, dy1), 0.0)
+        distance_outside1 = sqrt(max(dx1, 0) ** 2 + max(dy1, 0) ** 2)
+        distance1 = distance_outside1 + distance_inside1
 
-        distance_inside = min(max(dx, dy), 0.0)
-        distance_outside = sqrt(max(dx, 0) ** 2 + max(dy, 0) ** 2)
-        distance = distance_outside + distance_inside
+        # diatance with the second rectangle
+        dx2 = abs(relative_position[0] - two_center[2]) - robot_params[1] / 2
+        dy2 = abs(relative_position[1] - two_center[3]) - robot_params[0] / 2
+        distance_inside2 = min(max(dx2, dy2), 0.0)
+        distance_outside2 = sqrt(max(dx2, 0) ** 2 + max(dy2, 0) ** 2)
+        distance2 = distance_outside2 + distance_inside2
+
+        # both distance small than zero is not considered (have some defects, however, not important)
+        distance = min(distance1, distance2)
 
         # add margin for collision avoidance
         if obs_shape == 'circle':
@@ -216,12 +245,12 @@ class Robot_Sdf:
             distance = distance - self.margin
         return distance
     
-    def derive_cbf_gradient_direct(self, robot_state, obstacle_state, obs_shape=None):
+    def derive_cbf_gradient_direct(self, robot_state, robot_params, two_center, obstacle_state, obs_shape=None):
         """ get the cbf gradient directly """
         if obs_shape == 'circle':
-            sdf = self.cir_cbf(robot_state, obstacle_state)
+            sdf = self.cir_cbf(robot_state, robot_params, two_center, obstacle_state)
         else:
-            sdf = self.cbf(robot_state, obstacle_state)
+            sdf = self.cbf(robot_state, robot_params, two_center, obstacle_state)
 
         # robot cbf gradient
         sdf_gradient = np.zeros((robot_state.shape[0], ))
@@ -229,9 +258,9 @@ class Robot_Sdf:
             e = np.zeros((robot_state.shape[0], ))
             e[i] = self.e0
             if obs_shape == 'circle':
-                sdf_next = self.cir_cbf(robot_state + e, obstacle_state)
+                sdf_next = self.cir_cbf(robot_state + e, robot_params, two_center, obstacle_state)
             else:
-                sdf_next = self.cbf(robot_state + e, obstacle_state)
+                sdf_next = self.cbf(robot_state + e, robot_params, two_center, obstacle_state)
             sdf_gradient[i] = (sdf_next - sdf) / self.e0
         
         lf_cbf = (sdf_gradient @ self.f(robot_state))[0]
@@ -243,16 +272,16 @@ class Robot_Sdf:
             e = np.zeros((obstacle_state.shape[0], ))
             e[i] = self.e0
             if obs_shape == 'circle':
-                sdf_next = self.cir_cbf(robot_state, obstacle_state + e)
+                sdf_next = self.cir_cbf(robot_state, robot_params, two_center, obstacle_state + e)
             else:
-                sdf_next = self.cbf(robot_state, obstacle_state + e)
+                sdf_next = self.cbf(robot_state, robot_params, two_center, obstacle_state + e)
             obs_gradient[i] = (sdf_next - sdf) / self.e0
 
         # no difference for different obstacles
         dt_obs_cbf = obs_gradient @ self.obstacle_dynamics(obstacle_state[0:4])[0:2]
         return lf_cbf, lg_cbf, dt_obs_cbf[0]
 
-    def derive_cbf_gradient(self, robot_state, obstacle_state, obs_shape=None):
+    def derive_cbf_gradient(self, robot_state, robot_params, two_center, obstacle_state, obs_shape=None):
         """ 
         derive the gradient of sdf between the rectangle robot and a point from the polytopic-shaped obstacle (or circular obstacle)
         Args:
@@ -268,7 +297,7 @@ class Robot_Sdf:
         # dh / dx = [dh / dp, dh / dtheta]
 
         # calculate the dh / dx_b based on numerical values, and use dh / dx_b to express other terms
-        dh_dxb = self.get_dh_dxb_relative(robot_state, obstacle_state, obs_shape)
+        dh_dxb = self.get_dh_dxb_relative(robot_state, robot_params, two_center, obstacle_state, obs_shape)
 
         # lf_cbf, lg_cbf, dt_obs_cbf (dynamic obstacle)
         lf_cbf, lg_cbf = self.get_cbf_gradient(robot_state, obstacle_state, dh_dxb)
@@ -296,24 +325,26 @@ class Robot_Sdf:
 
         return sdf_gradient
     
-    def get_dh_dxb_relative(self, robot_state, obstacle_state, obs_shape=None):
+    def get_dh_dxb_relative(self, robot_state, robot_params, two_center, obstacle_state, obs_shape=None):
         """ calculate the sdf gradient based on numerical values """
         # method2, based on robot frame
         relative_position = self.get_relative_position(robot_state, obstacle_state)
         if obs_shape == 'circle':
-            sdf = self.get_cbf_value(relative_position, obs_shape, obstacle_state[4])
+            sdf = self.get_cbf_value(relative_position, robot_params, two_center, obs_shape, obstacle_state[4])
         else:
-            sdf = self.get_cbf_value(relative_position)
+            sdf = self.get_cbf_value(relative_position, robot_params, two_center)
 
         sdf_gradient = np.zeros((obstacle_state[0:2].shape[0], ))
         for i in range(obstacle_state[0:2].shape[0]):
             e = np.zeros((obstacle_state[0:2].shape[0], ))
             e[i] = self.e0
             if obs_shape == 'circle':
-                sdf_next = self.get_cbf_value(relative_position + e, obs_shape, obstacle_state[4])
+                sdf_next = self.get_cbf_value(relative_position + e, robot_params, two_center, obs_shape, obstacle_state[4])
             else:
-                sdf_next = self.get_cbf_value(relative_position + e)
+                sdf_next = self.get_cbf_value(relative_position + e, robot_params, two_center)
             sdf_gradient[i] = (sdf_next - sdf) / self.e0
+
+        # sdf_gradient[1] = sdf_gradient[1] * 2.8
         return sdf_gradient
 
     def get_cbf_gradient(self, robot_state, obstacle_state, sdf_gradient):
@@ -435,8 +466,8 @@ if __name__ == '__main__':
         config = yaml.safe_load(file)
 
     robot_params = config['robot']
-    cir_obs_params = config['cir_obstacle_list']
-    obs_params = config['obstacle_list']
+    # cir_obs_params = config['cir_obstacle_list']
+    # obs_params = config['obstacle_list']
     test_target = Robot_Sdf(robot_params)
 
     # for i in np.arange(0, 2, 0.1):

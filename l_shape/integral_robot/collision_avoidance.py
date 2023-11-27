@@ -1,7 +1,7 @@
 import numpy as np
 import sdf_qp
 import obs
-import polytopic_robot
+import l_shape_robot
 import time
 import yaml
 import matplotlib.pyplot as plt
@@ -20,29 +20,26 @@ class Collision_Avoidance:
         controller_params = config['controller']
         self.cbf_qp = sdf_qp.Sdf_Cbf_Clf()
 
-        # if no data, return N  
+        # if no data, return None
         obs_params = config.get('obstacle_list')
         cir_obs_params = config.get('cir_obstacle_list')
         
-        # initialize the robot state, half width and height
-        self.robot_width = robot_params['width']
-        self.robot_height = robot_params['height']
-        init_state = np.array(robot_params['initial_state'])
-        # in shape (N, 2)
-        self.robot_vertexes = np.array([
-            [init_state[0] - self.robot_width, init_state[1] - self.robot_height],
-            [init_state[0] + self.robot_width, init_state[1] - self.robot_height],
-            [init_state[0] + self.robot_width, init_state[1] + self.robot_height],
-            [init_state[0] - self.robot_width, init_state[1] + self.robot_height]
-        ])
-
-        # init the robot
-        self.robot = polytopic_robot.Polytopic_robot(0, self.robot_vertexes)
+        # initialize the robot 
+        self.robot_vertexes = robot_params['vertexes']
+        self.robot = l_shape_robot.L_shaped_robot(0, self.robot_vertexes)
         # TODO consider orientation
         self.robot_init_state = self.robot.init_state     
         self.robot_cur_state = np.copy(self.robot_init_state)
         self.robot_target_state = np.array(robot_params['target_state'])
         self.destination_margin = robot_params['destination_margin']
+        self.u_max = robot_params['u_max']
+        self.u_min = robot_params['u_min']
+
+        # params for construct cbf
+        self.robot_width = self.robot.width
+        self.robot_height = self.robot.height
+        self.robot_params = np.array([self.robot.width, self.robot.height])
+        self.robot_two_center = self.robot.cur_center_body_frame.reshape(-1, )
 
         # initialize the circular-shaped obstacle
         self.cir_obs_states_list = None
@@ -90,10 +87,8 @@ class Collision_Avoidance:
             # for plot
             self.cir_obs = [None for i in range(self.cir_obs_num)]
 
-        self.clf1t = np.zeros((1, self.time_steps))
-        self.clf2t = np.zeros((1, self.time_steps))
-        self.slack1t = np.zeros((1, self.time_steps))
-        self.slack2t = np.zeros((1, self.time_steps))
+        self.clft = np.zeros((1, self.time_steps))
+        self.slackt = np.zeros((1, self.time_steps))
 
         # plot
         self.fig, self.ax = plt.subplots()
@@ -115,7 +110,7 @@ class Collision_Avoidance:
         while np.linalg.norm(self.robot_cur_state[0:2] - self.robot_target_state[0:2]) >= self.destination_margin and t - self.time_steps < 0.0:
 
             start_time = time.time()
-            u, clf1, clf2, feas = self.cbf_qp.clf_qp(self.robot_cur_state)
+            u, clf, feas = self.cbf_qp.clf_qp(self.robot_cur_state)
             process_time.append(time.time() - start_time)
             if not feas:
                 print('This problem is infeasible, we can not get a feasible solution!')
@@ -125,8 +120,7 @@ class Collision_Avoidance:
 
             self.xt[:, t] = np.copy(self.robot_cur_state)
             self.ut[:, t] = u
-            self.clf1t[:, t] = clf1
-            self.clf2t[:, t] = clf2
+            self.clft[:, t] = clf
             # update the state of robot
             self.robot_cur_state = self.cbf_qp.robot.next_state(self.robot_cur_state, u, self.step_time)
 
@@ -147,8 +141,8 @@ class Collision_Avoidance:
         # approach the destination or exceed the maximum time
         while np.linalg.norm(self.robot_cur_state[0:2] - self.robot_target_state[0:2]) >= self.destination_margin and t - self.time_steps < 0.0:
             # assign nominal controls （usually for no clf）
-            u_ref = np.array([1.0, 0.0])
-            add_clf = False
+            u_ref = np.array([0.0, 0.0])
+            add_clf = True
 
             # get the current optimal controls
             obs_vertexes_list = None
@@ -156,7 +150,8 @@ class Collision_Avoidance:
                 obs_vertexes_list = [self.obs_list[i].vertexes for i in range(self.obs_num)]
 
             start_time = time.time()
-            u, clf1, clf2, slack1, slack2, feas, cbf_list, cir_cbf_list = self.cbf_qp.cbf_clf_qp(self.robot_cur_state, self.obs_states_list, obs_vertexes_list, self.cir_obs_states_list, add_clf=add_clf, u_ref=u_ref)                                   
+            u, clf, slack, feas, cbf_list, cir_cbf_list = self.cbf_qp.cbf_clf_qp(self.robot_cur_state, self.robot_params, self.robot_two_center, self.obs_states_list, 
+                                                                                 obs_vertexes_list, self.cir_obs_states_list, add_clf=add_clf, u_ref=u_ref)                                   
             process_time.append(time.time() - start_time)
             if not feas:
                 print('This problem is infeasible, we can not get a feasible solution!')
@@ -165,10 +160,8 @@ class Collision_Avoidance:
                 pass
 
             self.ut[:, t] = u
-            self.clf1t[:, t] = clf1
-            self.clf2t[:, t] = clf2
-            self.slack1t[:, t] = slack1
-            self.slack2t[:, t] = slack2
+            self.clft[:, t] = clf
+            self.slackt[:, t] = slack
 
             # storage and update the state of robot and obstacle
             self.xt[:, t] = np.copy(self.robot_cur_state)
@@ -215,8 +208,8 @@ class Collision_Avoidance:
             "mathtext.fontset": 'stix',
         }
         plt.rcParams.update(config)
-        self.ax.set_xlim(-5, 20.0)
-        self.ax.set_ylim(-5, 20.0)
+        self.ax.set_xlim(-1, 15.0)
+        self.ax.set_ylim(-1, 15.0)
 
         # set the label in Times New Roman and size
         label_font = {'family': 'Times New Roman',
@@ -238,13 +231,13 @@ class Collision_Avoidance:
         self.robot_body = mpatches.Polygon(init_vertexes, edgecolor='silver', facecolor=None)
         self.ax.add_patch(self.robot_body)
 
-        self.robot_arrow = mpatches.Arrow(self.robot_init_state[0],
-                                          self.robot_init_state[1],
-                                          self.robot_width * np.cos(self.robot_init_state[2]),
-                                          self.robot_width * np.sin(self.robot_init_state[2]),
-                                          width=0.15,
-                                          color='k')
-        self.ax.add_patch(self.robot_arrow)
+        # self.robot_arrow = mpatches.Arrow(self.robot_init_state[0],
+        #                                   self.robot_init_state[1],
+        #                                   self.robot_width * np.cos(self.robot_init_state[2]),
+        #                                   self.robot_width * np.sin(self.robot_init_state[2]),
+        #                                   width=0.15,
+        #                                   color='k')
+        # self.ax.add_patch(self.robot_arrow)
 
         # show obstacles
         if self.show_obs:
@@ -280,14 +273,14 @@ class Collision_Avoidance:
         self.ax.add_patch(self.start_body)
         self.start_body.set_zorder(0)
 
-        self.start_arrow = mpatches.Arrow(self.robot_init_state[0],
-                                          self.robot_init_state[1], 
-                                          self.robot_width * np.cos(self.robot_init_state[2]),
-                                          self.robot_width * np.sin(self.robot_init_state[2]),
-                                          width=0.15,
-                                          color='k')
-        self.ax.add_patch(self.start_arrow)
-        self.start_arrow.set_zorder(1)
+        # self.start_arrow = mpatches.Arrow(self.robot_init_state[0],
+        #                                   self.robot_init_state[1], 
+        #                                   self.robot_width * np.cos(self.robot_init_state[2]),
+        #                                   self.robot_width * np.sin(self.robot_init_state[2]),
+        #                                   width=0.15,
+        #                                   color='k')
+        # self.ax.add_patch(self.start_arrow)
+        # self.start_arrow.set_zorder(1)
 
         # target position 
         self.end_body = mpatches.Circle((self.robot_target_state[0], self.robot_target_state[1]), radius=0.5, color='silver')
@@ -299,7 +292,7 @@ class Collision_Avoidance:
     def animation_loop(self, indx):
         """ loop for update the position of robot and obstacles """
         self.robot_body.remove()
-        self.robot_arrow.remove()
+        # self.robot_arrow.remove()
         if self.show_obs:
             if self.obs_states_list is not None:
                 for i in range(self.obs_num):
@@ -313,13 +306,13 @@ class Collision_Avoidance:
         self.robot_body = mpatches.Polygon(cur_vertexes, edgecolor='r', facecolor=None)
         self.ax.add_patch(self.robot_body)
 
-        self.robot_arrow = mpatches.Arrow(self.xt[:, indx][0],
-                                          self.xt[:, indx][1],
-                                          self.robot_width * np.cos(self.xt[:, indx][2]),
-                                          self.robot_width * np.sin(self.xt[:, indx][2]),
-                                          width=0.15, 
-                                          color='k')
-        self.ax.add_patch(self.robot_arrow)
+        # self.robot_arrow = mpatches.Arrow(self.xt[:, indx][0],
+        #                                   self.xt[:, indx][1],
+        #                                   self.robot_width * np.cos(self.xt[:, indx][2]),
+        #                                   self.robot_width * np.sin(self.xt[:, indx][2]),
+        #                                   width=0.15, 
+        #                                   color='k')
+        # self.ax.add_patch(self.robot_arrow)
 
         # add obstacles
         if self.show_obs:
@@ -356,43 +349,18 @@ class Collision_Avoidance:
         # plt.savefig('figure/{}.png'.format(indx), format='png', dpi=300)
         return self.ax.patches + self.ax.texts + self.ax.artists
 
-    def show_clf1(self):
-        """ show clf1 """
+    def show_clf(self):
+        """ show clf1"""
         # add an extra moment   
         t = np.arange(0, self.terminal_time / 10, self.step_time)
-        plt.plot(t, self.clf1t[:, 0:self.terminal_time].reshape(self.terminal_time), linewidth=3, color='grey')
+        plt.plot(t, self.clft[:, 0:self.terminal_time].reshape(self.terminal_time), linewidth=3, color='grey')
 
         # set the label in Times New Roman and size
         label_font = {'family': 'Times New Roman',
                       'weight': 'normal',
                       'size': 16,
                       }
-        plt.title('CLF 1 for distance', label_font)
-        plt.ylabel('clf ', label_font)
-        plt.xlabel('Time (s)', label_font)
-
-        # set the tick in Times New Roman and size
-        self.ax.tick_params(labelsize=16)
-        labels = self.ax.get_xticklabels() + self.ax.get_yticklabels()
-        [label.set_fontname('Times New Roman') for label in labels]
-
-        plt.grid() 
-        # plt.savefig('state_v.png', format='png', dpi=300)
-        plt.show()
-        plt.close(self.fig)
-
-    def show_clf2(self):
-        """ show clf2 """
-        # add an extra moment   
-        t = np.arange(0, self.terminal_time / 10, self.step_time)
-        plt.plot(t, self.clf2t[:, 0:self.terminal_time].reshape(self.terminal_time), linewidth=3, color='grey')
-
-        # set the label in Times New Roman and size
-        label_font = {'family': 'Times New Roman',
-                      'weight': 'normal',
-                      'size': 16,
-                      }
-        plt.title('CLF 2 for orientation', label_font)
+        plt.title('CLF', label_font)
         plt.ylabel('clf ', label_font)
         plt.xlabel('Time (s)', label_font)
 
@@ -407,7 +375,7 @@ class Collision_Avoidance:
         plt.close(self.fig)
 
     def show_cbf(self):
-        """ show cbf """
+        """ show cbf with respect to different obstacle"""
         # add an extra moment   
         t = np.arange(0, self.terminal_time / 10, self.step_time)
         plt.plot(t, self.obs_cbf_t[0][:, 0:self.terminal_time].reshape(self.terminal_time), linewidth=3, color='grey')
@@ -417,8 +385,8 @@ class Collision_Avoidance:
                       'weight': 'normal',
                       'size': 16,
                       }
-        plt.title('SDF with respect to Circle', label_font)
-        plt.ylabel('cbf ', label_font)
+        plt.title('SDF with respect to Different obstacles', label_font)
+        plt.ylabel('cbf (m)', label_font)
         plt.xlabel('Time (s)', label_font)
 
         # set the tick in Times New Roman and size
@@ -442,8 +410,8 @@ class Collision_Avoidance:
                       'weight': 'normal',
                       'size': 16,
                       }
-        plt.title('SDF with respect to Polytope', label_font)
-        plt.ylabel('cbf ', label_font)
+        plt.title('SDF with respect to L-shaped robot', label_font)
+        plt.ylabel('cbf (m)', label_font)
         plt.xlabel('Time (s)', label_font)
 
         # set the tick in Times New Roman and size
@@ -456,11 +424,70 @@ class Collision_Avoidance:
         plt.show()
         plt.close(self.fig)
 
+    def show_both_cbf(self):
+        """ show both cbf """
+        t = np.arange(0, self.terminal_time / 10, self.step_time)
+        plt.plot(t, self.cir_obs_cbf_t[0][:, 0:self.terminal_time].reshape(self.terminal_time), linewidth=3, color='grey', label='circular-shaped obstacle')
+        plt.plot(t, self.obs_cbf_t[0][:, 0:self.terminal_time].reshape(self.terminal_time), linewidth=2, color='blue', linestyle='dashed', label='polytopic-shaped obstacle')
+
+        # set the label in Times New Roman and size
+        label_font = {'family': 'Times New Roman',
+                      'weight': 'normal',
+                      'size': 14,
+                      }
+        plt.title('RC-ESDF (CBF) with respect to L-shaped robot', label_font)
+        plt.ylabel('distance (m)', label_font)
+        plt.xlabel('Time (s)', label_font)
+
+        # set the tick in Times New Roman and size
+        self.ax.tick_params(labelsize=16)
+        labels = self.ax.get_xticklabels() + self.ax.get_yticklabels()
+        [label.set_fontname('Times New Roman') for label in labels]
+
+        legend_font = {"family": "Times New Roman", "weight": "normal", "size": 12}
+        plt.legend(loc="upper right", prop=legend_font)
+
+        plt.grid() 
+        plt.savefig('both_cbf.png', format='png', dpi=300)
+        plt.show()
+        plt.close(self.fig)
+
+    def show_controls(self):
+        """ show both controls """
+        # set the label in Times New Roman and size
+        label_font = {
+            "family": "Times New Roman",
+            "weight": "normal",
+            "size": 16,
+        }
+
+        t = np.arange(0, self.terminal_time / 10, self.step_time)
+        plt.plot(t, self.ut[0][0: self.terminal_time].reshape(self.terminal_time,),linewidth=3, color="b", label="vx",)
+        plt.plot(t, self.u_max[0] * np.ones(t.shape[0]), color="black", linestyle='dashed') 
+        plt.plot(t, self.u_min[0] * np.ones(t.shape[0]), color="black", linestyle='dashed')
+
+        plt.plot(t, self.ut[1][0 : self.terminal_time].reshape(self.terminal_time,),linewidth=3, color="r", label="vy",)
+
+        plt.title("Control Variables", label_font)
+        plt.xlabel("Time (s)", label_font)
+        plt.ylabel("vx (m/s) / vy (m/s)", label_font)
+
+        self.ax.tick_params(labelsize=16)
+        labels = self.ax.get_xticklabels() + self.ax.get_yticklabels()
+        [label.set_fontname("Times New Roman") for label in labels]
+
+        legend_font = {"family": "Times New Roman", "weight": "normal", "size": 12}
+        plt.legend(loc="upper right", prop=legend_font)
+        plt.grid()
+        plt.savefig("control.png", format="png", dpi=300)
+        plt.show()
+        plt.close(self.fig)
+
 if __name__ == '__main__':
     test_target = Collision_Avoidance()
     # test_target.navigation_destination()
     test_target.collision_avoidance()
     test_target.render()
-    # test_target.show_cbf()
-    # test_target.show_clf1()
-    # test_target.show_clf2()
+    # test_target.show_both_cbf()
+    # test_target.show_controls()
+    # test_target.show_clf()
