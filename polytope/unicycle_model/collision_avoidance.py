@@ -12,7 +12,7 @@ import matplotlib.patches as mpatches
 class Collision_Avoidance:
     def __init__(self) -> None:
         """collision avoidance with obstacles"""
-        file_name = "/home/hjh/VOCBF/CBF/sdf/polytope/unicycle_model/settings.yaml" 
+        file_name = "./settings.yaml"
         with open(file_name) as file:
             config = yaml.safe_load(file)
 
@@ -690,9 +690,8 @@ if __name__ == "__main__":
     # test_target.navigation_destination()
     test_target.collision_avoidance()
     test_target.render()
-    # test_target.show_control()
-    # test_target.show_control()
-    # test_target.show_cir_cbf()
+    test_target.show_control()
+    test_target.show_cir_cbf()
     # test_target.show_slack()
     # test_target.show_clf1()
     # test_target.show_clf2()

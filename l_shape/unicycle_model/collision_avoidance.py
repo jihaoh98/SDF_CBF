@@ -697,9 +697,9 @@ if __name__ == "__main__":
     test_target = Collision_Avoidance()
     # test_target.navigation_destination()
     test_target.collision_avoidance()
-    # test_target.render()
+    test_target.render()
 
-    test_target.show_both_cbf()
+    # test_target.show_both_cbf()
     # test_target.show_controls()
 
     # test_target.show_cir_cbf()

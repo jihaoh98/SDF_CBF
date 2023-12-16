@@ -16,8 +16,8 @@ robot:
   sensor_range: 6.0
   margin: 0.1
   e0: 1e-6
-  
-# cir_obstacle_list:
+
+cir_obstacle_list:
 #   obs_states: [
 #     [5.5, 7.0]
 #   ]
@@ -28,17 +28,17 @@ robot:
 #   modes: [
 #     'dynamic'
 #   ]
-  # obs_states: [
-  #   [4.0, 4.0], [8.0, 8.0]
-  # ]
-  # obs_radiuses: [0.6, 0.6]
-  # obs_vels: [
-  #   [0.0, 0.0],
-  #   [0.0, 0.0]
-  # ]
-  # modes: [
-  #   'static', 'static'
-  # ]
+#   obs_states: [
+#     [4.0, 4.0], [8.0, 8.0]
+#   ]
+#   obs_radiuses: [0.6, 0.6]
+#   obs_vels: [
+#     [0.0, 0.0],
+#     [0.0, 0.0]
+#   ]
+#   modes: [
+#     'static', 'static'
+#   ]
 
 obstacle_list:
   obs_vertexes: [
@@ -52,14 +52,14 @@ obstacle_list:
   modes: [
     'dynamic', 'dynamic'
   ]
-  # obs_vertexes: [
-  #   [[9.0, 10.5], [12.0, 10.5], [12.0, 12.0], [9.0, 12.0]],
-  #   [[9.0, 7.0], [12.0, 7.0], [12.0, 8.5], [9.0, 8.5]]
-  # ]
-  # obs_vels: [
-  #   [0.0, 0.0],  
-  #   [0.0, 0.0]
-  # ]
-  # modes: [
-  #   'static', 'static'
-  # ]
+#   obs_vertexes: [
+#     [[9.0, 10.5], [12.0, 10.5], [12.0, 12.0], [9.0, 12.0]],
+#     [[9.0, 7.0], [12.0, 7.0], [12.0, 8.5], [9.0, 8.5]]
+#   ]
+#   obs_vels: [
+#     [0.0, 0.0],
+#     [0.0, 0.0]
+#   ]
+#   modes: [
+#     'static', 'static'
+#   ]

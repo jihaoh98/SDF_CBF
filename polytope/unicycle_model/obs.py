@@ -4,7 +4,8 @@ from math import sqrt
 
 
 class Circle_Obs:
-    def __init__(self, index, radius, center, vel=np.zeros((2, )), goal=np.zeros((2, 1)), mode='static', **kwargs) -> None:
+    def __init__(self, index, radius, center, vel=np.zeros((2,)), goal=np.zeros((2, 1)), mode='static',
+                 **kwargs) -> None:
         """ init the circular-shaped obstacle, index to distinguish different obstacles """
         self.id = index
         self.radius = radius
@@ -32,7 +33,7 @@ class Circle_Obs:
 
         if dist < 0.1:
             self.arrive_flag = True
-            self.vel = np.zeros((2, ))
+            self.vel = np.zeros((2,))
             return True
         else:
             self.arrive_flag = False
@@ -51,10 +52,10 @@ class Circle_Obs:
         """ return the obstacle's position and velocity, as well as radius """
         current_state = np.array([self.state[0], self.state[1], self.vel[0], self.vel[1], self.radius])
         return current_state
-    
+
 
 class Polytopic_Obs:
-    def __init__(self, index, vertex=None, vel=np.zeros((2, )), goal=np.zeros((2, 1)), mode='static', **kwargs) -> None:
+    def __init__(self, index, vertex=None, vel=np.zeros((2,)), goal=np.zeros((2, 1)), mode='static', **kwargs) -> None:
         """ init the polytopic-shaped obstacle """
         self.vertexes = None
         self.init_vertexes = None
@@ -128,7 +129,7 @@ class Polytopic_Obs:
         """ get Ax <= b """
         self.A = np.zeros((self.ver_num, 2))
         self.b = np.zeros((self.ver_num, 1))
-   
+
         for i in range(self.ver_num):
             if i + 1 < self.ver_num:
                 pre_point = self.vertexes[i]
@@ -176,7 +177,7 @@ class Polytopic_Obs:
 
         if dist < 0.1:
             self.arrive_flag = True
-            self.vel = np.zeros((2, ))
+            self.vel = np.zeros((2,))
             return True
         else:
             self.arrive_flag = False
@@ -187,7 +188,7 @@ class Polytopic_Obs:
         if self.mode != 'static':
             if self.arrive_flag:
                 return
-    
+
             self.position = self.position + self.vel * step_time
             if not self.arrive_flag:
                 self.arrive_destination()
@@ -212,16 +213,17 @@ class Polytopic_Obs:
         # sample points
         # TODO different edge lengths with different number of sampling points
         for i in range(self.ver_num):
-            dx, dy = np.subtract(self.vertexes[(i + 1) % self.ver_num], self.vertexes[i]) 
+            dx, dy = np.subtract(self.vertexes[(i + 1) % self.ver_num], self.vertexes[i])
             edge_points = [[self.vertexes[i][0] + dx * tt, self.vertexes[i][1] + dy * tt] for tt in t[:-1]]
             sample_points.extend(edge_points)
 
         return np.array(sample_points)
-    
+
     def get_current_state(self):
         """ return the obstacle's position and velocity """
         current_state = np.array([self.position[0], self.position[1], self.vel[0], self.vel[1]])
         return current_state
+
 
 if __name__ == '__main__':
     file_name = 'settings.yaml'

@@ -6,7 +6,7 @@ class Polytopic_robot:
     def __init__(self, indx, init_vertexes, step_time=0.1, goal=np.zeros((2, 1)), goal_margin=0.3, **kwargs) -> None:
         """ Init the polytopic robot """
         self.id = indx
-        
+
         # vertexes given in （n, 2）, change to np.array (n, 2)
         if isinstance(init_vertexes, list):
             init_vertexes = np.array(init_vertexes, ndmin=2)
@@ -21,7 +21,7 @@ class Polytopic_robot:
 
         self.init_state = None
         self.cur_state = None
-        
+
         self.step_time = step_time
         self.goal = goal
         self.goal_margin = goal_margin
@@ -41,7 +41,7 @@ class Polytopic_robot:
         for i in range(self.ver_num):
             center_x = center_x + self.init_vertexes[i, 0]
             center_y = center_y + self.init_vertexes[i, 1]
-        
+
         center_x = center_x / self.ver_num
         center_y = center_y / self.ver_num
         # TODO consider different theta
@@ -70,7 +70,7 @@ class Polytopic_robot:
             self.vertexes[i, 1] = state[1] + temp_vertex_vectors[i, 1]
 
         return self.vertexes
-    
+
     def update_vertexes(self):
         """ update the vertexes """
         # update the vertex_vector

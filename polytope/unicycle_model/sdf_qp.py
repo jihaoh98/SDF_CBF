@@ -7,7 +7,7 @@ import yaml
 class Sdf_Cbf_Clf:
     def __init__(self) -> None:
         """ init the optimal problem with clf-cbf-qp """
-        file_name = "/home/hjh/VOCBF/CBF/sdf/polytope/unicycle_model/settings.yaml"
+        file_name = "settings.yaml"
         with open(file_name) as file:
             config = yaml.safe_load(file)
         
