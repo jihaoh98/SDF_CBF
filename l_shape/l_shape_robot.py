@@ -5,10 +5,11 @@ import matplotlib.pyplot as plt
 
 
 class L_shaped_robot:
-    def __init__(self, indx, init_vertexes, step_time=0.1, goal=np.zeros((2, 1)), goal_margin=0.3, **kwargs) -> None:
+    def __init__(self, indx, model, init_vertexes, step_time=0.1, goal=np.zeros((2, 1)), goal_margin=0.3, **kwargs) -> None:
         """ Init the l-shaped robot """
         self.id = indx
-        
+        self.model = model
+
         # vertexes given in （n, 2）, change to np.array (n, 2)
         # start from the bottom left point
         if isinstance(init_vertexes, list):
@@ -27,11 +28,11 @@ class L_shaped_robot:
         self.cur_center = None
         self.cur_center_body_frame = None
         self.width = None
-        self.height= None
+        self.height = None
 
         self.init_state = None
         self.cur_state = None
-        
+
         self.step_time = step_time
         self.goal = goal
         self.goal_margin = goal_margin
@@ -56,7 +57,7 @@ class L_shaped_robot:
         for i in range(vertex_num):
             center_x = center_x + vertexes[i, 0]
             center_y = center_y + vertexes[i, 1]
-        
+
         center_x = center_x / vertex_num
         center_y = center_y / vertex_num
         # TODO consider different theta
@@ -83,18 +84,18 @@ class L_shaped_robot:
 
         # for the first center
         vertexes = np.array([
-            [self.init_vertexes[0, 0], self.init_vertexes[0, 1]], 
-            [self.init_vertexes[1, 0], self.init_vertexes[1, 1]], 
-            [self.init_vertexes[2, 0], self.init_vertexes[2, 1]], 
+            [self.init_vertexes[0, 0], self.init_vertexes[0, 1]],
+            [self.init_vertexes[1, 0], self.init_vertexes[1, 1]],
+            [self.init_vertexes[2, 0], self.init_vertexes[2, 1]],
             [self.init_vertexes[0, 0], self.init_vertexes[2, 1]]
         ])
         self.cur_center[0, 0], self.cur_center[0, 1], _ = self.get_center(vertexes)
 
         # for the second center
         vertexes = np.array([
-            [self.init_vertexes[0, 0], self.init_vertexes[0, 1]], 
-            [self.init_vertexes[4, 0], self.init_vertexes[0, 1]], 
-            [self.init_vertexes[4, 0], self.init_vertexes[4, 1]], 
+            [self.init_vertexes[0, 0], self.init_vertexes[0, 1]],
+            [self.init_vertexes[4, 0], self.init_vertexes[0, 1]],
+            [self.init_vertexes[4, 0], self.init_vertexes[4, 1]],
             [self.init_vertexes[5, 0], self.init_vertexes[5, 1]]
         ])
         self.cur_center[1, 0], self.cur_center[1, 1], _ = self.get_center(vertexes)
@@ -106,6 +107,7 @@ class L_shaped_robot:
         self.cur_center_body_frame = self.center_vectors
 
     def init_width_height(self):
+        """ not half """
         self.width = self.vertexes[1, 0] - self.vertexes[0, 0]
         self.height = self.vertexes[2, 1] - self.vertexes[1, 1]
 
@@ -137,8 +139,7 @@ class L_shaped_robot:
             self.cur_center[i, 1] = state[1] + temp_vertex_vectors[i, 1]
 
         return self.cur_center
-    
-    
+
     def update_vertexes(self):
         """ update the vertexes """
         # update the vertex_vector
@@ -179,12 +180,12 @@ if __name__ == '__main__':
 
     ax.add_patch(polytope)
     # 设置坐标轴范围  
-     
+
     ax.scatter(new_state[0], new_state[1], color='red', marker='o')
     ax.scatter(test_target.cur_center[0, 0], test_target.cur_center[0, 1], color='k', marker='o')
     ax.scatter(test_target.cur_center[1, 0], test_target.cur_center[1, 1], color='k', marker='o')
     ax.axis('equal')
-    ax.set_xlim(0, 4)  
-    ax.set_ylim(0, 4) 
+    ax.set_xlim(0, 4)
+    ax.set_ylim(0, 4)
 
     plt.show()

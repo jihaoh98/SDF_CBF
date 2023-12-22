@@ -8,6 +8,7 @@ controller:
   cbf_gamma: 1.0 # 3.0
 
 robot:
+  model: 'unicycle'
   u_max: [ 2.0, 1.0 ]
   u_min: [ -2.0, -1.0 ]
   initial_state: [ 2.5, 2.0, 0.0 ]

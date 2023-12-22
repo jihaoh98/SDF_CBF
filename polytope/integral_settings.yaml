@@ -8,10 +8,11 @@ controller:
   cbf_gamma: 1.0 
 
 robot:
+  model: 'integral'
   u_max: [2.0, 2.0]
   u_min: [-2.0, -2.0]
-  initial_state: [5.0, 9.5, 0.0]
-  target_state: [15.0, 9.5, 0.0]
+  initial_state: [2.0, 9.5, 0.0]
+  target_state: [12.0, 9.5, 0.0]
   destination_margin: 0.1
   width: 1.0  # half
   height: 0.5  # half
@@ -33,7 +34,7 @@ robot:
 
 obstacle_list:
   obs_vertexes: [
-    [[8.0, 11.0], [11.0, 11.0], [11.0, 12.5], [8.0, 12.5]]
+    [[6.0, 11.0], [9.0, 11.0], [9.0, 12.5], [6.0, 12.5]]
   ]
   obs_vels: [
     [0.0, -0.5]

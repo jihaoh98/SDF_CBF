@@ -3,9 +3,10 @@ from math import cos, sin
 
 
 class Polytopic_robot:
-    def __init__(self, indx, init_vertexes, step_time=0.1, goal=np.zeros((2, 1)), goal_margin=0.3, **kwargs) -> None:
+    def __init__(self, indx, model, init_vertexes, step_time=0.1, goal=np.zeros((2, 1)), goal_margin=0.3, **kwargs) -> None:
         """ Init the polytopic robot """
         self.id = indx
+        self.model = model
         
         # vertexes given in （n, 2）, change to np.array (n, 2)
         if isinstance(init_vertexes, list):

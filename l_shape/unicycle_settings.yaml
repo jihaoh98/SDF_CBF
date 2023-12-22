@@ -8,6 +8,7 @@ controller:
   cbf_gamma: 1.0 # 3.0
 
 robot:
+  model: 'unicycle'
   u_max: [2.0, 1.0]
   u_min: [-2.0, -1.0]
   vertexes: [[0, 0], [1.5, 0], [1.5, 0.8], [0.8, 0.8], [0.8, 1.5], [0, 1.5]]

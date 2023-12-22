@@ -55,7 +55,7 @@ def plot_scenario(px, py, rx, ry, rectangle_center, rotation_angle):
 
 # Example parameters
 # px, py = 2., 4.0001  # Point coordinates
-px, py = 2., 2.0001  # Point coordinates
+px, py = 6, 6.0001  # Point coordinates
 rx, ry = 2., 2.  # Half-width and half-height of the rectangle
 rectangle_center = (0, 0)  # Translation of the rectangle
 rotation_angle = 0  # Rotation angle in degrees
