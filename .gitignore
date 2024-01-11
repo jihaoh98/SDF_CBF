@@ -28,3 +28,4 @@ __pycache__/
 test.py
 figure
 *.gif
+data
