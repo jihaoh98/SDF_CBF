@@ -171,8 +171,8 @@ def learning_sdf():
     ax.contour(X1, X2, x_sdf.reshape(param['nbDim'], param['nbDim']).T, levels=[0], linewidths=2,
                colors='r')  # the shape of the robot
     plt.clabel(contours, inline=True, fontsize=12)
-    ax.set_xlim([0, domain])
-    ax.set_ylim([0, domain])
+    # ax.set_xlim([0, domain])
+    # ax.set_ylim([0, domain])
     plt.show()
 
     # test the robot x_sdf by querying a point, return distance and gradient
