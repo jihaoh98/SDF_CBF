@@ -127,7 +127,7 @@ class Trainer:
         x_cat = x.unsqueeze(1).expand(-1, len(q), -1).reshape(-1, 2)
         q_cat = q.unsqueeze(0).expand(len(x), -1, -1).reshape(-1, 2)
         inputs = torch.cat([x_cat, q_cat.type(torch.float32)], dim=-1)
-        sdf_pred = model.forward(inputs)
+        sdf_pred = model.forward(inputs)  # min operation, min {d1, d2, d3}
         return sdf_pred
 
     def inference_plot(self, q, model):
@@ -185,7 +185,7 @@ class Trainer:
         plt.ylabel('q1', size=15)
 
     def plot_c_space_distance(self, model):
-        q_proj = self.Q_sets
+        q_proj = self.Q_sets  # 网格划分，拿到采样点
         q_proj.requires_grad = True
         for i in range(5):
             d, grad = self.inference_d_wrt_q_plot(q_proj, model)  # get the distance and gradient
