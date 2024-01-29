@@ -64,7 +64,7 @@ class Integral_Sdf_Cbf_Clf:
             'expand': True,
             'print_time': 0
         }
-        self.opti.solver('qpoases', opts_setting)
+        self.opti.solver('qpoases', opts_setting)  # set the controller
 
         self.u = self.opti.variable(self.control_dim)
         self.slack = self.opti.variable()

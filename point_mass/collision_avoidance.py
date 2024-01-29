@@ -10,8 +10,8 @@ import statistics
 class Collision_Avoidance:
     def __init__(self, file_name) -> None:
         """ collision avoidance with obstacles """
-        with open(file_name) as file:
-            config = yaml.safe_load(file)
+        with open(file_name) as file:  # Use file to refer to the file object
+            config = yaml.safe_load(file)  # Load YAML file into Python dict
         
         robot_params = config['robot']
         controller_params = config['controller']
@@ -40,8 +40,7 @@ class Collision_Avoidance:
                             
             # get cir_obstacles' center position and velocity as well as radius
             self.cir_obs_init_states_list = [
-                self.cir_obs_list[i].get_current_state() 
-                for i in range(self.cir_obs_num)
+                self.cir_obs_list[i].get_current_state() for i in range(self.cir_obs_num)
             ]
             self.cir_obs_states_list = np.copy(self.cir_obs_init_states_list)
 
@@ -121,7 +120,7 @@ class Collision_Avoidance:
 
     def collision_avoidance(self, add_clf=True):
         """ solve the collision avoidance between robot and obstacles based on sdf-cbf """
-        t = 0
+        t = 0  # set the initial time
         process_time = []
         # approach the destination or exceed the maximum time
         while (
@@ -133,6 +132,7 @@ class Collision_Avoidance:
                 print(f't = {t}')
 
             start_time = time.time()
+            # start to solve the qp problem
             optimal_result = self.cbf_qp.cbf_clf_qp(self.robot_cur_state, self.cir_obs_states_list, add_clf=add_clf)
             process_time.append(time.time() - start_time)
 
@@ -193,6 +193,7 @@ class Collision_Avoidance:
     def show_slack(self):
         self.ani.show_slack(self.slackt[0], self.terminal_time)
 
+
 if __name__ == '__main__':
     # file_name = 'dynamic_setting.yaml'
     file_name = 'static_setting.yaml'
@@ -202,8 +203,8 @@ if __name__ == '__main__':
     
     test_target.collision_avoidance()
     test_target.render()
-    test_target.show_controls()
-    test_target.show_clf()
-    test_target.show_slack()
-    test_target.show_cbf(0)
+    # test_target.show_controls()
+    # test_target.show_clf()
+    # test_target.show_slack()
+    # test_target.show_cbf(0)
     

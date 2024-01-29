@@ -7,6 +7,7 @@ from robot2D_torch import Robot2D
 from primitives2D_torch import Box, Circle, Triangle, Ellipse, Union, Erode
 import math
 import matplotlib.animation as animation
+
 plt.rcParams['figure.dpi'] = 200
 
 PI = math.pi
@@ -22,9 +23,12 @@ class CDF2D:
         self.Q_sets = self.create_Qsets(self.nbData).to(device)
         self.link_length = torch.tensor([[2, 2]]).float().to(device)
         self.obj_center_list = None
-        self.obj_lists = [Circle(center=torch.tensor([2.0, -2.35]), radius=0.3, device=device)]
+        self.obj_lists = []
+        # self.obj_lists = [Circle(center=torch.tensor([2.0, -2.35]), radius=0.3, device=device)]
         # self.obj_lists = [Circle(center=torch.tensor([2.3, 1.35]), radius=0.3, device=device),
         #                   Circle(center=torch.tensor([0.0, -2.35]), radius=0.3, device=device)]
+
+        # the range of q
         self.q_max = torch.tensor([PI, PI]).to(device)
         self.q_min = torch.tensor([-PI, -PI]).to(device)
 
@@ -38,24 +42,7 @@ class CDF2D:
                              device=device)
 
         # # c space distance field
-        # self.q_template = torch.load(os.path.join(CUR_PATH, 'data2D.pt'))
-
-    def metric(self, c=None):
-        M = []
-        for _, xi in enumerate(c):
-            d, g = self.inference_sdf(xi.reshape(1, 2))
-
-            scMin = 0.01
-            sc = 1 / (1 + torch.exp(-1e2 * (d - 0.2))) * (1 - scMin) + scMin
-            R = torch.column_stack((torch.tensor([g[0][0], g[0][1]]), torch.tensor([-g[0][1], g[0][0]]))).to(
-                self.device)
-            m = torch.ger(R[:, 0], R[:, 0]) * sc + torch.ger(R[:, 1], R[:, 1])
-            if d < 0.0:
-                m = torch.linalg.inv(torch.eye(2).to(self.device) * 1e1)  # homogenous metric
-            else:
-                m = torch.linalg.pinv(m)
-            M.append(m)
-        return torch.stack(M, dim=0)
+        self.q_template = torch.load(os.path.join(CUR_PATH, 'data2D.pt'))
 
     def add_object(self, obj):
         self.obj_lists.append(obj)
@@ -128,25 +115,94 @@ class CDF2D:
     def plot_sdf(self):
         sdf, grad = self.inference_sdf(self.Q_sets.requires_grad_(True))
         sdf = sdf.detach().cpu().numpy()
-        plt.contour(self.q0, self.q1, sdf.reshape(self.nbData, self.nbData), levels=[0], linewidths=4, colors='b',
-                    alpha=1.0)
-        ct = plt.contour(self.q0, self.q1, sdf.reshape(self.nbData, self.nbData), levels=10, linewidths=1)
-        plt.clabel(ct, inline=False, fontsize=10)
-        plt.xlabel('q0', size=15)
-        plt.ylabel('q1', size=15)
+        # cmap = plt.cm.get_cmap('binary')
+        cmap = plt.cm.get_cmap('coolwarm')
+        ct = plt.contourf(self.q0, self.q1, sdf.reshape(self.nbData, self.nbData), cmap=cmap,
+                          levels=[-0.5, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5], linewidths=1)
+        plt.clabel(ct, [], inline=False, fontsize=10)
 
-        # plot gradient
-        grad = grad.detach().cpu().numpy()
-        plt.quiver(self.q0, self.q1, grad[:, 0].reshape(self.nbData, self.nbData),
-                   grad[:, 1].reshape(self.nbData, self.nbData), color='r')
-
-    def plot_c_space_distance(self, d):
-        plt.contour(self.q0, self.q1, d.reshape(self.nbData, self.nbData), levels=[0], linewidths=4, colors='b',
-                    alpha=1.0)
-        ct = plt.contour(self.q0, self.q1, d.reshape(self.nbData, self.nbData), levels=10, linewidths=1)
+        ct_zero = plt.contour(self.q0, self.q1, sdf.reshape(self.nbData, self.nbData), levels=[0], linewidths=2,
+                              colors='k',
+                              alpha=1.0)
+        self
+        for c in ct_zero.collections:
+            c.set_hatch('///')  # Apply the hatch pattern
         plt.clabel(ct, inline=False, fontsize=10)
-        plt.xlabel('q0', size=15)
-        plt.ylabel('q1', size=15)
+        plt.xlabel('$q_0$', size=15)
+        plt.ylabel('$q_1$', size=15)
+
+        # # plot gradient
+        # grad = grad.detach().cpu().numpy()
+        # plt.quiver(self.q0, self.q1, grad[:, 0].reshape(self.nbData, self.nbData),
+        #            grad[:, 1].reshape(self.nbData, self.nbData), color='r')
+
+    def plot_cdf(self, d):
+        # get the distance field
+        # sdf, grad = self.inference_sdf(self.Q_sets.requires_grad_(True))
+        # sdf = sdf.detach().cpu().numpy()
+
+        # # plot the sdf field
+        # plt.contour(self.q0, self.q1, sdf.reshape(self.nbData, self.nbData), levels=[0], linewidths=2, colors='k',
+        #             alpha=1.0)
+        # cmap = plt.cm.get_cmap('binary')
+        # ct = plt.contourf(self.q0, self.q1, d.reshape(self.nbData, self.nbData), cmap = cmap, levels=6, linewidths=1)
+        # plt.clabel(ct, inline=False, fontsize=10)
+        # plt.xlabel('q0', size=15)
+        # plt.ylabel('q1', size=15)
+
+        sdf, grad = self.inference_sdf(self.Q_sets.requires_grad_(True))
+        sdf = sdf.detach().cpu().numpy()
+
+        # plot the sdf field
+        plt.contour(self.q0, self.q1, sdf.reshape(self.nbData, self.nbData), levels=[0], linewidths=2, colors='k',
+                    alpha=1.0)
+
+        # cmap = plt.cm.get_cmap('binary')
+        cmap = plt.cm.get_cmap('coolwarm')
+        ct = plt.contourf(self.q0, self.q1, d.reshape(self.nbData, self.nbData), cmap=cmap,
+                          levels=[-0.5, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5])
+        plt.clabel(ct, [], inline=False, fontsize=10)
+
+        # Create an additional contour for the zero level set and apply hatching
+        ct_zero = plt.contour(self.q0, self.q1, sdf.reshape(self.nbData, self.nbData), levels=[0], colors='k')
+        for c in ct_zero.collections:
+            c.set_hatch('///')  # Apply the hatch pattern
+
+        plt.xlabel('$q_0$', size=15)
+        plt.ylabel('$q_1$', size=15)
+
+    def plot_cdf_ax(self, d, ax):
+        # get the distance field
+        # sdf, grad = self.inference_sdf(self.Q_sets.requires_grad_(True))
+        # sdf = sdf.detach().cpu().numpy()
+
+        # # plot the sdf field
+        # plt.contour(self.q0, self.q1, sdf.reshape(self.nbData, self.nbData), levels=[0], linewidths=2, colors='k',
+        #             alpha=1.0)
+        # cmap = plt.cm.get_cmap('binary')
+        # ct = plt.contourf(self.q0, self.q1, d.reshape(self.nbData, self.nbData), cmap = cmap, levels=6, linewidths=1)
+        # plt.clabel(ct, inline=False, fontsize=10)
+        # plt.xlabel('q0', size=15)
+        # plt.ylabel('q1', size=15)
+        sdf, grad = self.inference_sdf(self.Q_sets.requires_grad_(True))
+        sdf = sdf.detach().cpu().numpy()
+
+        # Make sure to use the axes object (ax) for plotting
+        contour = ax.contour(self.q0, self.q1, sdf.reshape(self.nbData, self.nbData), levels=[0], linewidths=2,
+                             colors='k', alpha=1.0)
+        cmap = plt.cm.get_cmap('coolwarm')
+        contourf = ax.contourf(self.q0, self.q1, d.reshape(self.nbData, self.nbData), cmap=cmap,
+                               levels=[-0.5, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5])
+        ax.clabel(contourf, [], inline=False, fontsize=10)
+
+        ct_zero = ax.contour(self.q0, self.q1, sdf.reshape(self.nbData, self.nbData), levels=[0], colors='k')
+        for c in ct_zero.collections:
+            c.set_hatch('///')
+
+        ax.set_xlabel('$q_0$', size=15)
+        ax.set_ylabel('$q_1$', size=15)
+
+        return contour, contourf, ct_zero  # Ensure these match the names used in the animation function
 
     def plot_robot(self, q, color='black'):
         # plot robot
