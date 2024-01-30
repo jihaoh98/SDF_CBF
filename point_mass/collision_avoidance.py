@@ -27,6 +27,7 @@ class Collision_Avoidance:
         self.robot_cur_state = np.copy(self.robot_init_state)
         self.robot_target_state = np.array(robot_params['target_state'])
         self.destination_margin = robot_params['destination_margin']
+        self.margin = robot_params['margin']
 
         # init obstacle, if no data, return None
         cir_obs_params = config.get('cir_obstacle_list')
@@ -129,11 +130,11 @@ class Collision_Avoidance:
         process_time = []
 
         # load the neural network model to get the distance and gradient to the obstacle
-        object_center = [torch.tensor([2.3, -2.3])]
+        object_center = [torch.tensor([2.5, -2.5])]
         cdf.obj_lists = [Circle(center=object_center[0], radius=0.3, device=device)]
 
         # obstacle states
-        obs_state = np.array([2.3, -2.3, 0, 0, 0.0])
+        obs_state = np.array([2.5, -2.5, 0, 0, 0.0])
 
         # approach the destination or exceed the maximum time
         while (
@@ -153,6 +154,7 @@ class Collision_Avoidance:
             distance_input = distance_input.cpu().detach().numpy()
             gradient_input = gradient_input.cpu().detach().numpy()
 
+            distance_input = distance_input - self.margin
             optimal_result = self.cbf_qp.cbf_clf_qp(self.robot_cur_state, distance_input, gradient_input,
                                                     obs_state, add_clf=add_clf)
             process_time.append(time.time() - start_time)
@@ -169,6 +171,7 @@ class Collision_Avoidance:
 
             # storage and update the state of robot and obstacle
             self.xt[:, t] = np.copy(self.robot_cur_state)
+
             self.robot_cur_state = self.cbf_qp.robot.next_state(self.robot_cur_state, optimal_result.u, self.step_time)
 
             if self.cir_obs_states_list is not None:
@@ -227,7 +230,7 @@ if __name__ == '__main__':
 
     test_target.collision_avoidance(cdf=cdf)
     test_target.render(cdf=cdf)
-    test_target.show_controls()
-    test_target.show_clf()
-    test_target.show_slack()
+    # test_target.show_controls()
+    # test_target.show_clf()
+    # test_target.show_slack()
     test_target.show_cbf(0)

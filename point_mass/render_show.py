@@ -119,7 +119,7 @@ class Render_Animation:
             func=self.animation_loop,
             frames=terminal_time + 1,
             init_func=self.animation_init,
-            interval=50,
+            interval=20,
             repeat=False,
         )
 
