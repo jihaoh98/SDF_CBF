@@ -61,6 +61,8 @@ class Collision_Avoidance:
         self.ut = np.zeros((2, self.time_steps))
         self.clft = np.zeros((1, self.time_steps))
         self.slackt = np.zeros((1, self.time_steps))
+        self.wt = np.zeros((1, self.time_steps))
+        self.costt = np.zeros((1, self.time_steps))
 
         self.cir_obstacle_state_t = None
         self.cir_obs_cbf_t = None
@@ -124,7 +126,7 @@ class Collision_Avoidance:
         print('Median_time:', statistics.median(process_time))
         print('Average_time:', statistics.mean(process_time))
 
-    def collision_avoidance(self, add_clf=True, cdf=None):
+    def collision_avoidance(self, add_clf=True, add_decay=False, cdf=None):
         """ solve the collision avoidance between robot and obstacles based on sdf-cbf """
         t = 0  # set the initial time
         process_time = []
@@ -155,8 +157,13 @@ class Collision_Avoidance:
             gradient_input = gradient_input.cpu().detach().numpy()
 
             distance_input = distance_input - self.margin
-            optimal_result = self.cbf_qp.cbf_clf_qp(self.robot_cur_state, distance_input, gradient_input,
-                                                    obs_state, add_clf=add_clf)
+            optimal_result = self.cbf_qp.cbf_clf_qp(self.robot_cur_state, 
+                distance_input, 
+                gradient_input,
+                obs_state, 
+                add_clf=add_clf,
+                add_decay=add_decay
+            )
             process_time.append(time.time() - start_time)
 
             if not optimal_result.feas:
@@ -168,6 +175,9 @@ class Collision_Avoidance:
             self.ut[:, t] = optimal_result.u
             self.clft[0, t] = optimal_result.clf
             self.slackt[0, t] = optimal_result.slack
+            self.costt[0, t] = optimal_result.cost
+            if add_decay:
+                self.wt[0, t] = optimal_result.w
 
             # storage and update the state of robot and obstacle
             self.xt[:, t] = np.copy(self.robot_cur_state)
@@ -217,6 +227,12 @@ class Collision_Avoidance:
     def show_slack(self):
         self.ani.show_slack(self.slackt[0], self.terminal_time)
 
+    def show_w(self):
+        self.ani.show_w(self.wt[0], self.terminal_time)
+
+    def show_cost(self):
+        self.ani.show_cost(self.costt[0], self.terminal_time)
+
     def show_robot(self):
         self.ani.plot_2d_manipulators(joint_angles_batch=(self.xt[0:2, :self.terminal_time]).reshape(-1, 2))
 
@@ -231,10 +247,13 @@ if __name__ == '__main__':
     test_target = Collision_Avoidance(file_name)
     # test_target.navigation_destination()
 
-    test_target.collision_avoidance(cdf=cdf)
+    test_target.collision_avoidance(add_decay=False, cdf=cdf)
     test_target.render(cdf=cdf)
-    # test_target.show_controls()
+    
+    # test_target.show_cost()
+    test_target.show_controls()
     # test_target.show_clf()
     # test_target.show_slack()
     # test_target.show_cbf(0)
-    test_target.show_robot()
+    # test_target.show_w()
+    # test_target.show_robot()

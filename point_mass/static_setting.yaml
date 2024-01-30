@@ -6,6 +6,8 @@ controller:
   weight_slack: 100
   clf_lambda: 1.0
   cbf_gamma: 0.8
+  w0: 1.0
+  weight_w: 1e4
 
 robot:
   u_max: [3.0, 3.0]
@@ -15,7 +17,7 @@ robot:
   radius: 0.001
   destination_margin: 0.1
   sensor_range: 6.0
-  margin: 0.01
+  margin: 0.05
   
 cir_obstacle_list:
   obs_states: [

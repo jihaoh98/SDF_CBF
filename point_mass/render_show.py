@@ -252,6 +252,50 @@ class Render_Animation:
         plt.grid()
         # plt.savefig('cbf.png', format='png', dpi=300)
         plt.show()
+    
+    def show_w(self, wt, terminal_time):
+        """ show changes in w """
+        t = np.arange(0, terminal_time * self.dt, self.dt)[0:terminal_time]
+
+        # add dpi
+        figure = plt.figure()
+        figure.set_dpi(150)
+
+        plt.plot(t, wt[0:terminal_time].reshape(terminal_time, ), linewidth=3, color='blue')
+        plt.title('Changes in w', self.label_font)
+        plt.ylabel('w', self.label_font)
+        plt.xlabel('Time (s)', self.label_font)
+
+        # set the tick in Times New Roman and size
+        self.ax.tick_params(labelsize=16)
+        labels = self.ax.get_xticklabels() + self.ax.get_yticklabels()
+        [label.set_fontname('Times New Roman') for label in labels]
+
+        plt.grid()
+        # plt.savefig('w.png', format='png', dpi=300)
+        plt.show()
+
+    def show_cost(self, costt, terminal_time):
+        """ show changes in cost """
+        t = np.arange(0, terminal_time * self.dt, self.dt)[0:terminal_time]
+
+        # add dpi
+        figure = plt.figure()
+        figure.set_dpi(150)
+
+        plt.plot(t, costt[0:terminal_time].reshape(terminal_time, ), linewidth=3, color='blue')
+        plt.title('Changes in cost', self.label_font)
+        plt.ylabel('cost', self.label_font)
+        plt.xlabel('Time (s)', self.label_font)
+
+        # set the tick in Times New Roman and size
+        self.ax.tick_params(labelsize=16)
+        labels = self.ax.get_xticklabels() + self.ax.get_yticklabels()
+        [label.set_fontname('Times New Roman') for label in labels]
+
+        plt.grid()
+        # plt.savefig('cost.png', format='png', dpi=300)
+        plt.show()
 
     def show_integral_controls(self, ut, terminal_time):
         """ show controls of integral model """

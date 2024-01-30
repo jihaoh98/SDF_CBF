@@ -44,6 +44,11 @@ class Integral_Sdf_Cbf_Clf:
         self.u_max = robot_params['u_max']
         self.u_min = robot_params['u_min']
 
+        # optimal decay cbf
+        self.w0 = controller_params['w0']
+        self.weight_w = controller_params['weight_w']
+        self.weight_w = float(self.weight_w)
+
         # optimize and set the solver
         # ipopt
         # self.opti = ca.Opti()
@@ -74,11 +79,15 @@ class Integral_Sdf_Cbf_Clf:
         self.H = np.diag(self.weight_input)
         self.R = np.diag(self.smooth_input)
 
-    def set_optimal_function(self, u_ref, add_slack=True):
+    def set_optimal_function(self, u_ref, add_slack=True, add_decay=False):
         """ set the optimal function """
         self.obj = (self.u - u_ref).T @ self.H @ (self.u - u_ref)
         if add_slack:
             self.obj = self.obj + self.weight_slack * self.slack ** 2
+
+        if add_decay:
+            self.obj = self.obj + self.weight_w * (self.w - self.w0) * (self.w - self.w0) 
+
         self.opti.minimize(self.obj)
         self.opti.subject_to()
 
@@ -100,22 +109,31 @@ class Integral_Sdf_Cbf_Clf:
         """ add physical constraint of controls """
         self.opti.subject_to(self.opti.bounded(self.u_min, self.u, self.u_max))
 
-    def add_cdf_cbf_cons(self, robot_state, obs_state, dist_input, grad_input):
+    def add_cdf_cbf_cons(self, robot_state, obs_state, dist_input, grad_input, add_decay=False):
         """ add cons w.r.t cdf obstacle """
         obs_cur_point_state = np.array([obs_state[0], obs_state[1], 0, 0])
         cbf = dist_input  # the distance between robot and obstacle
         lf_cbf, lg_cbf, dt_obs_cbf = self.robot.derive_cbf_gradient(robot_state, obs_state, dist_input, grad_input)
-        self.opti.subject_to(lf_cbf + (lg_cbf @ self.u)[0, 0] + dt_obs_cbf + self.cbf_gamma * cbf >= 0)
+
+        if not add_decay:
+            self.opti.subject_to(lf_cbf + (lg_cbf @ self.u)[0, 0] + dt_obs_cbf + self.cbf_gamma * cbf >= 0)
+        else:
+            self.opti.subject_to(lf_cbf + (lg_cbf @ self.u)[0, 0] + dt_obs_cbf + self.w * self.cbf_gamma * cbf >= 0)
+            self.opti.subject_to(self.opti.bounded(0, self.w, np.inf))
         return cbf
 
-    def add_cir_cbf_cons(self, robot_state_cbf, cir_obs_state):
+    def add_cir_cbf_cons(self, robot_state_cbf, cir_obs_state, add_decay=False):
         """ add cons w.r.t circle obstacle """
         cbf = self.cbf(robot_state_cbf, cir_obs_state)
         lf_cbf = self.lf_cbf(robot_state_cbf, cir_obs_state)
         lg_cbf = self.lg_cbf(robot_state_cbf, cir_obs_state)
         dt_cbf = self.dt_cbf(robot_state_cbf, cir_obs_state)
 
-        self.opti.subject_to(lf_cbf + (lg_cbf @ self.u)[0, 0] + dt_cbf + self.cbf_gamma * cbf >= 0)
+        if not add_decay:
+            self.opti.subject_to(lf_cbf + (lg_cbf @ self.u)[0, 0] + dt_cbf + self.cbf_gamma * cbf >= 0)
+        else:
+            self.opti.subject_to(lf_cbf + (lg_cbf @ self.u)[0, 0] + dt_cbf + self.w * self.cbf_gamma * cbf >= 0)
+            self.opti.subject_to(self.opti.bounded(0, self.w, np.inf))
         return cbf
 
     def clf_qp(self, robot_cur_state, add_slack=False, u_ref=None):
@@ -157,7 +175,7 @@ class Integral_Sdf_Cbf_Clf:
         return result
 
     def cbf_clf_qp(self, robot_cur_state, dist_input=None, grad_input=None, cdf_obs_state=None, add_clf=True,
-                   u_ref=None):
+                   add_decay=False, u_ref=None):
         """
         This is a function to calculate the optimal control for the robot w.r.t circular-shaped obstacles
         Args:
@@ -169,26 +187,29 @@ class Integral_Sdf_Cbf_Clf:
         """
         if u_ref is None:
             u_ref = np.zeros(self.control_dim)
-        self.set_optimal_function(u_ref, add_slack=add_clf)
+        if add_decay:
+            self.w = self.opti.variable()
+        self.set_optimal_function(u_ref, add_slack=add_clf, add_decay=add_decay)
 
         clf = None
         if add_clf:
             clf = self.add_clf_cons(robot_cur_state, add_slack=add_clf)
 
-        # # add cbf constraints for each circular-shaped obstacles
+        # add cbf constraints for each circular-shaped obstacles
         # cir_cbf_list = None
         # robot_state_cbf = np.hstack((robot_cur_state, np.array([self.robot_radius])))
         # if cir_obs_states is not None:
         #     cir_cbf_list = []
         #     for cir_obs_state in cir_obs_states:
-        #         cbf = self.add_cir_cbf_cons(robot_state_cbf, cir_obs_state)
+        #         cbf = self.add_cir_cbf_cons(robot_state_cbf, cir_obs_state, add_decay)
         #         cir_cbf_list.append(cbf)  # for visualization
 
         # add cdf_cbf constraints for the collision avoidance between robot and obstacles
+        # TODO: consider multiple obstacles
         cdf_cbf_list = None
         if cdf_obs_state is not None:
             cdf_cbf_list = []
-            cdf_cbf = self.add_cdf_cbf_cons(robot_cur_state, cdf_obs_state, dist_input, grad_input)
+            cdf_cbf = self.add_cdf_cbf_cons(robot_cur_state, cdf_obs_state, dist_input, grad_input, add_decay)
             cdf_cbf_list.append(cdf_cbf)
 
         self.add_controls_physical_cons()
@@ -204,10 +225,14 @@ class Integral_Sdf_Cbf_Clf:
             sol = self.opti.solve()
             end_time = time.time()
             optimal_control = sol.value(self.u)
+            optimal_cost = sol.value(self.obj)
 
             result.u = optimal_control
+            result.cost = optimal_cost
             result.time = end_time - start_time
             result.feas = True
+            if add_decay:
+                result.w = sol.value(self.w)
 
             if add_clf:
                 slack = sol.value(self.slack)
@@ -217,6 +242,7 @@ class Integral_Sdf_Cbf_Clf:
         except:
             print(self.opti.return_status() + ' sdf-cbf with clf')
             result.u = None
+            result.cost = None
             result.time = None
             result.feas = False
             result.slack = None
