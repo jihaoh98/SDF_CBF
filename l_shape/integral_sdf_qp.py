@@ -104,6 +104,7 @@ class Integral_Sdf_Cbf_Clf:
 
     def add_cir_cbf_cons(self, robot_cur_state, robot_params, two_center, cir_obs_state):
         """ add cons w.r.t circle obstacle """
+
         cbf = self.cir_cbf(robot_cur_state, robot_params, two_center, cir_obs_state)
         lf_cbf, lg_cbf, dt_obs_cbf = self.robot.derive_cbf_gradient(robot_cur_state, robot_params, two_center, cir_obs_state, obs_shape='circle')
         self.opti.subject_to(lf_cbf + (lg_cbf @ self.u)[0, 0] + dt_obs_cbf + self.cbf_gamma * cbf >= 0)

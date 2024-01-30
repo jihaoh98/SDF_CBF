@@ -84,7 +84,7 @@ class Integral_Robot_Sdf:
 
         # the cdf obstacle dynamics
         self.cdf_obstacle_dynamics_symbolic = sp.Matrix(
-            [self.cdf_obstacle_state[2], self.cdf_obstacle_state[3], 0.0, 0.0, 0.0])
+            [self.cdf_obstacle_state[2], self.cdf_obstacle_state[3], 0.0, 0.0])
         self.cdf_obstacle_dynamics = lambdify([self.cdf_obstacle_state], self.cdf_obstacle_dynamics_symbolic)
 
         self.init_clf()
@@ -134,46 +134,62 @@ class Integral_Robot_Sdf:
         """
 
         # init the circle obstacle cbf based on Euclidean distance
-        # cbf_symbolic = (self.robot_state_cbf[0] - self.cir_obstacle_state[0]) ** 2 + (
-        #         self.robot_state_cbf[1] - self.cir_obstacle_state[1]) ** 2
-        # cbf_symbolic = cbf_symbolic - (self.robot_state_cbf[3] + self.cir_obstacle_state[4]) ** 2
-        # cbf_symbolic = cbf_symbolic - self.margin
-        # self.cbf = lambdify([self.robot_state_cbf, self.cir_obstacle_state], cbf_symbolic)
-        # lf_cbf_symbolic, lg_cbf_symbolic, dt_cbf_symbolic = self.define_cbf_derivative(cbf_symbolic)
-        # self.lf_cbf = lambdify([self.robot_state_cbf, self.cir_obstacle_state], lf_cbf_symbolic)
-        # self.lg_cbf = lambdify([self.robot_state_cbf, self.cir_obstacle_state], lg_cbf_symbolic)
-        # self.dt_cbf = lambdify([self.robot_state_cbf, self.cir_obstacle_state], dt_cbf_symbolic)
+        cbf_symbolic = (self.robot_state_cbf[0] - self.cir_obstacle_state[0]) ** 2 + (
+                self.robot_state_cbf[1] - self.cir_obstacle_state[1]) ** 2
+        cbf_symbolic = cbf_symbolic - (self.robot_state_cbf[3] + self.cir_obstacle_state[4]) ** 2
+        cbf_symbolic = cbf_symbolic - self.margin
 
-        # get the distance between the robot and the cdf obstacle by using the cdf neural network model
-        cdf = CDF2D(device=device)
-        cdf.obj_lists = [Circle(center=self.cdf_obstacle_state[0:2], radius=self.cdf_obstacle_state[4], device=device)]
-        cdf_distance, cdf_gradient = cdf.inference_c_space_sdf_using_data(
-            torch.from_numpy(self.robot_state).to(device).reshape(1, 2))
-        cdf_distance = cdf_distance.cpu().detach().numpy()
-        cdf_gradient = cdf_gradient.cpu().detach().numpy()
-        # init the cdf obstacle cbf based on Euclidean distance
-        cdf_cbf_symbolic = cdf_distance - self.margin
-        self.cbf = lambdify([self.robot_state, self.cdf_obstacle_state], cdf_cbf_symbolic)
+        self.cbf = lambdify([self.robot_state_cbf, self.cir_obstacle_state], cbf_symbolic)
 
-        lf_cbf_symbolic, lg_cbf_symbolic, dt_cbf_symbolic = self.define_cbf_derivative(cdf_cbf_symbolic, cdf_gradient)
-        self.lf_cbf = lambdify([self.robot_state_cbf, self.cdf_obstacle_state], lf_cbf_symbolic)
-        self.lg_cbf = lambdify([self.robot_state_cbf, self.cdf_obstacle_state], lg_cbf_symbolic)
-        self.dt_cbf = lambdify([self.robot_state_cbf, self.cdf_obstacle_state], dt_cbf_symbolic)
+        lf_cbf_symbolic, lg_cbf_symbolic, dt_cbf_symbolic = self.define_cbf_derivative(cbf_symbolic)
+        self.lf_cbf = lambdify([self.robot_state_cbf, self.cir_obstacle_state], lf_cbf_symbolic)
+        self.lg_cbf = lambdify([self.robot_state_cbf, self.cir_obstacle_state], lg_cbf_symbolic)
+        self.dt_cbf = lambdify([self.robot_state_cbf, self.cir_obstacle_state], dt_cbf_symbolic)
 
-    def define_cbf_derivative(self, cbf_symbolic, cdf_grad):
+    def define_cbf_derivative(self, cbf_symbolic):
         """ return the symbolic expression of lf_cbf, lg_cbf and dt_cbf """
-        # dx_cbf_symbolic = sp.Matrix([cbf_symbolic]).jacobian(self.robot_state)
-        dx_cbf_symbolic = cdf_grad
+        dx_cbf_symbolic = sp.Matrix([cbf_symbolic]).jacobian(self.robot_state)
         lf_cbf = (dx_cbf_symbolic @ self.f_symbolic)[0, 0]
         lg_cbf = dx_cbf_symbolic @ self.g_symbolic
 
-        # dox_cbf_symbolic = sp.Matrix([cbf_symbolic]).jacobian(self.cir_obstacle_state)
+        dox_cbf_symbolic = sp.Matrix([cbf_symbolic]).jacobian(self.cir_obstacle_state)
 
-        dox_cbf_symbolic = sp.Matrix([cbf_symbolic]).jacobian(self.cdf_obstacle_state[0:2])
-        # dt_cbf = (dox_cbf_symbolic @ self.cir_obstacle_dynamics_symbolic)[0, 0]
-        dt_cbf = (dox_cbf_symbolic @ self.cdf_obstacle_dynamics_symbolic)[0, 0]
+        dt_cbf = (dox_cbf_symbolic @ self.cir_obstacle_dynamics_symbolic)[0, 0]
 
         return lf_cbf, lg_cbf, dt_cbf
+
+    def derive_cbf_gradient(self, robot_cur_state, obs_cur_state, dist_input, grad_input):
+        dh_dxb = grad_input.flatten()
+
+        # lf_cbf, lg_cbf, dt_obs_cbf (dynamic obstacle)
+        lf_cbf, lg_cbf, dt_obs_cbf = self.get_cbf_gradient(robot_cur_state, obs_cur_state, dh_dxb)
+
+        return lf_cbf, lg_cbf, dt_obs_cbf
+
+    def get_cbf_gradient(self, robot_state, obstacle_state, cdf_gradient):
+        """
+        Args:
+            robot_state: x, y, theta
+            obstacle_state: ox, oy, ovx, ovy
+            cir_obstacle_state: ox, oy, ovx, ovy, o_radius
+            sdf_gradient: dh / dx_b
+        Returns:
+            lf_cbf in shape ()
+            lg_cbf in shape (1, 2)
+        """
+        # h is calculated based on the relative position of obstacle
+        # dh / dt = (dh / dx) * (dx / dt), x is a vector and dx / dt = f(x) + g(x) * u
+        # x_b is the obstacle state in robot frame, x_o is the obstacle state in world frame, xr is the robot state
+        # x_b = (x_o - xr)
+        # dh / dx = [dh / dp, dh / dtheta = 0] p is xr (x, y)
+
+        dh_dp = cdf_gradient
+        dh_dx = np.array([dh_dp[0], dh_dp[1], 0])
+        lf_cbf = (dh_dx @ self.f(robot_state))[0]
+        lg_cbf = (dh_dx @ self.g(robot_state)).reshape(1, 2)
+        dt_obs_cbf = (cdf_gradient @ self.cdf_obstacle_dynamics(obstacle_state)[0:2])[0]
+
+        return lf_cbf, lg_cbf, dt_obs_cbf
 
     def next_state(self, current_state, u, dt):
         """ simple one step """

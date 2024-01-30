@@ -5,6 +5,11 @@ import yaml
 import obs
 from render_show import Render_Animation
 import statistics
+from cdf import CDF2D
+from primitives2D_torch import Circle
+import torch
+
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 class Collision_Avoidance:
@@ -12,7 +17,7 @@ class Collision_Avoidance:
         """ collision avoidance with obstacles """
         with open(file_name) as file:  # Use file to refer to the file object
             config = yaml.safe_load(file)  # Load YAML file into Python dict
-        
+
         robot_params = config['robot']
         controller_params = config['controller']
         self.cbf_qp = Integral_Sdf_Cbf_Clf(file_name)
@@ -31,13 +36,13 @@ class Collision_Avoidance:
             self.cir_obs_list = [None for i in range(self.cir_obs_num)]
             for i in range(self.cir_obs_num):
                 self.cir_obs_list[i] = obs.Circle_Obs(
-                    index=i, 
-                    radius=cir_obs_params['obs_radiuses'][i], 
-                    center=cir_obs_params['obs_states'][i], 
-                    vel=cir_obs_params['obs_vels'][i], 
+                    index=i,
+                    radius=cir_obs_params['obs_radiuses'][i],
+                    center=cir_obs_params['obs_states'][i],
+                    vel=cir_obs_params['obs_vels'][i],
                     mode=cir_obs_params['modes'][i],
                 )
-                            
+
             # get cir_obstacles' center position and velocity as well as radius
             self.cir_obs_init_states_list = [
                 self.cir_obs_list[i].get_current_state() for i in range(self.cir_obs_num)
@@ -64,25 +69,25 @@ class Collision_Avoidance:
 
         # plot
         self.ani = Render_Animation(
-            robot_params, 
-            cir_obs_params, 
+            robot_params,
+            cir_obs_params,
             self.step_time,
         )
         self.show_obs = True
-    
+
     def navigation_destination(self, add_slack=False):
         """ navigate the robot to its destination """
         t = 0
         process_time = []
         # approach the destination or exceed the maximum time
         while (
-            np.linalg.norm(self.robot_cur_state[0:2] - self.robot_target_state[0:2])
-            >= self.destination_margin
-            and t - self.time_steps < 0.0
+                np.linalg.norm(self.robot_cur_state[0:2] - self.robot_target_state[0:2])
+                >= self.destination_margin
+                and t - self.time_steps < 0.0
         ):
             if t % 100 == 0:
                 print(f't = {t}')
-        
+
             start_time = time.time()
             optimal_result = self.cbf_qp.clf_qp(self.robot_cur_state, add_slack=add_slack)
             process_time.append(time.time() - start_time)
@@ -101,7 +106,7 @@ class Collision_Avoidance:
             self.robot_cur_state = self.cbf_qp.robot.next_state(self.robot_cur_state, optimal_result.u, self.step_time)
             t = t + 1
 
-        self.terminal_time = t 
+        self.terminal_time = t
         # storage the last state of robot
         self.xt[:, t] = np.copy(self.robot_cur_state)
         self.show_obs = False
@@ -118,22 +123,38 @@ class Collision_Avoidance:
         print('Median_time:', statistics.median(process_time))
         print('Average_time:', statistics.mean(process_time))
 
-    def collision_avoidance(self, add_clf=True):
+    def collision_avoidance(self, add_clf=True, cdf=None):
         """ solve the collision avoidance between robot and obstacles based on sdf-cbf """
         t = 0  # set the initial time
         process_time = []
+
+        # load the neural network model to get the distance and gradient to the obstacle
+        object_center = [torch.tensor([2.3, -2.3])]
+        cdf.obj_lists = [Circle(center=object_center[0], radius=0.3, device=device)]
+
+        # obstacle states
+        obs_state = np.array([2.3, -2.3, 0, 0, 0.0])
+
         # approach the destination or exceed the maximum time
         while (
-            np.linalg.norm(self.robot_cur_state[0:2] - self.robot_target_state[0:2])
-            >= self.destination_margin
-            and t - self.time_steps < 0.0
+                np.linalg.norm(self.robot_cur_state[0:2] - self.robot_target_state[0:2])
+                >= self.destination_margin
+                and t - self.time_steps < 0.0
         ):
             if t % 100 == 0:
                 print(f't = {t}')
 
             start_time = time.time()
             # start to solve the qp problem
-            optimal_result = self.cbf_qp.cbf_clf_qp(self.robot_cur_state, self.cir_obs_states_list, add_clf=add_clf)
+            # optimal_result = self.cbf_qp.cbf_clf_qp(self.robot_cur_state, self.cir_obs_states_list, add_clf=add_clf)
+            distance_input, gradient_input = cdf.inference_c_space_sdf_using_data(
+                torch.from_numpy(self.robot_cur_state[:2]).to(device).reshape(1, 2))
+
+            distance_input = distance_input.cpu().detach().numpy()
+            gradient_input = gradient_input.cpu().detach().numpy()
+
+            optimal_result = self.cbf_qp.cbf_clf_qp(self.robot_cur_state, distance_input, gradient_input,
+                                                    obs_state, add_clf=add_clf)
             process_time.append(time.time() - start_time)
 
             if not optimal_result.feas:
@@ -151,15 +172,15 @@ class Collision_Avoidance:
             self.robot_cur_state = self.cbf_qp.robot.next_state(self.robot_cur_state, optimal_result.u, self.step_time)
 
             if self.cir_obs_states_list is not None:
-                self.cir_obs_cbf_t[:, t] = optimal_result.cir_cbf_list
+                self.cir_obs_cbf_t[:, t] = optimal_result.cir_cbf_list[0]
                 for i in range(self.cir_obs_num):
                     self.cir_obstacle_state_t[i][:, t] = np.copy(self.cir_obs_states_list[i])
                     self.cir_obs_list[i].move_forward(self.step_time)
                 self.cir_obs_states_list = [self.cir_obs_list[i].get_current_state() for i in range(self.cir_obs_num)]
             t = t + 1
 
-        self.terminal_time = t 
-        
+        self.terminal_time = t
+
         # storage the last state of robot and obstacles
         self.xt[:, t] = np.copy(self.robot_cur_state)
         if self.cir_obs_states_list is not None:
@@ -176,11 +197,11 @@ class Collision_Avoidance:
         print('Maxinum_time:', max(process_time))
         print('Minimum_time:', min(process_time))
         print('Median_time:', statistics.median(process_time))
-        print('Average_time:', statistics.mean(process_time))    
-        
-    def render(self):
-        self.ani.render(self.xt, self.cir_obstacle_state_t, self.terminal_time, self.show_obs)
-    
+        print('Average_time:', statistics.mean(process_time))
+
+    def render(self, cdf=None):
+        self.ani.render(self.xt, self.cir_obstacle_state_t, self.terminal_time, self.show_obs, cdf)
+
     def show_cbf(self, i):
         self.ani.show_cbf(i, self.cir_obs_cbf_t, self.terminal_time)
 
@@ -198,13 +219,15 @@ if __name__ == '__main__':
     # file_name = 'dynamic_setting.yaml'
     file_name = 'static_setting.yaml'
 
+    # load the neural network model to get the distance and gradient to the obstacle
+    cdf = CDF2D(device)
+
     test_target = Collision_Avoidance(file_name)
     # test_target.navigation_destination()
-    
-    test_target.collision_avoidance()
-    test_target.render()
-    # test_target.show_controls()
-    # test_target.show_clf()
-    # test_target.show_slack()
-    # test_target.show_cbf(0)
-    
+
+    test_target.collision_avoidance(cdf=cdf)
+    test_target.render(cdf=cdf)
+    test_target.show_controls()
+    test_target.show_clf()
+    test_target.show_slack()
+    test_target.show_cbf(0)

@@ -10,13 +10,13 @@ class Integral_Sdf_Cbf_Clf:
         """ init the optimal problem with clf-cbf-qp """
         with open(file_name) as file:
             config = yaml.safe_load(file)
-        
+
         controller_params = config['controller']
         robot_params = config['robot']
 
         # init robot
         self.robot = integral_robot_sdf.Integral_Robot_Sdf(robot_params)
-        self.state_dim = self.robot.state_dim 
+        self.state_dim = self.robot.state_dim
         self.control_dim = self.robot.control_dim
         self.target_state = robot_params['target_state']
         self.sensor_range = robot_params['sensor_range']
@@ -26,7 +26,7 @@ class Integral_Sdf_Cbf_Clf:
         self.clf = self.robot.clf
         self.lf_clf = self.robot.lf_clf
         self.lg_clf = self.robot.lg_clf
-      
+
         # initialize CBF
         self.cbf = self.robot.cbf
         self.lf_cbf = self.robot.lf_cbf
@@ -59,7 +59,7 @@ class Integral_Sdf_Cbf_Clf:
         # qpoases
         self.opti = ca.Opti('conic')
         opts_setting = {
-            'printLevel': 'low',  
+            'printLevel': 'low',
             'error_on_fail': False,
             'expand': True,
             'print_time': 0
@@ -69,7 +69,7 @@ class Integral_Sdf_Cbf_Clf:
         self.u = self.opti.variable(self.control_dim)
         self.slack = self.opti.variable()
         self.obj = None
-  
+
         # approach the desired control and smooth the control
         self.H = np.diag(self.weight_input)
         self.R = np.diag(self.smooth_input)
@@ -93,12 +93,20 @@ class Integral_Sdf_Cbf_Clf:
             self.opti.subject_to(self.opti.bounded(-np.inf, self.slack, np.inf))
         else:
             self.opti.subject_to(lf_clf + (lg_clf @ self.u)[0, 0] + self.clf_lambda * clf <= 0)
-        
+
         return clf
 
     def add_controls_physical_cons(self):
         """ add physical constraint of controls """
         self.opti.subject_to(self.opti.bounded(self.u_min, self.u, self.u_max))
+
+    def add_cdf_cbf_cons(self, robot_state, obs_state, dist_input, grad_input):
+        """ add cons w.r.t cdf obstacle """
+        obs_cur_point_state = np.array([obs_state[0], obs_state[1], 0, 0])
+        cbf = dist_input  # the distance between robot and obstacle
+        lf_cbf, lg_cbf, dt_obs_cbf = self.robot.derive_cbf_gradient(robot_state, obs_state, dist_input, grad_input)
+        self.opti.subject_to(lf_cbf + (lg_cbf @ self.u)[0, 0] + dt_obs_cbf + self.cbf_gamma * cbf >= 0)
+        return cbf
 
     def add_cir_cbf_cons(self, robot_state_cbf, cir_obs_state):
         """ add cons w.r.t circle obstacle """
@@ -109,7 +117,7 @@ class Integral_Sdf_Cbf_Clf:
 
         self.opti.subject_to(lf_cbf + (lg_cbf @ self.u)[0, 0] + dt_cbf + self.cbf_gamma * cbf >= 0)
         return cbf
-    
+
     def clf_qp(self, robot_cur_state, add_slack=False, u_ref=None):
         """ 
         calculate the optimal control which navigating the robot to its destination
@@ -122,12 +130,12 @@ class Integral_Sdf_Cbf_Clf:
         if u_ref is None:
             u_ref = np.zeros(self.control_dim)
 
-        self.set_optimal_function(u_ref, add_slack)        
+        self.set_optimal_function(u_ref, add_slack)
         clf = self.add_clf_cons(robot_cur_state, add_slack)
         self.add_controls_physical_cons()
 
         # result
-        result = lambda:None
+        result = lambda: None
         result.clf = clf
 
         # optimize the qp problem
@@ -147,8 +155,9 @@ class Integral_Sdf_Cbf_Clf:
             result.feas = False
 
         return result
-        
-    def cbf_clf_qp(self, robot_cur_state, cir_obs_states=None, add_clf=True, u_ref=None):
+
+    def cbf_clf_qp(self, robot_cur_state, dist_input=None, grad_input=None, cdf_obs_state=None, add_clf=True,
+                   u_ref=None):
         """
         This is a function to calculate the optimal control for the robot w.r.t circular-shaped obstacles
         Args:
@@ -160,27 +169,34 @@ class Integral_Sdf_Cbf_Clf:
         """
         if u_ref is None:
             u_ref = np.zeros(self.control_dim)
-        self.set_optimal_function(u_ref, add_slack=add_clf)   
+        self.set_optimal_function(u_ref, add_slack=add_clf)
 
         clf = None
         if add_clf:
             clf = self.add_clf_cons(robot_cur_state, add_slack=add_clf)
 
-        # add cbf constraints for each circular-shaped obstacles
-        cir_cbf_list = None
-        robot_state_cbf = np.hstack((robot_cur_state, np.array([self.robot_radius])))
-        if cir_obs_states is not None:
-            cir_cbf_list = []
-            for cir_obs_state in cir_obs_states:
-                cbf = self.add_cir_cbf_cons(robot_state_cbf, cir_obs_state)
-                cir_cbf_list.append(cbf)
+        # # add cbf constraints for each circular-shaped obstacles
+        # cir_cbf_list = None
+        # robot_state_cbf = np.hstack((robot_cur_state, np.array([self.robot_radius])))
+        # if cir_obs_states is not None:
+        #     cir_cbf_list = []
+        #     for cir_obs_state in cir_obs_states:
+        #         cbf = self.add_cir_cbf_cons(robot_state_cbf, cir_obs_state)
+        #         cir_cbf_list.append(cbf)  # for visualization
+
+        # add cdf_cbf constraints for the collision avoidance between robot and obstacles
+        cdf_cbf_list = None
+        if cdf_obs_state is not None:
+            cdf_cbf_list = []
+            cdf_cbf = self.add_cdf_cbf_cons(robot_cur_state, cdf_obs_state, dist_input, grad_input)
+            cdf_cbf_list.append(cdf_cbf)
 
         self.add_controls_physical_cons()
 
         # result
-        result = lambda:None
+        result = lambda: None
         result.clf = clf
-        result.cir_cbf_list = cir_cbf_list
+        result.cir_cbf_list = cdf_cbf_list
 
         # optimize the qp problem
         try:

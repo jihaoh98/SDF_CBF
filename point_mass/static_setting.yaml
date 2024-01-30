@@ -1,17 +1,17 @@
 controller:
   Tmax: 20
-  step_time: 0.1
+  step_time: 0.01
   weight_input: [1.0, 1.0]
   smooth_input: [1.0, 0.5]
   weight_slack: 100
   clf_lambda: 1.0
-  cbf_gamma: 1.5
+  cbf_gamma: 1.0
 
 robot:
-  u_max: [2.0, 2.0]
-  u_min: [-2.0, -2.0]
-  initial_state: [-2.5, -2.5, 0.0]
-  target_state: [2.5, 2.0, 0.0]
+  u_max: [3.0, 3.0]
+  u_min: [-3.0, -3.0]
+  initial_state: [-2.5, 0.0, 0.0]
+  target_state: [2.5, 1.5, 0.0]
   radius: 0.001
   destination_margin: 0.1
   sensor_range: 6.0
@@ -19,9 +19,9 @@ robot:
   
 cir_obstacle_list:
   obs_states: [
-    [0.0, -0.5]
+    [2.3, -2.3]
   ]
-  obs_radiuses: [1.5]
+  obs_radiuses: [0.3]
   obs_vels: [
     [0.0, 0.0]
   ]
