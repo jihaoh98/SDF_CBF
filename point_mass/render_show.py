@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import matplotlib.patches as mpatches
 import numpy as np
-
+import matplotlib.cm as cm
 
 class Render_Animation:
     def __init__(self, robot_params, cir_obs_params, dt) -> None:
@@ -277,4 +277,45 @@ class Render_Animation:
         plt.legend(loc="upper right", prop=self.legend_font)
         plt.grid()
         # plt.savefig("controls.png", format="png", dpi=300)
+        plt.show()
+
+    def plot_2d_manipulators(self, link1_length=2, link2_length=2, joint_angles_batch=None):
+        # Check if joint_angles_batch is None or has incorrect shape
+        if joint_angles_batch is None or joint_angles_batch.shape[1] != 2:
+            raise ValueError("joint_angles_batch must be provided with shape (N, 2)")
+
+        # Number of sets of joint angles
+        num_sets = joint_angles_batch.shape[0]
+
+        # Create a figure
+        cmap = cm.get_cmap('Greens', num_sets)  # You can choose other colormaps like 'Greens', 'Reds', etc.
+        cmap2 = cm.get_cmap('Reds', num_sets)  # You can choose other colormaps like 'Greens', 'Reds', etc.
+        # the color will
+        for i in range(num_sets):
+            # Extract joint angles for the current set
+            theta1, theta2 = joint_angles_batch[i]
+
+            # Calculate the position of the first joint
+            joint1_x = link1_length * np.cos(theta1)
+            joint1_y = link1_length * np.sin(theta1)
+
+            # Calculate the position of the end effector (tip of the second link)
+            end_effector_x = joint1_x + link2_length * np.cos(theta1 + theta2)
+            end_effector_y = joint1_y + link2_length * np.sin(theta1 + theta2)
+
+            # Stack the base, joint, and end effector positions
+            positions = np.vstack([[0, 0], [joint1_x, joint1_y], [end_effector_x, end_effector_y]])  # shape: (3, 2)
+
+            # Plotting
+            plt.plot(positions[:, 0], positions[:, 1], linestyle='-', color='green', marker='o', markersize=5,
+                     markerfacecolor='white',
+                     markeredgecolor='green', alpha=0.3)
+
+            # cover the end effector with different colors to hightlight the trajectory
+            plt.plot(positions[2, 0], positions[2, 1], linestyle='-', color=cmap(i), marker='o', markersize=5,
+                     markerfacecolor='white',
+                     markeredgecolor=cmap2(i))
+            # plot a bigger base center at (0, 0), which is a cirlce with golden color
+            plt.plot(0, 0, marker='o', markersize=15, markerfacecolor='#DDA15E', markeredgecolor='k')
+
         plt.show()

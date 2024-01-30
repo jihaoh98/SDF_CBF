@@ -217,6 +217,9 @@ class Collision_Avoidance:
     def show_slack(self):
         self.ani.show_slack(self.slackt[0], self.terminal_time)
 
+    def show_robot(self):
+        self.ani.plot_2d_manipulators(joint_angles_batch=(self.xt[0:2, :self.terminal_time]).reshape(-1, 2))
+
 
 if __name__ == '__main__':
     # file_name = 'dynamic_setting.yaml'
@@ -233,4 +236,5 @@ if __name__ == '__main__':
     # test_target.show_controls()
     # test_target.show_clf()
     # test_target.show_slack()
-    test_target.show_cbf(0)
+    # test_target.show_cbf(0)
+    test_target.show_robot()
