@@ -61,8 +61,8 @@ class Render_Animation:
         self.fig.set_dpi(150)
         self.ax.set_aspect('equal')
 
-        self.ax.set_xlim(-1, 15.0)
-        self.ax.set_ylim(-1, 15.0)
+        self.ax.set_xlim(-3, 3.0)
+        self.ax.set_ylim(-3, 3.0)
 
         self.ax.set_xlabel('x (m)', self.label_font)
         self.ax.set_ylabel("y (m)", self.label_font)

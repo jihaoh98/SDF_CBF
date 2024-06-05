@@ -5,13 +5,13 @@ controller:
   smooth_input: [1.0, 0.5]
   weight_slack: 100
   clf_lambda: 1.0
-  cbf_gamma: 1.0
+  cbf_gamma: 1.0  # bigger value more aggressive, smaller value more conservative
 
 robot:
   u_max: [2.0, 2.0]
   u_min: [-2.0, -2.0]
-  initial_state: [2.0, 2.0, 0.0]
-  target_state: [12.0, 8.5, 0.0]
+  initial_state: [-2.0, -2.0, 0.0]
+  target_state: [2.0, 1.5, 0.0]
   radius: 0.1
   destination_margin: 0.1
   sensor_range: 6.0
@@ -19,9 +19,9 @@ robot:
   
 cir_obstacle_list:
   obs_states: [
-    [7.0, 7.5],
+    [0.0, 0.5],
   ]
-  obs_radiuses: [2.2]
+  obs_radiuses: [1.2]
   obs_vels: [
     [0.0, 0.0],
   ]

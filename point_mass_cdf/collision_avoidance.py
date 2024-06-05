@@ -203,7 +203,10 @@ if __name__ == '__main__':
     # test_target.navigation_destination()
 
     test_target.collision_avoidance()
+
     test_target.render()
+
+
     test_target.show_controls()
     test_target.show_clf()
     test_target.show_slack()
