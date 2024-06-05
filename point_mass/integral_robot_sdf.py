@@ -96,9 +96,9 @@ class Integral_Robot_Sdf:
         
     def define_clf_derivative(self, clf_symbolic):
         """ return the symbolic expression of lf_clf and lg_clf"""
-        dx_clf_symbolic = sp.Matrix([clf_symbolic]).jacobian(self.robot_state)
-        lf_clf = (dx_clf_symbolic @ self.f_symbolic)[0, 0]
-        lg_clf = dx_clf_symbolic @ self.g_symbolic
+        dx_clf_symbolic = sp.Matrix([clf_symbolic]).jacobian(self.robot_state)  # shape: 1 x 3
+        lf_clf = (dx_clf_symbolic @ self.f_symbolic)[0, 0]  # shape: 1 x 1
+        lg_clf = dx_clf_symbolic @ self.g_symbolic  # shape: 1 x 2
 
         return lf_clf, lg_clf
 
@@ -123,12 +123,12 @@ class Integral_Robot_Sdf:
 
     def define_cbf_derivative(self, cbf_symbolic):
         """ return the symbolic expression of lf_cbf, lg_cbf and dt_cbf """
-        dx_cbf_symbolic = sp.Matrix([cbf_symbolic]).jacobian(self.robot_state)
-        lf_cbf = (dx_cbf_symbolic @ self.f_symbolic)[0, 0]
-        lg_cbf = dx_cbf_symbolic @ self.g_symbolic
+        dx_cbf_symbolic = sp.Matrix([cbf_symbolic]).jacobian(self.robot_state)  # shape: 1 x 3
+        lf_cbf = (dx_cbf_symbolic @ self.f_symbolic)[0, 0]   # shape: 1 x 1
+        lg_cbf = dx_cbf_symbolic @ self.g_symbolic  # shape: 1 x 2
 
-        dox_cbf_symbolic = sp.Matrix([cbf_symbolic]).jacobian(self.cir_obstacle_state)
-        dt_cbf = (dox_cbf_symbolic @ self.cir_obstacle_dynamics_symbolic)[0, 0]
+        dox_cbf_symbolic = sp.Matrix([cbf_symbolic]).jacobian(self.cir_obstacle_state)  # shape: 1 x 5
+        dt_cbf = (dox_cbf_symbolic @ self.cir_obstacle_dynamics_symbolic)[0, 0]  # shape: 1 x 1
 
         return lf_cbf, lg_cbf, dt_cbf
 

@@ -15,7 +15,7 @@ class Integral_Sdf_Cbf_Clf:
         robot_params = config['robot']
 
         # init robot
-        self.robot = integral_robot_sdf.Integral_Robot_Sdf(robot_params)
+        self.robot = integral_robot_sdf.Integral_Robot_Sdf(robot_params)  # define clf, cbf, dynamics
         self.state_dim = self.robot.state_dim 
         self.control_dim = self.robot.control_dim
         self.target_state = robot_params['target_state']
