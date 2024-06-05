@@ -21,7 +21,7 @@ cir_obstacle_list:
   obs_states: [
     [7.0, 7.5]
   ]
-  obs_radiuses: [2.2]
+  obs_radiuses: [4.5]
   obs_vels: [
     [0.0, 0.0]
   ]
