@@ -233,7 +233,10 @@ if __name__ == "__main__":
     # observe the generated data
     cdf.q_template = torch.load(os.path.join(CUR_PATH, 'data2D_100.pt'))
     d, grad = cdf.inference_c_space_sdf_using_data(cdf.Q_sets)
-
+    # test the norm of the gradient
+    print(torch.norm(grad, dim=-1).max())
+    print(torch.norm(grad, dim=-1).min())
+    print(torch.norm(grad, dim=-1).mean())
     # cdf.plot_sdf()
     # plt.show()
 

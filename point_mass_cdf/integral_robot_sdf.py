@@ -52,6 +52,8 @@ class Integral_Robot_Sdf:
         self.cbf = None
         self.lf_cbf = None
         self.lg_cbf = None
+        self.dt_cbf = None  # todo: 这个可以没有？
+        self.dx_cbf = None
 
         # initialize
         self.init_system()
@@ -116,10 +118,11 @@ class Integral_Robot_Sdf:
         cbf_symbolic = cbf_symbolic - self.margin
         self.cbf = lambdify([self.robot_state_cbf, self.cir_obstacle_state], cbf_symbolic)
 
-        lf_cbf_symbolic, lg_cbf_symbolic, dt_cbf_symbolic = self.define_cbf_derivative(cbf_symbolic)
+        lf_cbf_symbolic, lg_cbf_symbolic, dt_cbf_symbolic, dx_cbf_symbolic = self.define_cbf_derivative(cbf_symbolic)
         self.lf_cbf = lambdify([self.robot_state_cbf, self.cir_obstacle_state], lf_cbf_symbolic)
         self.lg_cbf = lambdify([self.robot_state_cbf, self.cir_obstacle_state], lg_cbf_symbolic)
         self.dt_cbf = lambdify([self.robot_state_cbf, self.cir_obstacle_state], dt_cbf_symbolic)
+        self.dx_cbf = lambdify([self.robot_state_cbf, self.cir_obstacle_state], dx_cbf_symbolic)
 
     def define_cbf_derivative(self, cbf_symbolic):
         """ return the symbolic expression of lf_cbf, lg_cbf and dt_cbf """
@@ -130,7 +133,7 @@ class Integral_Robot_Sdf:
         dox_cbf_symbolic = sp.Matrix([cbf_symbolic]).jacobian(self.cir_obstacle_state)  # shape: 1 x 5
         dt_cbf = (dox_cbf_symbolic @ self.cir_obstacle_dynamics_symbolic)[0, 0]  # shape: 1 x 1
 
-        return lf_cbf, lg_cbf, dt_cbf
+        return lf_cbf, lg_cbf, dt_cbf, dx_cbf_symbolic
 
     def next_state(self, current_state, u, dt):
         """ simple one step """

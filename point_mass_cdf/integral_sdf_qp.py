@@ -32,6 +32,7 @@ class Integral_Sdf_Cbf_Clf:
         self.lf_cbf = self.robot.lf_cbf
         self.lg_cbf = self.robot.lg_cbf
         self.dt_cbf = self.robot.dt_cbf
+        self.dx_cbf = self.robot.dx_cbf
 
         # get the parameter for optimal control
         self.weight_input = controller_params['weight_input']
@@ -106,9 +107,10 @@ class Integral_Sdf_Cbf_Clf:
         lf_cbf = self.lf_cbf(robot_state_cbf, cir_obs_state)
         lg_cbf = self.lg_cbf(robot_state_cbf, cir_obs_state)
         dt_cbf = self.dt_cbf(robot_state_cbf, cir_obs_state)
+        dx_cbf = self.dx_cbf(robot_state_cbf, cir_obs_state)
 
         self.opti.subject_to(lf_cbf + (lg_cbf @ self.u)[0, 0] + dt_cbf + self.cbf_gamma * cbf >= 0)
-        return cbf
+        return cbf, dx_cbf
     
     def clf_qp(self, robot_cur_state, add_slack=False, u_ref=None):
         """ 
@@ -168,12 +170,15 @@ class Integral_Sdf_Cbf_Clf:
 
         # add cbf constraints for each circular-shaped obstacles
         cir_cbf_list = None
+        cir_dx_cbf_list = None
         robot_state_cbf = np.hstack((robot_cur_state, np.array([self.robot_radius])))
         if cir_obs_states is not None:
             cir_cbf_list = []
+            cir_dx_cbf_list = []
             for cir_obs_state in cir_obs_states:
-                cbf = self.add_cir_cbf_cons(robot_state_cbf, cir_obs_state)
+                cbf, dx_cbf = self.add_cir_cbf_cons(robot_state_cbf, cir_obs_state)
                 cir_cbf_list.append(cbf)
+                cir_dx_cbf_list.append(dx_cbf)
 
         self.add_controls_physical_cons()
 
@@ -181,6 +186,7 @@ class Integral_Sdf_Cbf_Clf:
         result = lambda:None
         result.clf = clf
         result.cir_cbf_list = cir_cbf_list
+        result.cir_dx_cbf_list = cir_dx_cbf_list
 
         # optimize the qp problem
         try:

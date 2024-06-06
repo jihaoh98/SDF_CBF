@@ -6,6 +6,12 @@ import obs
 from render_show import Render_Animation
 import statistics
 
+from cdf import CDF2D
+from primitives2D_torch import Circle
+import torch
+
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
 
 class Collision_Avoidance:
     def __init__(self, file_name) -> None:
@@ -59,9 +65,11 @@ class Collision_Avoidance:
 
         self.cir_obstacle_state_t = None
         self.cir_obs_cbf_t = None
+        self.cir_obs_dx_cbf_t = None
         if cir_obs_params is not None:
             self.cir_obstacle_state_t = np.zeros((self.cir_obs_num, 5, self.time_steps + 1))
             self.cir_obs_cbf_t = np.zeros((self.cir_obs_num, self.time_steps))
+            self.cir_obs_dx_cbf_t = np.zeros((self.cir_obs_num, 2, self.time_steps))
 
         # plot
         self.ani = Render_Animation(
@@ -152,9 +160,11 @@ class Collision_Avoidance:
 
             if self.cir_obs_states_list is not None:
                 self.cir_obs_cbf_t[:, t] = optimal_result.cir_cbf_list
+
                 for i in range(self.cir_obs_num):
                     self.cir_obstacle_state_t[i][:, t] = np.copy(self.cir_obs_states_list[i])
-                    self.cir_obs_list[i].move_forward(self.step_time)
+                    self.cir_obs_dx_cbf_t[i][:, t] = (optimal_result.cir_dx_cbf_list[i])[0][0:2]
+                    self.cir_obs_list[i].move_forward(self.step_time)  # todo: 为什么不会报错？
                 self.cir_obs_states_list = [self.cir_obs_list[i].get_current_state() for i in range(self.cir_obs_num)]
             # update the time
             t = t + 1
@@ -166,6 +176,8 @@ class Collision_Avoidance:
         if self.cir_obs_states_list is not None:
             for i in range(self.cir_obs_num):
                 self.cir_obstacle_state_t[i][:, t] = np.copy(self.cir_obs_states_list[i])
+
+        # calculate the length of the gradient of `dx_cbf`
 
         print('Total time: ', self.terminal_time)
         if np.linalg.norm(self.robot_cur_state[0:2] - self.robot_target_state[0:2]) <= self.destination_margin:
@@ -179,8 +191,8 @@ class Collision_Avoidance:
         print('Median_time:', statistics.median(process_time))
         print('Average_time:', statistics.mean(process_time))
 
-    def render(self):
-        self.ani.render(self.xt, self.cir_obstacle_state_t, self.terminal_time, self.show_obs)
+    def render(self, i):
+        self.ani.render(i, self.xt, self.cir_obstacle_state_t, self.terminal_time, self.show_obs, self.cir_obs_dx_cbf_t)
 
     def show_cbf(self, i):
         self.ani.show_cbf(i, self.cir_obs_cbf_t, self.terminal_time)
@@ -194,20 +206,26 @@ class Collision_Avoidance:
     def show_slack(self):
         self.ani.show_slack(self.slackt[0], self.terminal_time)
 
+    def show_dx_cbf(self, i):
+        self.ani.show_dx_cbf(i, self.cir_obs_dx_cbf_t, self.terminal_time)
+
 
 if __name__ == '__main__':
     # file_name = 'dynamic_setting.yaml'
     file_name = 'static_setting.yaml'
+
+    # load the obstacle distance and gradient field
+    cdf = CDF2D(device)
 
     test_target = Collision_Avoidance(file_name)
     # test_target.navigation_destination()
 
     test_target.collision_avoidance()
 
-    test_target.render()
-
-
-    test_target.show_controls()
-    test_target.show_clf()
-    test_target.show_slack()
-    test_target.show_cbf(0)
+    test_target.render(0)
+    #
+    # test_target.show_controls()
+    # test_target.show_clf()
+    # test_target.show_slack()
+    # test_target.show_cbf(0)
+    test_target.show_dx_cbf(0)
