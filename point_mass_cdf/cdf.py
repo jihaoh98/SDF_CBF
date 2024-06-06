@@ -7,6 +7,7 @@ from robot2D_torch import Robot2D
 from primitives2D_torch import Circle
 import math
 import time
+import matplotlib.patches as mpatches
 
 plt.rcParams['figure.dpi'] = 100
 PI = math.pi
@@ -122,10 +123,15 @@ class CDF2D:
         # q : (N,2)
         q.requires_grad = True
         obj_points = torch.cat([obj.sample_surface(200) for obj in self.obj_lists])
+        # # visualize the object points (shape: (N,2))
+        # plt.scatter(obj_points[:, 0].cpu().numpy(), obj_points[:, 1].cpu().numpy())
+        # plt.xlim(-3, 3)
+        # plt.ylim(-3, 3)
+        # plt.show()
         grid = self.x_to_grid(obj_points)
 
         q_list = (self.q_template[grid[:, 0], grid[:, 1]]).reshape(-1, 2)
-        q_list = q_list[q_list[:, 0] != torch.inf]
+        q_list = q_list[q_list[:, 0] != torch.inf]  # filter out the invalid data
         dist = torch.norm(q.unsqueeze(1) - q_list.unsqueeze(0), dim=-1)
         d = torch.min(dist, dim=-1)[0]
         grad = torch.autograd.grad(d, q, torch.ones_like(d), retain_graph=True)[0]
@@ -233,6 +239,12 @@ if __name__ == "__main__":
     # observe the generated data
     cdf.q_template = torch.load(os.path.join(CUR_PATH, 'data2D_100.pt'))
     d, grad = cdf.inference_c_space_sdf_using_data(cdf.Q_sets)
+    # manually test some points on the grid to get the distance and gradient
+    test_Q1 = torch.tensor([[-2., -2.]]).to(device)
+    d_test, grad_test = cdf.inference_c_space_sdf_using_data(test_Q1)
+
+    print("distance: ", d_test)
+    print("gradient: ", grad_test)
     # test the norm of the gradient
     print(torch.norm(grad, dim=-1).max())
     print(torch.norm(grad, dim=-1).min())
@@ -241,4 +253,14 @@ if __name__ == "__main__":
     # plt.show()
 
     cdf.plot_cdf(d.detach().cpu().numpy(), grad.detach().cpu().numpy())
+    # plot the test point
+    plt.scatter(test_Q1[:, 0].detach().cpu().numpy(), test_Q1[:, 1].detach().cpu().numpy(), color='red')
+    # use the gradient to plot the matches fancy arrow
+    arrow = mpatches.FancyArrow(test_Q1[0, 0].detach().cpu().numpy(),
+                        test_Q1[0, 1].detach().cpu().numpy(),
+                        grad_test[0, 0].detach().cpu().numpy(),
+                        grad_test[0, 1].detach().cpu().numpy(),
+                        width = 0.05,
+                        color='red')
+    plt.gca().add_patch(arrow)
     plt.show()

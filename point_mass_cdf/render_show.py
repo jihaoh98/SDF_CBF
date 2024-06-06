@@ -2,6 +2,10 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import matplotlib.patches as mpatches
 import numpy as np
+import torch
+import os
+
+CUR_PATH = os.path.dirname(os.path.realpath(__file__))
 
 
 class Render_Animation:
@@ -55,6 +59,62 @@ class Render_Animation:
                            'size': 16,
                            }
         self.legend_font = {"family": "Times New Roman", "weight": "normal", "size": 12}
+
+    def render_cdf(self, cdf, xt, terminal_time, show_obs, dxcbft, save_gif=False):
+        # visualize the cdf field
+        cdf.q_template = torch.load(os.path.join(CUR_PATH, 'data2D_100.pt'))
+        d, grad = cdf.inference_c_space_sdf_using_data(cdf.Q_sets)
+        cdf.plot_cdf(d.detach().cpu().numpy(), grad.detach().cpu().numpy())
+        gradientField = dxcbft[0, :, :]  # shape is (2, time_steps)
+        self.gradientField = gradientField
+
+        """ Visualization """
+        self.fig.set_size_inches(7, 6.5)
+        self.fig.set_dpi(150)
+        self.ax.set_aspect('equal')
+        self.ax.set_xlim(-4., 4.)
+        self.ax.set_ylim(-4., 4.)
+        self.ax.set_xlabel('x (m)', self.label_font)
+        self.ax.set_ylabel("y (m)", self.label_font)
+        self.ax.tick_params(labelsize=16)
+        labels = self.ax.get_xticklabels() + self.ax.get_yticklabels()
+        [label.set_fontname('Times New Roman') for label in labels]
+        self.xt = xt
+        self.show_obs = show_obs
+        self.animation_init()
+        # robot and the arrow
+        self.robot_body = mpatches.Circle(
+            (self.robot_init_state[0], self.robot_init_state[1]),
+            radius=self.robot_radius,
+            edgecolor='silver',
+            fill=False
+        )
+        self.ax.add_patch(self.robot_body)
+
+        norm = np.linalg.norm(gradientField[:, 0])
+
+        self.robot_arrow = mpatches.FancyArrow(
+            self.robot_init_state[0],
+            self.robot_init_state[1],
+            self.gradientField[0, 0] * 0.1 * norm,
+            self.gradientField[1, 0] * 0.1 * norm,
+            width=0.05,
+            color='k',
+        )
+        self.ax.add_patch(self.robot_arrow)
+        self.ani = animation.FuncAnimation(
+            self.fig,
+            func=self.animation_loop_cdf,
+            frames=terminal_time + 1,
+            init_func=self.animation_init,
+            interval=200,
+            repeat=False,
+        )
+        plt.grid('--')
+        if save_gif:
+            writer = animation.PillowWriter(fps=15, metadata=dict(artist='Me'), bitrate=1800)
+            self.ani.save('integral.gif', writer=writer)
+        plt.show()
 
     def render(self, i, xt, cir_obs_list_t, terminal_time, show_obs, dxcbft, save_gif=False):
         # dxcbft: shape is (cir_obs_num, 2, time_steps)
@@ -162,6 +222,57 @@ class Render_Animation:
 
         return self.ax.patches + self.ax.texts + self.ax.artists
 
+    def animation_loop_cdf(self, indx):
+        """ loop for update the position of robot and obstacles """
+        # robot
+        self.robot_body.remove()
+        self.robot_body = mpatches.Circle(xy=self.xt[:, indx][0:2], radius=self.robot_radius, edgecolor='r', fill=False)
+        self.ax.add_patch(self.robot_body)
+
+        norm = np.linalg.norm(self.gradientField[:, indx])
+        self.robot_arrow = mpatches.FancyArrow(
+            self.xt[:, indx][0],
+            self.xt[:, indx][1],
+            self.gradientField[0, indx] * 0.1 * norm,
+            self.gradientField[1, indx] * 0.1 * norm,
+            width=0.05,
+            color='k',
+        )
+        self.ax.add_patch(self.robot_arrow)
+
+        # # obs
+        # if self.show_obs:
+        #     if self.cir_obs_list_t is not None:
+        #         for i in range(self.cir_obs_num):
+        #             self.cir_obs[i].remove()
+        #             self.cir_obs[i] = mpatches.Circle(
+        #                 xy=self.cir_obs_list_t[i][:, indx][0:2],
+        #                 radius=self.cir_obs_list_t[i][:, indx][4],
+        #                 edgecolor='k',
+        #                 fill=False
+        #             )
+        #             self.ax.add_patch(self.cir_obs[i])
+        #
+        #             # plot the center of the circle obstacle
+        #             self.ax.plot(self.cir_obs_list_t[i][:, indx][0], self.cir_obs_list_t[i][:, indx][1], 'k*')
+
+        # show past trajecotry of robot and obstacles
+        if indx != 0:
+            x_list = [self.xt[:, indx - 1][0], self.xt[:, indx][0]]
+            y_list = [self.xt[:, indx - 1][1], self.xt[:, indx][1]]
+            self.ax.plot(x_list, y_list, color='b', )
+
+            # # show past trajecotry of each dynamic obstacle
+            # if self.show_obs:
+            #     if self.cir_obs_list_t is not None:
+            #         for i in range(self.cir_obs_num):
+            #             ox_list = [self.cir_obs_list_t[i][:, indx - 1][0], self.cir_obs_list_t[i][:, indx][0]]
+            #             oy_list = [self.cir_obs_list_t[i][:, indx - 1][1], self.cir_obs_list_t[i][:, indx][1]]
+            #             self.ax.plot(ox_list, oy_list, linestyle='--', color='k', )
+
+        # plt.savefig('figure/{}.png'.format(indx), format='png', dpi=300)
+        return self.ax.patches + self.ax.texts + self.ax.artists
+
     def animation_loop(self, indx):
         """ loop for update the position of robot and obstacles """
         # robot
@@ -234,9 +345,6 @@ class Render_Animation:
 
         # plt.savefig('figure/{}.png'.format(indx), format='png', dpi=300)
         return self.ax.patches + self.ax.texts + self.ax.artists
-
-    # def render_dx_cbf(self, i, xt, cir_obs_list_t, dxcbft, terminal_time, show_obs, save_gif=False):
-    #     pass
 
     def show_clf(self, clft, terminal_time):
         """ show changes in clf """

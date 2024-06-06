@@ -28,6 +28,7 @@ class Collision_Avoidance:
         self.robot_cur_state = np.copy(self.robot_init_state)
         self.robot_target_state = np.array(robot_params['target_state'])
         self.destination_margin = robot_params['destination_margin']
+        self.margin = robot_params['margin']
 
         # init obstacle, if no data, return None
         cir_obs_params = config.get('cir_obstacle_list')
@@ -70,6 +71,9 @@ class Collision_Avoidance:
             self.cir_obstacle_state_t = np.zeros((self.cir_obs_num, 5, self.time_steps + 1))
             self.cir_obs_cbf_t = np.zeros((self.cir_obs_num, self.time_steps))
             self.cir_obs_dx_cbf_t = np.zeros((self.cir_obs_num, 2, self.time_steps))
+
+        self.cdf_obs_cbf_t = np.zeros((1, self.time_steps))
+        self.cdf_obs_dx_cbf_t = np.zeros((1, 2, self.time_steps))
 
         # plot
         self.ani = Render_Animation(
@@ -127,7 +131,7 @@ class Collision_Avoidance:
         print('Median_time:', statistics.median(process_time))
         print('Average_time:', statistics.mean(process_time))
 
-    def collision_avoidance(self, add_clf=True):
+    def collision_avoidance(self, cdf=None, add_clf=True):
         """ solve the collision avoidance between robot and obstacles based on sdf-cbf """
         t = 0
         process_time = []
@@ -141,7 +145,18 @@ class Collision_Avoidance:
                 print(f't = {t}')
 
             start_time = time.time()
-            optimal_result = self.cbf_qp.cbf_clf_qp(self.robot_cur_state, self.cir_obs_states_list, add_clf=add_clf)
+            distance_input = None
+            gradient_input = None
+            if cdf is None:
+                optimal_result = self.cbf_qp.cbf_clf_qp(self.robot_cur_state, self.cir_obs_states_list, add_clf=add_clf)
+            else:
+                robot_states = torch.from_numpy(self.robot_cur_state[:2]).to(device).reshape(1, 2)
+                distance_input, gradient_input = cdf.inference_c_space_sdf_using_data(robot_states)
+                distance_input = distance_input.cpu().detach().numpy()
+                gradient_input = gradient_input.cpu().detach().numpy()
+                distance_input = distance_input - self.margin
+                optimal_result = self.cbf_qp.cbf_clf_cdf_qp(self.robot_cur_state, distance_input, gradient_input)
+
             process_time.append(time.time() - start_time)
 
             if not optimal_result.feas:
@@ -158,14 +173,22 @@ class Collision_Avoidance:
             self.xt[:, t] = np.copy(self.robot_cur_state)
             self.robot_cur_state = self.cbf_qp.robot.next_state(self.robot_cur_state, optimal_result.u, self.step_time)
 
-            if self.cir_obs_states_list is not None:
-                self.cir_obs_cbf_t[:, t] = optimal_result.cir_cbf_list
+            if cdf is None:
+                if self.cir_obs_states_list is not None:
+                    self.cir_obs_cbf_t[:, t] = optimal_result.cir_cbf_list
 
-                for i in range(self.cir_obs_num):
-                    self.cir_obstacle_state_t[i][:, t] = np.copy(self.cir_obs_states_list[i])
-                    self.cir_obs_dx_cbf_t[i][:, t] = (optimal_result.cir_dx_cbf_list[i])[0][0:2]
-                    self.cir_obs_list[i].move_forward(self.step_time)  # todo: 为什么不会报错？
-                self.cir_obs_states_list = [self.cir_obs_list[i].get_current_state() for i in range(self.cir_obs_num)]
+                    for i in range(self.cir_obs_num):
+                        self.cir_obstacle_state_t[i][:, t] = np.copy(self.cir_obs_states_list[i])
+                        self.cir_obs_dx_cbf_t[i][:, t] = (optimal_result.cir_dx_cbf_list[i])[0][0:2]
+                        # update the state of dybamic obstacles
+                        self.cir_obs_list[i].move_forward(self.step_time)  # todo: 为什么不会报错？
+                    self.cir_obs_states_list = [self.cir_obs_list[i].get_current_state() for i in
+                                                range(self.cir_obs_num)]
+            else:
+                for i in range(len(distance_input)):
+                    self.cdf_obs_cbf_t[:, t] = optimal_result.cdf_cbf_list
+                    self.cdf_obs_dx_cbf_t[i][:, t] = (optimal_result.cdf_dx_cbf_list[i])
+
             # update the time
             t = t + 1
 
@@ -173,9 +196,10 @@ class Collision_Avoidance:
 
         # storage the last state of robot and obstacles
         self.xt[:, t] = np.copy(self.robot_cur_state)
-        if self.cir_obs_states_list is not None:
-            for i in range(self.cir_obs_num):
-                self.cir_obstacle_state_t[i][:, t] = np.copy(self.cir_obs_states_list[i])
+        if cdf is None:
+            if self.cir_obs_states_list is not None:
+                for i in range(self.cir_obs_num):
+                    self.cir_obstacle_state_t[i][:, t] = np.copy(self.cir_obs_states_list[i])
 
         # calculate the length of the gradient of `dx_cbf`
 
@@ -193,6 +217,9 @@ class Collision_Avoidance:
 
     def render(self, i):
         self.ani.render(i, self.xt, self.cir_obstacle_state_t, self.terminal_time, self.show_obs, self.cir_obs_dx_cbf_t)
+
+    def render_cdf(self, cdf):
+        self.ani.render_cdf(cdf, self.xt, self.terminal_time, self.show_obs, self.cdf_obs_dx_cbf_t)
 
     def show_cbf(self, i):
         self.ani.show_cbf(i, self.cir_obs_cbf_t, self.terminal_time)
@@ -220,11 +247,14 @@ if __name__ == '__main__':
     test_target = Collision_Avoidance(file_name)
     # test_target.navigation_destination()
 
-    test_target.collision_avoidance()
-
-    test_target.render(0)
+    # test_target.collision_avoidance()
+    # test_target.render(0)
     # test_target.show_controls()
     # test_target.show_clf()
     # test_target.show_slack()
     # test_target.show_cbf(0)
-    test_target.show_dx_cbf(0)
+    # test_target.show_dx_cbf(0)
+
+    test_target.collision_avoidance(cdf=cdf)
+    test_target.render_cdf(cdf)
+    # test_target.show_clf()
