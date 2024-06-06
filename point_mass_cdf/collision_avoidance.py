@@ -209,7 +209,6 @@ class Collision_Avoidance:
                 for i in range(self.cir_obs_num):
                     self.cir_obstacle_state_t[i][:, t] = np.copy(self.cir_obs_states_list[i])
 
-        # calculate the length of the gradient of `dx_cbf`
 
         print('Total time: ', self.terminal_time)
         if np.linalg.norm(self.robot_cur_state[0:2] - self.robot_target_state[0:2]) <= self.destination_margin:
@@ -228,6 +227,9 @@ class Collision_Avoidance:
 
     def render_cdf(self, cdf):
         self.ani.render_cdf(cdf, self.xt, self.terminal_time, self.show_obs, self.cdf_obs_dx_cbf_t, show_arrow=True)
+
+    def render_manipulator(self):
+        self.ani.render_manipulator(cdf, self.xt, self.terminal_time)
 
     def show_cbf(self, i):
         self.ani.show_cbf(i, self.cir_obs_cbf_t, self.terminal_time)
@@ -272,7 +274,9 @@ if __name__ == '__main__':
 
     "collision avoidance with cdf cbf"
     test_target.collision_avoidance(cdf=cdf)
-    test_target.render_cdf(cdf)
-    test_target.show_clf()
-    test_target.show_cdf_cbf(0)
-    test_target.show_controls()
+    # test_target.render_cdf(cdf)
+    test_target.render_manipulator()
+    # test_target.show_clf()
+    # test_target.show_cdf_cbf(0)
+    # test_target.show_controls()
+    # test_target.show_slack()

@@ -1,11 +1,13 @@
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import matplotlib.patches as mpatches
+import matplotlib.cm as cm
 import numpy as np
 import torch
 import os
 
 CUR_PATH = os.path.dirname(os.path.realpath(__file__))
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu") 
 
 
 class Render_Animation:
@@ -66,7 +68,6 @@ class Render_Animation:
         cdf.q_template = torch.load(os.path.join(CUR_PATH, 'data2D_100.pt'))
         d, grad = cdf.inference_c_space_sdf_using_data(cdf.Q_sets)
         cdf.plot_cdf(d.detach().cpu().numpy(), grad.detach().cpu().numpy())
-        # the gradientField is used to plot the arrow of the robot
 
         """ Visualization """
         self.fig.set_size_inches(7, 6.5)
@@ -117,8 +118,67 @@ class Render_Animation:
         plt.grid('--')
         if save_gif:
             writer = animation.PillowWriter(fps=15, metadata=dict(artist='Me'), bitrate=1800)
-            self.ani.save('integral.gif', writer=writer)
+            file_path = os.path.join(CUR_PATH, 'integral.gif')
+            self.ani.save(file_path, writer=writer)
         plt.show()
+    
+    def render_manipulator(self, cdf, xt, terminal_time):
+        plt.rcParams['axes.facecolor'] = '#eaeaf2'
+        ax = plt.gca()
+
+        for obj in cdf.obj_lists:
+            ax.add_patch(obj.create_patch())
+
+        xf_2d = self.robot_target_state[0:2]
+        manipulator_angles = (xt[0:2, :]).T
+        self.plot_2d_manipulators(joint_angles_batch=manipulator_angles)
+        f_rob_end = cdf.robot.forward_kinematics_all_joints(torch.from_numpy(xf_2d).to(device).unsqueeze(0))[
+            0].detach().cpu().numpy()
+        plt.scatter(f_rob_end[0, -1], f_rob_end[1, -1], color='r', s=100, zorder=10, label='Goal')
+        ax.set_aspect('equal')
+        plt.xlim(-4, 4)
+        plt.ylim(-4, 4)
+        plt.xlabel('x (m)')
+        plt.ylabel('y (m)')
+        plt.legend(loc='upper left')
+        plt.show()
+        
+    def plot_2d_manipulators(self, link1_length=2.0, link2_length=2.0, joint_angles_batch=None):
+        # Check if joint_angles_batch is None or has incorrect shape
+        if joint_angles_batch is None or joint_angles_batch.shape[1] != 2:
+            raise ValueError("joint_angles_batch must be provided with shape (N, 2)")
+
+        # Number of sets of joint angles
+        num_sets = joint_angles_batch.shape[0]
+
+        # Create a figure
+        cmap = cm.get_cmap('Greens', num_sets)  # You can choose other colormaps like 'Greens', 'Reds', etc.
+        cmap2 = cm.get_cmap('Reds', num_sets)  # You can choose other colormaps like 'Greens', 'Reds', etc.
+        # the color will 
+        for i in range(num_sets):
+            # Extract joint angles for the current set
+            theta1, theta2 = joint_angles_batch[i]
+
+            # Calculate the position of the first joint
+            joint1_x = link1_length * np.cos(theta1)
+            joint1_y = link1_length * np.sin(theta1)
+
+            # Calculate the position of the end effector (tip of the second link)
+            end_effector_x = joint1_x + link2_length * np.cos(theta1 + theta2)
+            end_effector_y = joint1_y + link2_length * np.sin(theta1 + theta2)
+
+            # Stack the base, joint, and end effector positions
+            positions = np.vstack([[0, 0], [joint1_x, joint1_y], [end_effector_x, end_effector_y]])  # shape: (3, 2)
+
+            # Plotting
+            plt.plot(positions[:, 0], positions[:, 1], linestyle='-', color='green', marker='o', markersize=5, markerfacecolor='white',
+                    markeredgecolor='green',alpha=0.3)
+            
+            # cover the end effector with different colors to hightlight the trajectory
+            plt.plot(positions[2, 0], positions[2, 1], linestyle='-', color=cmap(i), marker='o', markersize=5, markerfacecolor='white',
+                    markeredgecolor=cmap2(i))
+            # plot a bigger base center at (0, 0), which is a cirlce with golden color
+            plt.plot(0, 0, marker='o', markersize=15, markerfacecolor='#DDA15E', markeredgecolor='k')
 
     def render(self, i, xt, cir_obs_list_t, terminal_time, show_obs, dxcbft, save_gif=False):
         # dxcbft: shape is (cir_obs_num, 2, time_steps)
