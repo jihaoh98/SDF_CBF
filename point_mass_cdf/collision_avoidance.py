@@ -223,7 +223,6 @@ if __name__ == '__main__':
     test_target.collision_avoidance()
 
     test_target.render(0)
-    #
     # test_target.show_controls()
     # test_target.show_clf()
     # test_target.show_slack()

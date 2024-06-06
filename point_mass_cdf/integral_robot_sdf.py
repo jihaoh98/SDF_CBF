@@ -127,6 +127,8 @@ class Integral_Robot_Sdf:
     def define_cbf_derivative(self, cbf_symbolic):
         """ return the symbolic expression of lf_cbf, lg_cbf and dt_cbf """
         dx_cbf_symbolic = sp.Matrix([cbf_symbolic]).jacobian(self.robot_state)  # shape: 1 x 3
+        # normalize the gradient of the dx_cbf
+        # dx_cbf_symbolic = dx_cbf_symbolic / sp.sqrt(dx_cbf_symbolic[0, 0] ** 2 + dx_cbf_symbolic[0, 1] ** 2 + 1e-6)
         lf_cbf = (dx_cbf_symbolic @ self.f_symbolic)[0, 0]   # shape: 1 x 1
         lg_cbf = dx_cbf_symbolic @ self.g_symbolic  # shape: 1 x 2
 
