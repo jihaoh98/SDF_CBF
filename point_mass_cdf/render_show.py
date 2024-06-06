@@ -42,6 +42,7 @@ class Render_Animation:
         self.robot_arrow = None
 
         self.show_obs = True
+        self.show_arrow = False
 
         # settings of Times New Roman
         # set the text in Times New Roman
@@ -60,13 +61,12 @@ class Render_Animation:
                            }
         self.legend_font = {"family": "Times New Roman", "weight": "normal", "size": 12}
 
-    def render_cdf(self, cdf, xt, terminal_time, show_obs, dxcbft, save_gif=False):
+    def render_cdf(self, cdf, xt, terminal_time, show_obs, dxcbft, save_gif=False, show_arrow=False):
         # visualize the cdf field
         cdf.q_template = torch.load(os.path.join(CUR_PATH, 'data2D_100.pt'))
         d, grad = cdf.inference_c_space_sdf_using_data(cdf.Q_sets)
         cdf.plot_cdf(d.detach().cpu().numpy(), grad.detach().cpu().numpy())
-        gradientField = dxcbft[0, :, :]  # shape is (2, time_steps)
-        self.gradientField = gradientField
+        # the gradientField is used to plot the arrow of the robot
 
         """ Visualization """
         self.fig.set_size_inches(7, 6.5)
@@ -81,6 +81,7 @@ class Render_Animation:
         [label.set_fontname('Times New Roman') for label in labels]
         self.xt = xt
         self.show_obs = show_obs
+        self.show_arrow = show_arrow
         self.animation_init()
         # robot and the arrow
         self.robot_body = mpatches.Circle(
@@ -91,17 +92,20 @@ class Render_Animation:
         )
         self.ax.add_patch(self.robot_body)
 
-        norm = np.linalg.norm(gradientField[:, 0])
+        if show_arrow:
+            gradientField = dxcbft[0, :, :]  # shape is (2, time_steps)
+            self.gradientField = gradientField
+            norm = np.linalg.norm(gradientField[:, 0])
+            self.robot_arrow = mpatches.FancyArrow(
+                self.robot_init_state[0],
+                self.robot_init_state[1],
+                self.gradientField[0, 0] * 0.05 * norm,
+                self.gradientField[1, 0] * 0.05 * norm,
+                width=0.025,
+                color='k',
+            )
+            self.ax.add_patch(self.robot_arrow)
 
-        self.robot_arrow = mpatches.FancyArrow(
-            self.robot_init_state[0],
-            self.robot_init_state[1],
-            self.gradientField[0, 0] * 0.1 * norm,
-            self.gradientField[1, 0] * 0.1 * norm,
-            width=0.05,
-            color='k',
-        )
-        self.ax.add_patch(self.robot_arrow)
         self.ani = animation.FuncAnimation(
             self.fig,
             func=self.animation_loop_cdf,
@@ -215,7 +219,7 @@ class Render_Animation:
     def animation_init(self):
         """ init the robot start and end position """
         # start body and target body
-        self.start_body, = plt.plot(self.robot_init_state[0], self.robot_init_state[0], color='purple', marker='*',
+        self.start_body, = plt.plot(self.robot_init_state[0], self.robot_init_state[1], color='purple', marker='*',
                                     markersize=8)
         self.end_body, = plt.plot(self.robot_target_state[0], self.robot_target_state[1], color='purple', marker='*',
                                   markersize=8)
@@ -229,16 +233,17 @@ class Render_Animation:
         self.robot_body = mpatches.Circle(xy=self.xt[:, indx][0:2], radius=self.robot_radius, edgecolor='r', fill=False)
         self.ax.add_patch(self.robot_body)
 
-        norm = np.linalg.norm(self.gradientField[:, indx])
-        self.robot_arrow = mpatches.FancyArrow(
-            self.xt[:, indx][0],
-            self.xt[:, indx][1],
-            self.gradientField[0, indx] * 0.1 * norm,
-            self.gradientField[1, indx] * 0.1 * norm,
-            width=0.05,
-            color='k',
-        )
-        self.ax.add_patch(self.robot_arrow)
+        if self.show_arrow:
+            norm = np.linalg.norm(self.gradientField[:, indx])
+            self.robot_arrow = mpatches.FancyArrow(
+                self.xt[:, indx][0],
+                self.xt[:, indx][1],
+                self.gradientField[0, indx] * 0.05 * norm,
+                self.gradientField[1, indx] * 0.05 * norm,
+                width=0.025,
+                color='k',
+            )
+            self.ax.add_patch(self.robot_arrow)
 
         # # obs
         # if self.show_obs:

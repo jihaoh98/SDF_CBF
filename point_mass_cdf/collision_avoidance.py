@@ -225,7 +225,7 @@ class Collision_Avoidance:
         self.ani.render(i, self.xt, self.cir_obstacle_state_t, self.terminal_time, self.show_obs, self.cir_obs_dx_cbf_t)
 
     def render_cdf(self, cdf):
-        self.ani.render_cdf(cdf, self.xt, self.terminal_time, self.show_obs, self.cdf_obs_dx_cbf_t)
+        self.ani.render_cdf(cdf, self.xt, self.terminal_time, self.show_obs, self.cdf_obs_dx_cbf_t, show_arrow=True)
 
     def show_cbf(self, i):
         self.ani.show_cbf(i, self.cir_obs_cbf_t, self.terminal_time)

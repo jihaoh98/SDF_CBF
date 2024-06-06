@@ -26,11 +26,11 @@ class CDF2D:
 
         # self.obj_lists = []
         # one obstacle case
-        self.obj_lists = [Circle(center=torch.tensor([2.0, -2.3]), radius=0.3, device=device)]
+        # self.obj_lists = [Circle(center=torch.tensor([2.0, -2.3]), radius=0.3, device=device)]
 
         # # # two obstacles case
-        # self.obj_lists = [Circle(center=torch.tensor([2.3, -2.3]), radius=0.3, device=device),
-        #                   Circle(center=torch.tensor([0.0, 2.45]), radius=0.3, device=device, label='obstacle'),]
+        self.obj_lists = [Circle(center=torch.tensor([2.3, -2.3]), radius=0.3, device=device),
+                          Circle(center=torch.tensor([0.0, 2.4]), radius=0.3, device=device, label='obstacle')]
 
         # three obstacles case
         # self.obj_lists = [Circle(center=torch.tensor([2.3, -2.3]), radius=0.3, device=device),
@@ -122,14 +122,8 @@ class CDF2D:
     def inference_c_space_sdf_using_data(self, q):
         # q : (N,2)
         q.requires_grad = True
-        obj_points = torch.cat([obj.sample_surface(200) for obj in self.obj_lists])
-        # # visualize the object points (shape: (N,2))
-        # plt.scatter(obj_points[:, 0].cpu().numpy(), obj_points[:, 1].cpu().numpy())
-        # plt.xlim(-3, 3)
-        # plt.ylim(-3, 3)
-        # plt.show()
+        obj_points = torch.cat([obj.sample_surface(70) for obj in self.obj_lists])
         grid = self.x_to_grid(obj_points)
-
         q_list = (self.q_template[grid[:, 0], grid[:, 1]]).reshape(-1, 2)
         q_list = q_list[q_list[:, 0] != torch.inf]  # filter out the invalid data
         dist = torch.norm(q.unsqueeze(1) - q_list.unsqueeze(0), dim=-1)
@@ -157,7 +151,7 @@ class CDF2D:
         sdf = sdf.detach().cpu().numpy()
         cmap = plt.cm.get_cmap('coolwarm')
         ct = plt.contourf(self.q0, self.q1, d.reshape(self.nbData, self.nbData),
-                          cmap=cmap, levels=[-0.5, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5], linewidths=1)
+                          cmap=cmap, levels=[-0.5, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0], linewidths=1)
         plt.clabel(ct, [], inline=False, fontsize=10, colors='black')
         ct_zero = plt.contour(self.q0, self.q1, sdf.reshape(self.nbData, self.nbData), levels=[0], linewidths=2,
                               colors='k',
@@ -166,14 +160,13 @@ class CDF2D:
             c.set_hatch('///')  # Apply the hatch patter
 
         # use streamline to plot gradient field
-        x = np.linspace(-PI, PI, self.nbData)
-        y = np.linspace(-PI, PI, self.nbData)
-        X, Y = np.meshgrid(x, y)
-        U = g[:, 0].reshape(self.nbData, self.nbData)
-        V = g[:, 1].reshape(self.nbData, self.nbData)
-
-        # Create the streamplot and get the returned LineCollection object
-        streams = plt.streamplot(X, Y, U, V, color='blue', linewidth=0.5)
+        # x = np.linspace(-PI, PI, self.nbData)
+        # y = np.linspace(-PI, PI, self.nbData)
+        # X, Y = np.meshgrid(x, y)
+        # U = g[:, 0].reshape(self.nbData, self.nbData)
+        # V = g[:, 1].reshape(self.nbData, self.nbData)
+        # # Create the streamplot and get the returned LineCollection object
+        # streams = plt.streamplot(X, Y, U, V, color='blue', linewidth=0.5)
 
         plt.xlabel('$q_0$', size=15)
         plt.ylabel('$q_1$', size=15)
@@ -233,6 +226,8 @@ class CDF2D:
 
 
 if __name__ == "__main__":
+    torch.cuda.empty_cache()
+
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     cdf = CDF2D(device)
 
@@ -253,14 +248,14 @@ if __name__ == "__main__":
     # plt.show()
 
     cdf.plot_cdf(d.detach().cpu().numpy(), grad.detach().cpu().numpy())
-    # plot the test point
-    plt.scatter(test_Q1[:, 0].detach().cpu().numpy(), test_Q1[:, 1].detach().cpu().numpy(), color='red')
-    # use the gradient to plot the matches fancy arrow
-    arrow = mpatches.FancyArrow(test_Q1[0, 0].detach().cpu().numpy(),
-                        test_Q1[0, 1].detach().cpu().numpy(),
-                        grad_test[0, 0].detach().cpu().numpy(),
-                        grad_test[0, 1].detach().cpu().numpy(),
-                        width = 0.05,
-                        color='red')
-    plt.gca().add_patch(arrow)
+    # # plot the test point
+    # plt.scatter(test_Q1[:, 0].detach().cpu().numpy(), test_Q1[:, 1].detach().cpu().numpy(), color='red')
+    # # use the gradient to plot the matches fancy arrow
+    # arrow = mpatches.FancyArrow(test_Q1[0, 0].detach().cpu().numpy(),
+    #                     test_Q1[0, 1].detach().cpu().numpy(),
+    #                     grad_test[0, 0].detach().cpu().numpy(),
+    #                     grad_test[0, 1].detach().cpu().numpy(),
+    #                     width = 0.05,
+    #                     color='red')
+    # plt.gca().add_patch(arrow)
     plt.show()
