@@ -73,7 +73,7 @@ class Collision_Avoidance:
             self.cir_obs_dx_cbf_t = np.zeros((self.cir_obs_num, 2, self.time_steps))
 
         self.cdf_obs_cbf_t = np.zeros((1, self.time_steps))
-        self.cdf_obs_dx_cbf_t = np.zeros((1, 2, self.time_steps))
+        self.cdf_obs_dx_cbf_t = np.zeros((1, 3, self.time_steps))
 
         # plot
         self.ani = Render_Animation(
@@ -135,6 +135,9 @@ class Collision_Avoidance:
         """ solve the collision avoidance between robot and obstacles based on sdf-cbf """
         t = 0
         process_time = []
+        distance_input = None
+        gradient_input = None
+
         # approach the destination or exceed the maximum time
         while (
                 np.linalg.norm(self.robot_cur_state[0:2] - self.robot_target_state[0:2])
@@ -145,8 +148,7 @@ class Collision_Avoidance:
                 print(f't = {t}')
 
             start_time = time.time()
-            distance_input = None
-            gradient_input = None
+
             if cdf is None:
                 optimal_result = self.cbf_qp.cbf_clf_qp(self.robot_cur_state, self.cir_obs_states_list, add_clf=add_clf)
             else:
@@ -154,8 +156,12 @@ class Collision_Avoidance:
                 distance_input, gradient_input = cdf.inference_c_space_sdf_using_data(robot_states)
                 distance_input = distance_input.cpu().detach().numpy()
                 gradient_input = gradient_input.cpu().detach().numpy()
+                # todo: unknown if it's needed to scale the gradient otherwise the it will be a unit gradient
+                gradient_input = np.array([gradient_input[0][0], gradient_input[0][1], 0.0]).reshape(1, 3)
                 distance_input = distance_input - self.margin
-                optimal_result = self.cbf_qp.cbf_clf_cdf_qp(self.robot_cur_state, distance_input, gradient_input)
+                # gradient_input = distance_input * gradient_input
+                optimal_result = self.cbf_qp.cbf_clf_cdf_qp(self.robot_cur_state, distance_input, gradient_input,
+                                                            add_clf=add_clf)
 
             process_time.append(time.time() - start_time)
 
@@ -224,6 +230,9 @@ class Collision_Avoidance:
     def show_cbf(self, i):
         self.ani.show_cbf(i, self.cir_obs_cbf_t, self.terminal_time)
 
+    def show_cdf_cbf(self, i):
+        self.ani.show_cdf_cbf(i, self.cdf_obs_cbf_t, self.terminal_time)
+
     def show_controls(self):
         self.ani.show_integral_controls(self.ut, self.terminal_time)
 
@@ -257,4 +266,6 @@ if __name__ == '__main__':
 
     test_target.collision_avoidance(cdf=cdf)
     test_target.render_cdf(cdf)
-    # test_target.show_clf()
+    test_target.show_clf()
+    test_target.show_cdf_cbf(0)
+    test_target.show_controls()

@@ -26,7 +26,7 @@ class CDF2D:
 
         # self.obj_lists = []
         # one obstacle case
-        self.obj_lists = [Circle(center=torch.tensor([2.0, -2.3]), radius=0.5, device=device)]
+        self.obj_lists = [Circle(center=torch.tensor([2.0, -2.3]), radius=0.3, device=device)]
 
         # # # two obstacles case
         # self.obj_lists = [Circle(center=torch.tensor([2.3, -2.3]), radius=0.3, device=device),

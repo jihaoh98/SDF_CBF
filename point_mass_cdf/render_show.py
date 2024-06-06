@@ -72,8 +72,8 @@ class Render_Animation:
         self.fig.set_size_inches(7, 6.5)
         self.fig.set_dpi(150)
         self.ax.set_aspect('equal')
-        self.ax.set_xlim(-4., 4.)
-        self.ax.set_ylim(-4., 4.)
+        self.ax.set_xlim(-3.14, 3.14)
+        self.ax.set_ylim(-3.14, 3.14)
         self.ax.set_xlabel('x (m)', self.label_font)
         self.ax.set_ylabel("y (m)", self.label_font)
         self.ax.tick_params(labelsize=16)
@@ -341,7 +341,7 @@ class Render_Animation:
                     for i in range(self.cir_obs_num):
                         ox_list = [self.cir_obs_list_t[i][:, indx - 1][0], self.cir_obs_list_t[i][:, indx][0]]
                         oy_list = [self.cir_obs_list_t[i][:, indx - 1][1], self.cir_obs_list_t[i][:, indx][1]]
-                        self.ax.plot(ox_list, oy_list, linestyle='--', color='k', )
+                        self.ax.plot(ox_list, oy_list, linestyle='-.', color='k', )
 
         # plt.savefig('figure/{}.png'.format(indx), format='png', dpi=300)
         return self.ax.patches + self.ax.texts + self.ax.artists
@@ -388,6 +388,28 @@ class Render_Animation:
 
         plt.grid()
         # plt.savefig('slack.png', format='png', dpi=300)
+        plt.show()
+
+    def show_cdf_cbf(self, i, cdfcbft, terminal_time):
+        """ show changes in cdfcbf """
+        t = np.arange(0, terminal_time * self.dt, self.dt)[0:terminal_time]
+
+        # add dpi
+        figure = plt.figure()
+        figure.set_dpi(150)
+
+        plt.plot(t, cdfcbft[i, 0:terminal_time].reshape(terminal_time, ), linewidth=3, color='blue')
+        plt.title('CDF-CBF with respect to {}th obstacle'.format(i), self.label_font)
+        plt.ylabel('cdfcbf (m)', self.label_font)
+        plt.xlabel('Time (s)', self.label_font)
+
+        # set the tick in Times New Roman and size
+        self.ax.tick_params(labelsize=16)
+        labels = self.ax.get_xticklabels() + self.ax.get_yticklabels()
+        [label.set_fontname('Times New Roman') for label in labels]
+
+        plt.grid()
+        # plt.savefig('cdfcbf.png', format='png', dpi=300)
         plt.show()
 
     def show_cbf(self, i, cbft, terminal_time):

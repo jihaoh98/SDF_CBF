@@ -104,18 +104,21 @@ class Integral_Sdf_Cbf_Clf:
     def add_cdf_cbf_cons(self, robot_state, dist_input, grad_input):
         """ add cons w.r.t cdf obstacles """
         cbf = dist_input
+
         lf_cbf, lg_cbf, dt_cbf = self.robot.derive_cdf_cbf_derivative(robot_state, dist_input, grad_input)
+
         dt_cbf = 0
         self.opti.subject_to(lf_cbf + (lg_cbf @ self.u)[0, 0] + dt_cbf + self.cbf_gamma * cbf >= 0)
+
         return cbf, grad_input
 
     def add_cir_cbf_cons(self, robot_state_cbf, cir_obs_state):
         """ add cons w.r.t circle obstacle """
         cbf = self.cbf(robot_state_cbf, cir_obs_state)
-        lf_cbf = self.lf_cbf(robot_state_cbf, cir_obs_state)
-        lg_cbf = self.lg_cbf(robot_state_cbf, cir_obs_state)
-        dt_cbf = self.dt_cbf(robot_state_cbf, cir_obs_state)
-        dx_cbf = self.dx_cbf(robot_state_cbf, cir_obs_state)
+        lf_cbf = self.lf_cbf(robot_state_cbf, cir_obs_state)  # scalar
+        lg_cbf = self.lg_cbf(robot_state_cbf, cir_obs_state)  # 1 x 2
+        dt_cbf = self.dt_cbf(robot_state_cbf, cir_obs_state)  # scalar
+        dx_cbf = self.dx_cbf(robot_state_cbf, cir_obs_state)  # 1 x 3
 
         self.opti.subject_to(lf_cbf + (lg_cbf @ self.u)[0, 0] + dt_cbf + self.cbf_gamma * cbf >= 0)
         return cbf, dx_cbf
@@ -161,6 +164,7 @@ class Integral_Sdf_Cbf_Clf:
     def cbf_clf_cdf_qp(self, robot_cur_state, dist_input, grad_input, add_clf=True, u_ref=None):
         if u_ref is None:
             u_ref = np.zeros(self.control_dim)
+        self.set_optimal_function(u_ref, add_slack=add_clf)
 
         clf = None
         if add_clf:
