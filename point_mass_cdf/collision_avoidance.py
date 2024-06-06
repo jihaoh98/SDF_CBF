@@ -3,15 +3,17 @@ from integral_sdf_qp import Integral_Sdf_Cbf_Clf
 import time
 import yaml
 import obs
-from render_show import Render_Animation
 import statistics
-
+import os
+import torch
 from cdf import CDF2D
 from primitives2D_torch import Circle
-import torch
+from render_show import Render_Animation
+
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+print("CURRENT_DIR:", CURRENT_DIR)
 
 class Collision_Avoidance:
     def __init__(self, file_name) -> None:
@@ -249,13 +251,17 @@ class Collision_Avoidance:
 if __name__ == '__main__':
     # file_name = 'dynamic_setting.yaml'
     file_name = 'static_setting.yaml'
+    file_name = os.path.join(CURRENT_DIR, file_name)
 
     # load the obstacle distance and gradient field
     cdf = CDF2D(device)
 
+    "environment setup and read the parameters from yaml file"
     test_target = Collision_Avoidance(file_name)
+
     # test_target.navigation_destination()
 
+    "collision avoidance with circlr cbf"
     # test_target.collision_avoidance()
     # test_target.render(0)
     # test_target.show_controls()
@@ -264,6 +270,7 @@ if __name__ == '__main__':
     # test_target.show_cbf(0)
     # test_target.show_dx_cbf(0)
 
+    "collision avoidance with cdf cbf"
     test_target.collision_avoidance(cdf=cdf)
     test_target.render_cdf(cdf)
     test_target.show_clf()
