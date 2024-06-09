@@ -8,8 +8,8 @@ controller:
   cbf_gamma: 1.0 
 
 robot:
-  u_max: [2.0, 2.0]
-  u_min: [-2.0, -2.0]
+  u_max: [4.0, 4.0]
+  u_min: [-4.0, -4.0]
   initial_state: [2.0, 2.0, 0.0]
   target_state: [12.0, 9.5, 0.0]
   radius: 0.1
@@ -23,7 +23,7 @@ cir_obstacle_list:
   ]
   obs_radiuses: [2.2]
   obs_vels: [
-    [0.0, 0.5]
+    [0.0, 1.5]
   ]
   modes: [
     'dynamic'

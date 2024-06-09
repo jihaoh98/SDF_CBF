@@ -263,7 +263,7 @@ if __name__ == '__main__':
 
     # test_target.navigation_destination()
 
-    "collision avoidance with circlr cbf"
+    "collision avoidance with circle cbf"
     # test_target.collision_avoidance()
     # test_target.render(0)
     # test_target.show_controls()
@@ -274,9 +274,9 @@ if __name__ == '__main__':
 
     "collision avoidance with cdf cbf"
     test_target.collision_avoidance(cdf=cdf)
-    # test_target.render_cdf(cdf)
+    test_target.render_cdf(cdf)
     test_target.render_manipulator()
     # test_target.show_clf()
     # test_target.show_cdf_cbf(0)
-    # test_target.show_controls()
+    test_target.show_controls()
     # test_target.show_slack()

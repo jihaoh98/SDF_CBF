@@ -196,8 +196,8 @@ class Collision_Avoidance:
 
 
 if __name__ == '__main__':
-    # file_name = 'dynamic_setting.yaml'
-    file_name = 'static_setting.yaml'
+    file_name = 'dynamic_setting.yaml'
+    # file_name = 'static_setting.yaml'
 
     test_target = Collision_Avoidance(file_name)
     # test_target.navigation_destination()

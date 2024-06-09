@@ -8,6 +8,7 @@ from primitives2D_torch import Circle
 import math
 import time
 import matplotlib.patches as mpatches
+import matplotlib.cm as cm
 
 plt.rcParams['figure.dpi'] = 100
 PI = math.pi
@@ -26,11 +27,11 @@ class CDF2D:
 
         # self.obj_lists = []
         # one obstacle case
-        # self.obj_lists = [Circle(center=torch.tensor([2.0, -2.3]), radius=0.3, device=device)]
+        self.obj_lists = [Circle(center=torch.tensor([2.0, -2.3]), radius=0.3, device=device)]
 
         # # # two obstacles case
-        self.obj_lists = [Circle(center=torch.tensor([2.3, -2.3]), radius=0.3, device=device),
-                          Circle(center=torch.tensor([0.0, 2.4]), radius=0.3, device=device, label='obstacle')]
+        # self.obj_lists = [Circle(center=torch.tensor([2.3, -2.3]), radius=0.3, device=device),
+        #                   Circle(center=torch.tensor([0.0, 2.4]), radius=0.3, device=device, label='obstacle')]
 
         # three obstacles case
         # self.obj_lists = [Circle(center=torch.tensor([2.3, -2.3]), radius=0.3, device=device),
@@ -119,6 +120,20 @@ class CDF2D:
         y_grid.clamp_(0, self.nbData - 1)
         return torch.stack([x_grid, y_grid], dim=-1).long()
 
+    def inference_t_space_sdf_using_data(self, q):
+        # q : (N,2)
+        obj_points = torch.cat([obj.sample_surface(70) for obj in self.obj_lists])
+        grid = self.x_to_grid(obj_points)
+        q_list = (self.q_template[grid[:, 0], grid[:, 1]]).reshape(-1, 2)
+        q_list = q_list[q_list[:, 0] != torch.inf]  # filter out the invalid data
+        dist = torch.norm(q.unsqueeze(1) - q_list.unsqueeze(0), dim=-1)
+        d, min_ind = torch.min(dist, dim=-1)
+        q_obj = q_list[min_ind]
+        q_obj.requires_grad_(True)
+        d_obj = torch.norm(q - q_obj, dim=-1)
+        grad_obj = torch.autograd.grad(d_obj, q_obj, torch.ones_like(d), retain_graph=True)[0]
+        return d_obj, grad_obj, q_obj
+
     def inference_c_space_sdf_using_data(self, q):
         # q : (N,2)
         q.requires_grad = True
@@ -127,7 +142,7 @@ class CDF2D:
         q_list = (self.q_template[grid[:, 0], grid[:, 1]]).reshape(-1, 2)
         q_list = q_list[q_list[:, 0] != torch.inf]  # filter out the invalid data
         dist = torch.norm(q.unsqueeze(1) - q_list.unsqueeze(0), dim=-1)
-        d = torch.min(dist, dim=-1)[0]
+        d, min_ind = torch.min(dist, dim=-1)
         grad = torch.autograd.grad(d, q, torch.ones_like(d), retain_graph=True)[0]
         return d, grad
 
@@ -225,6 +240,46 @@ class CDF2D:
             plt.gca().add_patch(obj.create_patch())
 
 
+def plot_2d_manipulators(link1_length=2, link2_length=2, joint_angles_batch=None):
+    # Check if joint_angles_batch is None or has incorrect shape
+    if joint_angles_batch is None or joint_angles_batch.shape[1] != 2:
+        raise ValueError("joint_angles_batch must be provided with shape (N, 2)")
+
+    # Number of sets of joint angles
+    num_sets = joint_angles_batch.shape[0]
+
+    # Create a figure
+    cmap = cm.get_cmap('Greens', num_sets)  # You can choose other colormaps like 'Greens', 'Reds', etc.
+    cmap2 = cm.get_cmap('Reds', num_sets)  # You can choose other colormaps like 'Greens', 'Reds', etc.
+    # the color will
+    for i in range(num_sets):
+        # Extract joint angles for the current set
+        theta1, theta2 = joint_angles_batch[i]
+
+        # Calculate the position of the first joint
+        joint1_x = link1_length * np.cos(theta1)
+        joint1_y = link1_length * np.sin(theta1)
+
+        # Calculate the position of the end effector (tip of the second link)
+        end_effector_x = joint1_x + link2_length * np.cos(theta1 + theta2)
+        end_effector_y = joint1_y + link2_length * np.sin(theta1 + theta2)
+
+        # Stack the base, joint, and end effector positions
+        positions = np.vstack([[0, 0], [joint1_x, joint1_y], [end_effector_x, end_effector_y]])  # shape: (3, 2)
+
+        # Plotting
+        plt.plot(positions[:, 0], positions[:, 1], linestyle='-', color='green', marker='o', markersize=5,
+                 markerfacecolor='white',
+                 markeredgecolor='green', alpha=0.3)
+
+        # cover the end effector with different colors to hightlight the trajectory
+        plt.plot(positions[2, 0], positions[2, 1], linestyle='-', color=cmap(i), marker='o', markersize=5,
+                 markerfacecolor='white',
+                 markeredgecolor=cmap2(i))
+        # plot a bigger base center at (0, 0), which is a cirlce with golden color
+        plt.plot(0, 0, marker='o', markersize=15, markerfacecolor='#DDA15E', markeredgecolor='k')
+
+
 if __name__ == "__main__":
     torch.cuda.empty_cache()
 
@@ -233,21 +288,69 @@ if __name__ == "__main__":
 
     # observe the generated data
     cdf.q_template = torch.load(os.path.join(CUR_PATH, 'data2D_100.pt'))
+    test_Q1 = torch.tensor([[-2., 2.]]).to(device)
     d, grad = cdf.inference_c_space_sdf_using_data(cdf.Q_sets)
-    # manually test some points on the grid to get the distance and gradient
-    test_Q1 = torch.tensor([[-2., -2.]]).to(device)
-    d_test, grad_test = cdf.inference_c_space_sdf_using_data(test_Q1)
 
+    d_test, grad_obj, point_obj = cdf.inference_t_space_sdf_using_data(test_Q1)
     print("distance: ", d_test)
-    print("gradient: ", grad_test)
-    # test the norm of the gradient
-    print(torch.norm(grad, dim=-1).max())
-    print(torch.norm(grad, dim=-1).min())
-    print(torch.norm(grad, dim=-1).mean())
-    # cdf.plot_sdf()
-    # plt.show()
+    print("gradient: ", grad_obj)
 
     cdf.plot_cdf(d.detach().cpu().numpy(), grad.detach().cpu().numpy())
+    # plot the test point
+    plt.scatter(test_Q1[:, 0].detach().cpu().numpy(), test_Q1[:, 1].detach().cpu().numpy(), color='red')
+    # plot the point_obj
+    plt.scatter(point_obj[:, 0].detach().cpu().numpy(), point_obj[:, 1].detach().cpu().numpy(), color='red')
+    # use fancyarrow to plot the gradient
+    arrow = mpatches.FancyArrow(point_obj[0, 0].detach().cpu().numpy(),
+                                point_obj[0, 1].detach().cpu().numpy(),
+                                grad_obj[0, 0].detach().cpu().numpy(),
+                                grad_obj[0, 1].detach().cpu().numpy(),
+                                width=0.05,
+                                color='red')
+    ax = plt.gca()
+    ax.add_patch(arrow)
+
+    plt.show()
+
+    plt.figure()
+    plt.rcParams['axes.facecolor'] = '#eaeaf2'
+    ax = plt.gca()
+    for obj in cdf.obj_lists:
+        ax.add_patch(obj.create_patch())
+    # use fancyarrow to plot the gradient
+    # arrow = mpatches.FancyArrow(point_test[0, 0].detach().cpu().numpy(),
+    #                             point_test[0, 1].detach().cpu().numpy(),
+    #                             grad_test[0, 0].detach().cpu().numpy(),
+    #                             grad_test[0, 1].detach().cpu().numpy(),
+    #                             width=0.05,
+    #                             color='red')
+    # ax.add_patch(arrow)
+    xf_2d = test_Q1.detach().cpu().numpy()
+    xg_2d = point_obj.detach().cpu().numpy()
+    plot_2d_manipulators(joint_angles_batch=xf_2d)
+    plot_2d_manipulators(joint_angles_batch=xg_2d)
+
+    f_rob_end = cdf.robot.forward_kinematics_all_joints(torch.from_numpy(xf_2d).to(device))[
+        0].detach().cpu().numpy()
+    plt.scatter(f_rob_end[0, -1], f_rob_end[1, -1], color='r', s=100, zorder=10, label='Goal')
+    ax.set_aspect('equal')
+    plt.xlim(-4, 4)
+    plt.ylim(-4, 4)
+    plt.xlabel('x (m)')
+    plt.ylabel('y (m)')
+    plt.legend(loc='upper left')
+    plt.show()
+
+    # print("distance: ", d_test)
+    # print("gradient: ", grad_test)
+    # test the norm of the gradient
+    # print(torch.norm(grad, dim=-1).max())
+    # print(torch.norm(grad, dim=-1).min())
+    # print(torch.norm(grad, dim=-1).mean())
+    # cdf.plot_sdf()
+
+
+    # cdf.plot_cdf(d.detach().cpu().numpy(), grad.detach().cpu().numpy())
     # # plot the test point
     # plt.scatter(test_Q1[:, 0].detach().cpu().numpy(), test_Q1[:, 1].detach().cpu().numpy(), color='red')
     # # use the gradient to plot the matches fancy arrow
@@ -258,4 +361,4 @@ if __name__ == "__main__":
     #                     width = 0.05,
     #                     color='red')
     # plt.gca().add_patch(arrow)
-    plt.show()
+    # plt.show()

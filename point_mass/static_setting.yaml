@@ -20,21 +20,12 @@ robot:
 cir_obstacle_list:
   obs_states: [
     [7.0, 7.5],
-    [7.5, 7.0],
-    [8.0, 6.5],
-    [8.0, 6.0],
   ]
-  obs_radiuses: [2.2, 2.2, 2.2, 2.2]
+  obs_radiuses: [2.2]
   obs_vels: [
-    [0.0, 0.0],
-    [0.0, 0.0],
-    [0.0, 0.0],
     [0.0, 0.0],
   ]
   modes: [
-    'static',
-    'static',
-    'static',
     'static',
   ]
 
