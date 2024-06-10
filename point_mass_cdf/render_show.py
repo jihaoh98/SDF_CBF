@@ -1,13 +1,15 @@
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import matplotlib.patches as mpatches
+from matplotlib.animation import FuncAnimation
 import matplotlib.cm as cm
 import numpy as np
 import torch
 import os
+from primitives2D_torch import Circle
 
 CUR_PATH = os.path.dirname(os.path.realpath(__file__))
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu") 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 class Render_Animation:
@@ -42,6 +44,9 @@ class Render_Animation:
         # current state
         self.robot_body = None
         self.robot_arrow = None
+        self.docbf_arrow = None
+        self.gradientField = None
+        self.docbfield = None
 
         self.show_obs = True
         self.show_arrow = False
@@ -121,7 +126,7 @@ class Render_Animation:
             file_path = os.path.join(CUR_PATH, 'integral.gif')
             self.ani.save(file_path, writer=writer)
         plt.show()
-    
+
     def render_manipulator(self, cdf, xt, terminal_time):
         plt.rcParams['axes.facecolor'] = '#eaeaf2'
         ax = plt.gca()
@@ -142,7 +147,7 @@ class Render_Animation:
         plt.ylabel('y (m)')
         plt.legend(loc='upper left')
         plt.show()
-        
+
     def plot_2d_manipulators(self, link1_length=2.0, link2_length=2.0, joint_angles_batch=None):
         # Check if joint_angles_batch is None or has incorrect shape
         if joint_angles_batch is None or joint_angles_batch.shape[1] != 2:
@@ -171,19 +176,79 @@ class Render_Animation:
             positions = np.vstack([[0, 0], [joint1_x, joint1_y], [end_effector_x, end_effector_y]])  # shape: (3, 2)
 
             # Plotting
-            plt.plot(positions[:, 0], positions[:, 1], linestyle='-', color='green', marker='o', markersize=5, markerfacecolor='white',
-                    markeredgecolor='green',alpha=0.3)
-            
+            plt.plot(positions[:, 0], positions[:, 1], linestyle='-', color='green', marker='o', markersize=5,
+                     markerfacecolor='white',
+                     markeredgecolor='green', alpha=0.3)
+
             # cover the end effector with different colors to hightlight the trajectory
-            plt.plot(positions[2, 0], positions[2, 1], linestyle='-', color=cmap(i), marker='o', markersize=5, markerfacecolor='white',
-                    markeredgecolor=cmap2(i))
+            plt.plot(positions[2, 0], positions[2, 1], linestyle='-', color=cmap(i), marker='o', markersize=5,
+                     markerfacecolor='white',
+                     markeredgecolor=cmap2(i))
             # plot a bigger base center at (0, 0), which is a cirlce with golden color
             plt.plot(0, 0, marker='o', markersize=15, markerfacecolor='#DDA15E', markeredgecolor='k')
 
-    def render(self, i, xt, cir_obs_list_t, terminal_time, show_obs, dxcbft, save_gif=False):
+    def render_dynamic_cdf(self, cdf, log_circle_center, xt, terminal_time, show_obs, dxcbft, save_gif=False,
+                           show_arrow=False):
+        cdf.q_template = torch.load(os.path.join(CUR_PATH, 'data2D_100.pt'))
+        line, = self.ax.plot([], [], color='yellow', linestyle='--', linewidth=2)
+
+        # plot the start and goal point of the robot
+        self.ax.plot(xt[0, 0], xt[1, 0], 'r*', label='Start')
+        self.ax.plot(self.robot_target_state[0], self.robot_target_state[1], 'r*', label='Goal')
+
+        num_obs = len(cdf.obj_lists)
+
+        def update_distance_field(frame, obstacle_elements, ax, line):
+
+            # re-update the obstacle
+            if num_obs == 1:
+                for element in obstacle_elements:
+                    for coll in element.collections:
+                        coll.remove()
+
+                obstacle_elements.clear()  # Clear the list outside the loop
+                object_center = log_circle_center[frame]
+                cdf.obj_lists = [Circle(center=torch.from_numpy(object_center), radius=0.3, device=device)]
+                d_grad, grad_plot = cdf.inference_c_space_sdf_using_data(cdf.Q_sets)
+                # plot the distance field
+                contour, contourf, ct_zero = cdf.plot_cdf_ax(d_grad.detach().cpu().numpy(), ax)
+                # Add new elements to the list
+                obstacle_elements.extend([contour, contourf, ct_zero])
+
+            # elif num_obs == 2:
+            #     for element in obstacle_elements:
+            #         for coll in element.collections:
+            #             coll.remove()
+            #
+            #     obstacle_elements.clear()
+            #     object_center = log_circle_center[frame]
+            #     cdf.obj_lists = [Circle(center=torch.from_numpy(object_center[:2]), radius=0.3, device=device),
+            #                      Circle(center=torch.from_numpy(object_center[2:]), radius=0.3, device=device)]
+            #     d_grad, grad_plot = cdf.inference_c_space_sdf_using_data(cdf.Q_sets)
+            #     if distance_filed == 'sdf':
+            #         contour, contourf, ct_zero = cdf.plot_sdf_ax(ax)
+            #     else:
+            #         contour, contourf, ct_zero = cdf.plot_cdf_ax(d_grad.detach().cpu().numpy(), ax)
+            #         # Add new elements to the list
+            #     obstacle_elements.extend([contour, contourf, ct_zero])
+
+            line.set_data(xt[0, :frame + 1], xt[1, :frame + 1])
+            return obstacle_elements
+
+        obstacle_elements = []
+        # plt.legend(loc='upper center', ncols=2)
+        num_frames = terminal_time
+        ani = FuncAnimation(self.fig, lambda frame: update_distance_field(frame, obstacle_elements, self.ax, line),
+                            frames=num_frames, interval=50)
+        plt.show()
+
+    def render(self, i, xt, cir_obs_list_t, terminal_time, show_obs, dxcbft, docbft, save_gif=False):
         # dxcbft: shape is (cir_obs_num, 2, time_steps)
         gradientField = dxcbft[i, :, :]  # shape is (2, time_steps)
+        docbfield = docbft[i, :, :]  # shape is (2, time_steps)
+
         self.gradientField = gradientField
+        self.docbfield = docbfield
 
         """ Visualization """
         self.fig.set_size_inches(7, 6.5)
@@ -228,6 +293,7 @@ class Render_Animation:
         # self.ax.add_patch(self.robot_arrow)
 
         norm = np.linalg.norm(gradientField[:, 0])
+        norm2 = np.linalg.norm(docbfield[:, 0])
 
         self.robot_arrow = mpatches.FancyArrow(
             self.robot_init_state[0],
@@ -238,6 +304,16 @@ class Render_Animation:
             color='k',
         )
         self.ax.add_patch(self.robot_arrow)
+
+        self.docbf_arrow = mpatches.FancyArrow(
+            cir_obs_list_t[i][0, 0],
+            cir_obs_list_t[i][1, 0],
+            self.docbfield[0, 0] * 0.1 * norm2,
+            self.docbfield[1, 0] * 0.1 * norm2,
+            width=0.05,
+            color='r',
+        )
+        self.ax.add_patch(self.docbf_arrow)
 
         # self.robot_arrow = mpatches.Arrow(
         #     self.robot_init_state[0],
@@ -345,17 +421,6 @@ class Render_Animation:
         self.robot_body = mpatches.Circle(xy=self.xt[:, indx][0:2], radius=self.robot_radius, edgecolor='r', fill=False)
         self.ax.add_patch(self.robot_body)
 
-        # self.robot_arrow.remove()
-        # use the gradientField to update the direction of the robot
-        # self.robot_arrow = mpatches.Arrow(
-        #     self.xt[:, indx][0],
-        #     self.xt[:, indx][1],
-        #     self.gradientField[0, indx],
-        #     self.gradientField[1, indx],
-        #     width=0.05,
-        #     color='k',
-        # )
-        # self.ax.add_patch(self.robot_arrow)
         norm = np.linalg.norm(self.gradientField[:, indx])
         self.robot_arrow = mpatches.FancyArrow(
             self.xt[:, indx][0],
@@ -366,17 +431,16 @@ class Render_Animation:
             color='k',
         )
         self.ax.add_patch(self.robot_arrow)
-
-        # self.robot_arrow.remove()
-        # self.robot_arrow = mpatches.Arrow(
-        #     self.xt[:, indx][0],
-        #     self.xt[:, indx][1],
-        #     self.robot_width * np.cos(self.xt[:, indx][2]),
-        #     self.robot_width * np.sin(self.xt[:, indx][2]),
-        #     width=0.15, 
-        #     color='k',
-        # )
-        # self.ax.add_patch(self.robot_arrow)
+        norm2 = np.linalg.norm(self.docbfield[:, indx])
+        self.docbf_arrow = mpatches.FancyArrow(
+            self.cir_obs_list_t[0][0, indx],
+            self.cir_obs_list_t[0][1, indx],
+            self.docbfield[0, indx] * 0.1 * norm2,
+            self.docbfield[1, indx] * 0.1 * norm2,
+            width=0.025,
+            color='r',
+        )
+        self.ax.add_patch(self.docbf_arrow)
 
         # obs
         if self.show_obs:
