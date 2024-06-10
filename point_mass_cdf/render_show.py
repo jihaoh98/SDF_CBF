@@ -198,6 +198,20 @@ class Render_Animation:
 
         num_obs = len(cdf.obj_lists)
 
+        if show_arrow:
+            gradientField = dxcbft[0, :, :]  # shape is (2, time_steps)
+            self.gradientField = gradientField
+            norm = np.linalg.norm(gradientField[:, 0])
+            self.robot_arrow = mpatches.FancyArrow(
+                self.robot_init_state[0],
+                self.robot_init_state[1],
+                self.gradientField[0, 0] * 0.05 * norm,
+                self.gradientField[1, 0] * 0.05 * norm,
+                width=0.025,
+                color='k',
+            )
+            self.ax.add_patch(self.robot_arrow)
+
         def update_distance_field(frame, obstacle_elements, ax, line):
 
             # re-update the obstacle

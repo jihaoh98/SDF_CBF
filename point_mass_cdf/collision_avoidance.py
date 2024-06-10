@@ -323,7 +323,7 @@ if __name__ == '__main__':
     N = 200
     for i in range(N):
         if num_obs == 1:
-            object_center[0][1] = object_center[0][1] + 0.02
+            object_center[0][1] = object_center[0][1] + 0.04
             log_circle_center.append(np.array(object_center[0]))
         elif num_obs == 2:
             object_center[0][1] = object_center[0][1] + 0.01
