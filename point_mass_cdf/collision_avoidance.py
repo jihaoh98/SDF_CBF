@@ -73,6 +73,7 @@ class Collision_Avoidance:
                 )
 
         if cdf_dyn_obs_params is not None:
+            self.dyn_obstacle_gradient_filed = []
             self.cdf_dyn_obs_num = len(cdf_dyn_obs_params['obs_states'])
             self.cdf_dyn_obs_list = [None for i in range(self.cdf_dyn_obs_num)]
             for i in range(self.cdf_dyn_obs_num):
@@ -220,7 +221,7 @@ class Collision_Avoidance:
                     ob_distance_input = ob_distance_input.cpu().detach().numpy()
                     ob_gradient_input = ob_gradient_input.cpu().detach().numpy()
                     ob_state = ob_state.cpu().detach().numpy()
-
+                    self.dyn_obstacle_gradient_filed.append(np.hstack((ob_state, ob_gradient_input)).flatten())
                     gradient_input = np.array([gradient_input[0][0], gradient_input[0][1], 0.0]).reshape(1, 3)
                     distance_input = distance_input - self.margin
                     # gradient_input = distance_input * gradient_input
@@ -302,9 +303,9 @@ class Collision_Avoidance:
     def render_cdf(self, cdf):
         self.ani.render_cdf(cdf, self.xt, self.terminal_time, self.show_obs, self.cdf_obs_dx_cbf_t, show_arrow=True)
 
-    def render_dynamic_cdf(self, cdf, log_circle_center):
-        self.ani.render_dynamic_cdf(cdf, log_circle_center, self.xt, self.terminal_time, self.show_obs,
-                                    self.cdf_obs_dx_cbf_t, show_arrow=True)
+    def render_dynamic_cdf(self, cdf, log_circle_center, log_gradient_field):
+        self.ani.render_dynamic_cdf(cdf, log_circle_center, log_gradient_field, self.xt, self.terminal_time, self.show_obs,
+                                    self.cdf_obs_dx_cbf_t, show_arrow=True, show_ob_arrow=True)
 
     def render_manipulator(self):
         self.ani.render_manipulator(cdf, self.xt, self.terminal_time)
@@ -358,12 +359,10 @@ if __name__ == '__main__':
     # test_target.show_slack()
 
     "collision avoidance with dynamic cdf cbf"
-    # we need to define the dynamic obstacle outside
-
     test_target.collision_avoidance(cdf=cdf)
     cdf_dyn_obs_center_list = np.copy(test_target.cdf_dyn_obs_center_list)
-    test_target.render_dynamic_cdf(cdf, cdf_dyn_obs_center_list)
-    test_target.show_clf()
-    test_target.show_cdf_cbf(0)
-    test_target.show_controls()
-    test_target.show_slack()
+    test_target.render_dynamic_cdf(cdf, test_target.cdf_dyn_obs_center_list, test_target.dyn_obstacle_gradient_filed)
+    # test_target.show_clf()
+    # test_target.show_cdf_cbf(0)
+    # test_target.show_controls()
+    # test_target.show_slack()

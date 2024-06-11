@@ -45,11 +45,13 @@ class Render_Animation:
         self.robot_body = None
         self.robot_arrow = None
         self.docbf_arrow = None
+
         self.gradientField = None
         self.docbfield = None
 
         self.show_obs = True
         self.show_arrow = False
+        self.show_ob_arrow = False
 
         # settings of Times New Roman
         # set the text in Times New Roman
@@ -187,8 +189,8 @@ class Render_Animation:
             # plot a bigger base center at (0, 0), which is a cirlce with golden color
             plt.plot(0, 0, marker='o', markersize=15, markerfacecolor='#DDA15E', markeredgecolor='k')
 
-    def render_dynamic_cdf(self, cdf, log_circle_center, xt, terminal_time, show_obs, dxcbft, save_gif=False,
-                           show_arrow=False):
+    def render_dynamic_cdf(self, cdf, log_circle_center, log_gradient_field, xt, terminal_time, show_obs, dxcbft,
+                           save_gif=False, show_arrow=False, show_ob_arrow=False):
         cdf.q_template = torch.load(os.path.join(CUR_PATH, 'data2D_100.pt'))
         cdf.obj_lists = None
         line, = self.ax.plot([], [], color='yellow', linestyle='--', linewidth=2)
@@ -199,6 +201,7 @@ class Render_Animation:
 
         num_obs = 1
         self.show_arrow = show_arrow
+        self.show_ob_arrow = show_ob_arrow
         self.xt = xt
 
         if self.show_arrow:
@@ -215,6 +218,17 @@ class Render_Animation:
             )
             self.ax.add_patch(self.robot_arrow)
 
+        if self.show_ob_arrow:
+            self.docbf_arrow = mpatches.FancyArrow(
+                log_gradient_field[0][0],
+                log_gradient_field[0][1],
+                log_gradient_field[0][2] * 0.1,
+                log_gradient_field[0][3] * 0.1,
+                width=0.05,
+                color='r',
+            )
+            self.ax.add_patch(self.docbf_arrow)
+
         def update_distance_field(frame, obstacle_elements, ax, line):
 
             # re-update the obstacle
@@ -225,7 +239,6 @@ class Render_Animation:
 
                 obstacle_elements.clear()  # Clear the list outside the loop
                 object_center = log_circle_center[frame]
-                print('object_center:', object_center)
                 cdf.obj_lists = [Circle(center=torch.from_numpy(object_center), radius=0.3, device=device)]
                 d_grad, grad_plot = cdf.inference_c_space_sdf_using_data(cdf.Q_sets)
                 # plot the distance field
@@ -244,6 +257,17 @@ class Render_Animation:
                     color='k',
                 )
                 self.ax.add_patch(self.robot_arrow)
+
+            if self.show_ob_arrow:
+                self.docbf_arrow = mpatches.FancyArrow(
+                    log_gradient_field[frame][0],
+                    log_gradient_field[frame][1],
+                    log_gradient_field[frame][2] * 0.1,
+                    log_gradient_field[frame][3] * 0.1,
+                    width=0.05,
+                    color='r',
+                )
+                self.ax.add_patch(self.docbf_arrow)
 
                 # elif num_obs == 2:
             #     for element in obstacle_elements:
