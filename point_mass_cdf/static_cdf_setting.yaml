@@ -20,15 +20,16 @@ robot:
 cdf_sta_obstacle_list:
   obs_states: [
     [2.0, -2.3],
-    [0.0, 2.4]
+#    [0.0, 2.4]
   ]
-  obs_radii: [0.3, 0.2]
+#  obs_radii: [0.3, 0.2]
+  obs_radii: [0.3]
   obs_vel: [
     [0.0, 0.0],
-    [0.0, 0.0]
+#    [0.0, 0.0]
   ]
   modes: [
     'static',
-    'static'
+#    'static'
   ]
 

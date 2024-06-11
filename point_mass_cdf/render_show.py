@@ -190,13 +190,14 @@ class Render_Animation:
     def render_dynamic_cdf(self, cdf, log_circle_center, xt, terminal_time, show_obs, dxcbft, save_gif=False,
                            show_arrow=False):
         cdf.q_template = torch.load(os.path.join(CUR_PATH, 'data2D_100.pt'))
+        cdf.obj_lists = None
         line, = self.ax.plot([], [], color='yellow', linestyle='--', linewidth=2)
 
         # plot the start and goal point of the robot
         self.ax.plot(xt[0, 0], xt[1, 0], 'r*', label='Start')
         self.ax.plot(self.robot_target_state[0], self.robot_target_state[1], 'r*', label='Goal')
 
-        num_obs = len(cdf.obj_lists)
+        num_obs = 1
         self.show_arrow = show_arrow
         self.xt = xt
 
@@ -224,6 +225,7 @@ class Render_Animation:
 
                 obstacle_elements.clear()  # Clear the list outside the loop
                 object_center = log_circle_center[frame]
+                print('object_center:', object_center)
                 cdf.obj_lists = [Circle(center=torch.from_numpy(object_center), radius=0.3, device=device)]
                 d_grad, grad_plot = cdf.inference_c_space_sdf_using_data(cdf.Q_sets)
                 # plot the distance field

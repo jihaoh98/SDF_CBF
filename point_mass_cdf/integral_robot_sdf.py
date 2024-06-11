@@ -108,16 +108,18 @@ class Integral_Robot_Sdf:
 
         return lf_clf, lg_clf
 
-    def derive_dyn_cdf_cbf_derivative(self, robot_state, dist_input, grad_input, ob_grad_input, obstacle_state):
+    def derive_dyn_cdf_cbf_derivative(self, robot_state, dist_input, grad_input, ob_grad_input, obstacle_state,
+                                      obstacle_list):
         dh_dxb = grad_input.flatten()  # shape(3, )
 
         # lf_cbf, lg_cbf, dt_obs_cbf (dynamic obstacle)
         lf_cbf, lg_cbf, dt_obs_cbf = self.get_dyn_cdf_cbf_gradient(robot_state, dist_input, dh_dxb, ob_grad_input,
-                                                                   obstacle_state)
+                                                                   obstacle_state, obstacle_list)
 
         return lf_cbf, lg_cbf, dt_obs_cbf
 
-    def get_dyn_cdf_cbf_gradient(self, robot_state, obs_state, cdf_gradient, obs_cdf_gradient, obstacle_state):
+    def get_dyn_cdf_cbf_gradient(self, robot_state, obs_state, cdf_gradient, obs_cdf_gradient, obstacle_state,
+                                 obstacle_list):
         dx_dp = cdf_gradient
         # dh_dx = np.array([dh_dp[0], dh_dp[1], 0])
 
@@ -125,8 +127,8 @@ class Integral_Robot_Sdf:
         lg_cbf = (dx_dp @ self.g(robot_state)).reshape(1, 2)
 
         # TODO: need to fix when considering the dynamic obstacle
-        dox_cbf_symbolic = obs_cdf_gradient @ obstacle_state.T
-        dt_obs_cbf = dox_cbf_symbolic
+        dox_cbf_symbolic = obs_cdf_gradient
+        dt_obs_cbf = np.dot(dox_cbf_symbolic,obstacle_list.vel)
 
         return lf_cbf, lg_cbf, dt_obs_cbf
 

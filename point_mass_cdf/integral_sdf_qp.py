@@ -102,12 +102,12 @@ class Integral_Sdf_Cbf_Clf:
         """ add physical constraint of controls """
         self.opti.subject_to(self.opti.bounded(self.u_min, self.u, self.u_max))
 
-    def add_dyn_cdf_cbf_cons(self, robot_state, dist_input, grad_input, ob_gradient_input, ob_state):
+    def add_dyn_cdf_cbf_cons(self, robot_state, dist_input, grad_input, ob_gradient_input, ob_state, obstacle_list):
         """ add cons w.r.t cdf obstacles """
         cbf = dist_input
 
         lf_cbf, lg_cbf, dt_cbf = self.robot.derive_dyn_cdf_cbf_derivative(robot_state, dist_input, grad_input,
-                                                                          ob_gradient_input, ob_state)
+                                                                          ob_gradient_input, ob_state, obstacle_list)
 
         self.opti.subject_to(lf_cbf + (lg_cbf @ self.u)[0, 0] + dt_cbf + self.cbf_gamma * cbf >= 0)
 
@@ -174,8 +174,8 @@ class Integral_Sdf_Cbf_Clf:
 
         return result
 
-    def cbf_clf_dyn_cdf_qp(self, robot_cur_state, dist_input, grad_input, ob_gradient_input, ob_state, add_clf=True,
-                           u_ref=None):
+    def cbf_clf_dyn_cdf_qp(self, robot_cur_state, dist_input, grad_input, ob_gradient_input, ob_state, obstacle_list,
+                           add_clf=True, u_ref=None):
         if u_ref is None:
             u_ref = np.zeros(self.control_dim)
         self.set_optimal_function(u_ref, add_slack=add_clf)
@@ -194,7 +194,7 @@ class Integral_Sdf_Cbf_Clf:
             cdf_dt_cbf_list = []
             for i in range(len(dist_input)):
                 cbf, dx_cbf = self.add_dyn_cdf_cbf_cons(robot_cur_state, dist_input[i], grad_input[i],
-                                                        ob_gradient_input[i], ob_state[i])
+                                                        ob_gradient_input[i], ob_state[i], obstacle_list[i])
                 cdf_cbf_list.append(cbf)
                 cdf_dx_cbf_list.append(dx_cbf)
                 cdf_dt_cbf_list.append(ob_gradient_input)
