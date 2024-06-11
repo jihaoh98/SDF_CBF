@@ -32,18 +32,23 @@ class Collision_Avoidance:
         self.destination_margin = robot_params['destination_margin']
         self.margin = robot_params['margin']
 
-        # init obstacle, if no data, return None
+        "init obstacle, if no data, return None"
         cir_obs_params = config.get('cir_obstacle_list')
+        cdf_sta_obs_params = config.get('cdf_sta_obstacle_list')
+        cdf_dyn_obs_params = config.get('cdf_dyn_obstacle_list')
         self.cir_obs_states_list = None
+        self.cdf_sta_obs_states_list = None
+        self.cdf_dyn_obs_states_list = None
+
         if cir_obs_params is not None:
             self.cir_obs_num = len(cir_obs_params['obs_states'])
             self.cir_obs_list = [None for i in range(self.cir_obs_num)]
             for i in range(self.cir_obs_num):
                 self.cir_obs_list[i] = obs.Circle_Obs(
                     index=i,
-                    radius=cir_obs_params['obs_radiuses'][i],
+                    radius=cir_obs_params['obs_radii'][i],
                     center=cir_obs_params['obs_states'][i],
-                    vel=cir_obs_params['obs_vels'][i],
+                    vel=cir_obs_params['obs_vel'][i],
                     mode=cir_obs_params['modes'][i],
                 )
 
@@ -53,6 +58,21 @@ class Collision_Avoidance:
                 for i in range(self.cir_obs_num)
             ]
             self.cir_obs_states_list = np.copy(self.cir_obs_init_states_list)
+
+        if cdf_sta_obs_params is not None:
+            self.cdf_sta_obs_num = len(cdf_sta_obs_params['obs_states'])
+            self.cdf_sta_obs_list = [None for i in range(self.cdf_sta_obs_num)]
+            for i in range(self.cdf_sta_obs_num):
+                self.cdf_sta_obs_list[i] = obs.Cdf_Obs(
+                    index=i,
+                    radius=cdf_sta_obs_params['obs_radii'][i],
+                    center=cdf_sta_obs_params['obs_states'][i],
+                    vel=cdf_sta_obs_params['obs_vel'][i],
+                    mode=cdf_sta_obs_params['modes'][i],
+                )
+
+        if cdf_dyn_obs_params is not None:
+            pass
 
         # controller
         self.T = controller_params['Tmax']
@@ -66,17 +86,20 @@ class Collision_Avoidance:
         self.clft = np.zeros((1, self.time_steps))
         self.slackt = np.zeros((1, self.time_steps))
 
-        self.cir_obstacle_state_t = None
-        self.cir_obs_cbf_t = None
-        self.cir_obs_dx_cbf_t = None
+        "storage for circle obstacles"
         if cir_obs_params is not None:
+            self.cir_obstacle_state_t = None
+            self.cir_obs_cbf_t = None
+            self.cir_obs_dx_cbf_t = None
             self.cir_obstacle_state_t = np.zeros((self.cir_obs_num, 5, self.time_steps + 1))
             self.cir_obs_cbf_t = np.zeros((self.cir_obs_num, self.time_steps))
             self.cir_obs_dx_cbf_t = np.zeros((self.cir_obs_num, 2, self.time_steps))
             self.cir_obs_dot_cbf_t = np.zeros((self.cir_obs_num, 2, self.time_steps))
 
-        self.cdf_obs_cbf_t = np.zeros((1, self.time_steps))
-        self.cdf_obs_dx_cbf_t = np.zeros((1, 3, self.time_steps))
+        "storage for static cdf obstacles"
+        if cdf_sta_obs_params is not None:
+            self.cdf_obs_cbf_t = np.zeros((1, self.time_steps))
+            self.cdf_obs_dx_cbf_t = np.zeros((1, 3, self.time_steps))
 
         # plot
         self.ani = Render_Animation(
@@ -279,16 +302,12 @@ class Collision_Avoidance:
 
 if __name__ == '__main__':
     # file_name = 'dynamic_setting.yaml'
-    file_name = 'static_setting.yaml'
-    file_name = os.path.join(CURRENT_DIR, file_name)
-
-    # load the obstacle distance and gradient field
-    cdf = CDF2D(device)
-
-    "environment setup and read the parameters from yaml file"
-    test_target = Collision_Avoidance(file_name)
+    # file_name = 'static_setting.yaml'
+    # file_name = 'dynamic_cdf_setting.yaml'
 
     # test_target.navigation_destination()
+    file_name = 'static_cdf_setting.yaml'
+    file_name = os.path.join(CURRENT_DIR, file_name)
 
     "collision avoidance with circle cbf"
     # test_target.collision_avoidance()
@@ -300,8 +319,11 @@ if __name__ == '__main__':
     # test_target.show_dx_cbf(0)
 
     "collision avoidance with static cdf cbf"
-    # test_target.collision_avoidance(cdf=cdf)
-    # test_target.render_cdf(cdf)
+
+    cdf = CDF2D(device)
+    test_target = Collision_Avoidance(file_name)
+    test_target.collision_avoidance(cdf=cdf)
+    test_target.render_cdf(cdf)
     # test_target.render_manipulator()
     # test_target.show_clf()
     # test_target.show_cdf_cbf(0)
@@ -310,35 +332,35 @@ if __name__ == '__main__':
 
     "collision avoidance with dynamic cdf cbf"
     # we need to define the dynamic obstacle outside
-    log_circle_center = []
-
-    num_obs = 1
-    if num_obs == 1:
-        object_center = [torch.tensor([2.5, -2.35])]
-    elif num_obs == 2:
-        object_center = [torch.tensor([2.5, -2.35]), torch.tensor([2.5, 2.5])]
-    elif num_obs == 3:
-        object_center = [torch.tensor([2.5, -2.35]), torch.tensor([2.5, 2.5]), torch.tensor([-3.5, -3.1])]
-
-    N = 200
-    for i in range(N):
-        if num_obs == 1:
-            object_center[0][1] = object_center[0][1] + 0.04
-            log_circle_center.append(np.array(object_center[0]))
-        elif num_obs == 2:
-            object_center[0][1] = object_center[0][1] + 0.01
-            object_center[1][0] = object_center[1][0] - 0.02
-            log_circle_center.append(np.hstack((np.array(object_center[0]), np.array(object_center[1]))))
-        elif num_obs == 3:
-            object_center[0][1] = object_center[0][1] + 0.01
-            object_center[1][0] = object_center[1][0] - 0.02
-            object_center[2][0] = object_center[2][0] + 0.02
-            log_circle_center.append(
-                np.hstack((np.array(object_center[0]), np.array(object_center[1]), np.array(object_center[2]))))
+    # log_circle_center = []
     #
-    test_target.collision_avoidance(cdf=cdf, obs_center=log_circle_center, add_clf=True)
-    test_target.render_dynamic_cdf(cdf, log_circle_center)
-    test_target.show_clf()
-    test_target.show_cdf_cbf(0)
-    test_target.show_controls()
+    # num_obs = 1
+    # if num_obs == 1:
+    #     object_center = [torch.tensor([2.5, -2.35])]
+    # elif num_obs == 2:
+    #     object_center = [torch.tensor([2.5, -2.35]), torch.tensor([2.5, 2.5])]
+    # elif num_obs == 3:
+    #     object_center = [torch.tensor([2.5, -2.35]), torch.tensor([2.5, 2.5]), torch.tensor([-3.5, -3.1])]
+    #
+    # N = 200
+    # for i in range(N):
+    #     if num_obs == 1:
+    #         object_center[0][1] = object_center[0][1] + 0.04
+    #         log_circle_center.append(np.array(object_center[0]))
+    #     elif num_obs == 2:
+    #         object_center[0][1] = object_center[0][1] + 0.01
+    #         object_center[1][0] = object_center[1][0] - 0.02
+    #         log_circle_center.append(np.hstack((np.array(object_center[0]), np.array(object_center[1]))))
+    #     elif num_obs == 3:
+    #         object_center[0][1] = object_center[0][1] + 0.01
+    #         object_center[1][0] = object_center[1][0] - 0.02
+    #         object_center[2][0] = object_center[2][0] + 0.02
+    #         log_circle_center.append(
+    #             np.hstack((np.array(object_center[0]), np.array(object_center[1]), np.array(object_center[2]))))
+    #
+    # test_target.collision_avoidance(cdf=cdf, obs_center=log_circle_center, add_clf=True)
+    # test_target.render_dynamic_cdf(cdf, log_circle_center)
+    # test_target.show_clf()
+    # test_target.show_cdf_cbf(0)
+    # test_target.show_controls()
     # test_target.show_slack()

@@ -1,0 +1,30 @@
+controller:
+  Tmax: 20
+  step_time: 0.1
+  weight_input: [1.0, 1.0]
+  smooth_input: [1.0, 0.5]
+  weight_slack: 100
+  clf_lambda: 1.0
+  cbf_gamma: 1.0
+
+robot:
+  u_max: [2.0, 2.0]
+  u_min: [-2.0, -2.0]
+  initial_state: [-2.5, -2.0, 0.0]
+  target_state: [1.0, -0.5, 0.0]
+  radius: 0.1
+  destination_margin: 0.1
+  sensor_range: 6.0
+  margin: 0.1
+
+cdf_dyn_obstacle_list:
+  obs_states: [
+    [-1.0, -2.0]
+  ]
+  obs_radii: [0.5]
+  obs_vel: [
+    [0.0, 0.4]
+  ]
+  modes: [
+    'dynamic'
+  ]

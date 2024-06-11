@@ -42,6 +42,8 @@ class Integral_Robot_Sdf:
         # obstacle dynamics, single integral system
         self.cir_obstacle_dynamics = None
         self.cir_obstacle_dynamics_symbolic = None
+        self.cdf_obstacle_dynamics = None
+        self.cdf_obstacle_dynamics_symbolic = None
 
         # clf design
         self.clf = None
@@ -52,7 +54,7 @@ class Integral_Robot_Sdf:
         self.cbf = None
         self.lf_cbf = None
         self.lg_cbf = None
-        self.dt_cbf = None  # todo: 这个可以没有？
+        self.dt_cbf = None
         self.dx_cbf = None
         self.do_cbf = None
 

@@ -197,17 +197,19 @@ class Render_Animation:
         self.ax.plot(self.robot_target_state[0], self.robot_target_state[1], 'r*', label='Goal')
 
         num_obs = len(cdf.obj_lists)
+        self.show_arrow = show_arrow
+        self.xt = xt
 
-        if show_arrow:
+        if self.show_arrow:
             gradientField = dxcbft[0, :, :]  # shape is (2, time_steps)
             self.gradientField = gradientField
             norm = np.linalg.norm(gradientField[:, 0])
             self.robot_arrow = mpatches.FancyArrow(
                 self.robot_init_state[0],
                 self.robot_init_state[1],
-                self.gradientField[0, 0] * 0.05 * norm,
-                self.gradientField[1, 0] * 0.05 * norm,
-                width=0.025,
+                self.gradientField[0, 0] * 0.1 * norm,
+                self.gradientField[1, 0] * 0.1 * norm,
+                width=0.05,
                 color='k',
             )
             self.ax.add_patch(self.robot_arrow)
@@ -229,7 +231,19 @@ class Render_Animation:
                 # Add new elements to the list
                 obstacle_elements.extend([contour, contourf, ct_zero])
 
-            # elif num_obs == 2:
+            if self.show_arrow:
+                norm = np.linalg.norm(self.gradientField[:, frame])
+                self.robot_arrow = mpatches.FancyArrow(
+                    self.xt[:, frame][0],
+                    self.xt[:, frame][1],
+                    self.gradientField[0, frame] * 0.1 * norm,
+                    self.gradientField[1, frame] * 0.1 * norm,
+                    width=0.05,
+                    color='k',
+                )
+                self.ax.add_patch(self.robot_arrow)
+
+                # elif num_obs == 2:
             #     for element in obstacle_elements:
             #         for coll in element.collections:
             #             coll.remove()

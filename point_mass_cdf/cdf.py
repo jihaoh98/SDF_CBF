@@ -288,7 +288,7 @@ if __name__ == "__main__":
 
     # observe the generated data
     cdf.q_template = torch.load(os.path.join(CUR_PATH, 'data2D_100.pt'))
-    test_Q1 = torch.tensor([[-2., 2.]]).to(device)
+    test_Q1 = torch.tensor([[2., 2.]]).to(device)
     d, grad = cdf.inference_c_space_sdf_using_data(cdf.Q_sets)
 
     d_test, grad_obj, point_obj = cdf.inference_t_space_sdf_using_data(test_Q1)
