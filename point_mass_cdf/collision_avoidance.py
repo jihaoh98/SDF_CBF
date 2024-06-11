@@ -178,12 +178,15 @@ class Collision_Avoidance:
             if cdf is None:
                 optimal_result = self.cbf_qp.cbf_clf_qp(self.robot_cur_state, self.cir_obs_states_list, add_clf=add_clf)
             else:
+                cdf.obj_lists = [None for i in range(self.cdf_sta_obs_num)]
+                for i in range(self.cdf_sta_obs_num):
+                    cdf.obj_lists[i] = Circle(center=torch.from_numpy(self.cdf_sta_obs_list[i].state),
+                                              radius=self.cdf_sta_obs_list[i].radius, device=device)
                 if obs_center is None:
                     robot_states = torch.from_numpy(self.robot_cur_state[:2]).to(device).reshape(1, 2)
                     distance_input, gradient_input = cdf.inference_c_space_sdf_using_data(robot_states)
                     distance_input = distance_input.cpu().detach().numpy()
                     gradient_input = gradient_input.cpu().detach().numpy()
-                    # todo: unknown if it's needed to scale the gradient otherwise the it will be a unit gradient
                     gradient_input = np.array([gradient_input[0][0], gradient_input[0][1], 0.0]).reshape(1, 3)
                     distance_input = distance_input - self.margin
                     # gradient_input = distance_input * gradient_input

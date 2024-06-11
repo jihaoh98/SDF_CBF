@@ -5,13 +5,13 @@ controller:
   smooth_input: [1.0, 0.5]
   weight_slack: 100
   clf_lambda: 1.0
-  cbf_gamma: 2.0  # bigger value more aggressive, smaller value more conservative
+  cbf_gamma: 0.6  # bigger value more aggressive, smaller value more conservative
 
 robot:
   u_max: [2.0, 2.0]
   u_min: [-2.0, -2.0]
-  initial_state: [-2.5, -2.0, 0.0]
-  target_state: [2.5, -0.5, 0.0]
+  initial_state: [ 2.5, 2.0, 0.0 ]
+  target_state: [ -2.5, 0.75, 0.0 ]
   radius: 0.1
   destination_margin: 0.1
   sensor_range: 6.0
@@ -19,13 +19,16 @@ robot:
 
 cdf_sta_obstacle_list:
   obs_states: [
-    [0.0, 0.5],
+    [2.0, -2.3],
+    [0.0, 2.4]
   ]
-  obs_radii: [1.8]
+  obs_radii: [0.3, 0.2]
   obs_vel: [
     [0.0, 0.0],
+    [0.0, 0.0]
   ]
   modes: [
     'static',
+    'static'
   ]
 
