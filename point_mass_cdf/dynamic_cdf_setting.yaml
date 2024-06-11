@@ -10,10 +10,13 @@ controller:
 robot:
   u_max: [2.5, 2.5]
   u_min: [-2.5, -2.5]
-#  initial_state: [-2.5, -2.0, 0.0]  # one obstacle case
+  # case 1: one obstacle case
+#  initial_state: [-2.5, 0.0, 0.0]  # one obstacle case, y \in [-2.0, 2.1]
 #  target_state: [2.0, -0.5, 0.0]
-  initial_state: [2.0, 1.5, 0.0]
+  # case 2: one obstacle case
+  initial_state: [2.0, 0.0, 0.0]  # one obstacle case, y \in [-2.5, 2.5]
   target_state: [-2.0, 1.0, 0.0]
+  # case 3
   radius: 0.1
   destination_margin: 0.1
   sensor_range: 6.0

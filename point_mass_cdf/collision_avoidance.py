@@ -304,7 +304,8 @@ class Collision_Avoidance:
         self.ani.render_cdf(cdf, self.xt, self.terminal_time, self.show_obs, self.cdf_obs_dx_cbf_t, show_arrow=True)
 
     def render_dynamic_cdf(self, cdf, log_circle_center, log_gradient_field):
-        self.ani.render_dynamic_cdf(cdf, log_circle_center, log_gradient_field, self.xt, self.terminal_time, self.show_obs,
+        self.ani.render_dynamic_cdf(cdf, log_circle_center, log_gradient_field, self.xt, self.terminal_time,
+                                    self.show_obs,
                                     self.cdf_obs_dx_cbf_t, show_arrow=True, show_ob_arrow=True)
 
     def render_manipulator(self):
@@ -330,39 +331,54 @@ class Collision_Avoidance:
 
 
 if __name__ == '__main__':
-    # file_name = 'dynamic_setting.yaml'
-    # file_name = 'static_setting.yaml'
-    file_name = 'dynamic_cdf_setting.yaml'
-    # file_name = 'static_cdf_setting.yaml'
+    file_names = {
+        1: 'static_setting.yaml',
+        2: 'dynamic_setting.yaml',
+        3: 'static_cdf_setting.yaml',
+        4: 'dynamic_cdf_setting.yaml'
 
-    # test_target.navigation_destination()
-    file_name = os.path.join(CURRENT_DIR, file_name)
+    }
+
+    case = 4
+    file_name = os.path.join(CURRENT_DIR, file_names[case])
     cdf = CDF2D(device)
     test_target = Collision_Avoidance(file_name)
 
     "collision avoidance with circle cbf"
-    # test_target.collision_avoidance()
-    # test_target.render(0)
-    # test_target.show_controls()
-    # test_target.show_clf()
-    # test_target.show_slack()
-    # test_target.show_cbf(0)
-    # test_target.show_dx_cbf(0)
+    if case == 1:
+        test_target.collision_avoidance()
+        test_target.render(0)
+        test_target.show_controls()
+        test_target.show_clf()
+        test_target.show_slack()
+        test_target.show_cbf(0)
+        test_target.show_dx_cbf(0)
 
-    "collision avoidance with static cdf cbf"
-    # test_target.collision_avoidance(cdf=cdf)
-    # test_target.render_cdf(cdf)
-    # test_target.render_manipulator()
-    # test_target.show_clf()
-    # test_target.show_cdf_cbf(0)
-    # test_target.show_controls()
-    # test_target.show_slack()
+    elif case == 2:
+        test_target.collision_avoidance()
+        test_target.render(0)
+        test_target.show_controls()
+        test_target.show_clf()
+        test_target.show_slack()
+        test_target.show_cbf(0)
+        test_target.show_dx_cbf(0)
 
-    "collision avoidance with dynamic cdf cbf"
-    test_target.collision_avoidance(cdf=cdf)
-    cdf_dyn_obs_center_list = np.copy(test_target.cdf_dyn_obs_center_list)
-    test_target.render_dynamic_cdf(cdf, test_target.cdf_dyn_obs_center_list, test_target.dyn_obstacle_gradient_filed)
-    # test_target.show_clf()
-    # test_target.show_cdf_cbf(0)
-    # test_target.show_controls()
-    # test_target.show_slack()
+    elif case == 3:
+        "collision avoidance with static cdf cbf"
+        test_target.collision_avoidance(cdf=cdf)
+        test_target.render_cdf(cdf)
+        test_target.render_manipulator()
+        test_target.show_clf()
+        test_target.show_cdf_cbf(0)
+        test_target.show_controls()
+        test_target.show_slack()
+
+    elif case == 4:
+        "collision avoidance with dynamic cdf cbf"
+        test_target.collision_avoidance(cdf=cdf)
+        test_target.render_dynamic_cdf(cdf, test_target.cdf_dyn_obs_center_list,
+                                       test_target.dyn_obstacle_gradient_filed)
+        test_target.show_clf()
+        test_target.show_cdf_cbf(0)
+        test_target.show_controls()
+        test_target.show_slack()
