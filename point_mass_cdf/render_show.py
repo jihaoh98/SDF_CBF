@@ -282,7 +282,7 @@ class Render_Animation:
                     Circle(center=torch.from_numpy(log_circle_center[frame][0]), radius=0.3, device=device),
                     Circle(center=torch.from_numpy(log_circle_center[frame][1]), radius=0.3, device=device)]
                 d_grad, grad_plot = cdf.inference_c_space_sdf_using_data(cdf.Q_sets, self.sample_num)
-                contour, contourf, ct_zero = cdf.plot_cdf_ax(d_grad.detach().cpu().numpy(), ax)
+                contour, contourf, ct_zero, hatch_handle = cdf.plot_cdf_ax(d_grad.detach().cpu().numpy(), ax)
                 # Add new elements to the list
                 obstacle_elements.extend([contour, contourf, ct_zero])
 
@@ -597,7 +597,7 @@ class Render_Animation:
         figure = plt.figure()
         figure.set_dpi(150)
 
-        plt.plot(t, cdfcbft[i, 0:terminal_time].reshape(terminal_time, ), linewidth=3, color='blue')
+        plt.plot(t, cdfcbft[i, 0, 0:terminal_time].reshape(terminal_time, ), linewidth=3, color='blue')
         plt.title('CDF-CBF with respect to {}th obstacle'.format(i), self.label_font)
         plt.ylabel('cdfcbf (m)', self.label_font)
         plt.xlabel('Time (s)', self.label_font)

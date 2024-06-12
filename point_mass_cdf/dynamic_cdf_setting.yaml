@@ -6,7 +6,7 @@ controller:
   smooth_input: [1.0, 1.0]
   weight_slack: 100
   clf_lambda: 1.0
-  cbf_gamma: 0.9  # 1.0 for one obstacle case
+  cbf_gamma: 0.8  # 1.0 for one obstacle case
 
 robot:
   u_max: [2.0, 2.0]
@@ -30,8 +30,8 @@ cdf_dyn_obstacle_list:
     [2.3, -2.35],
 #    [2.5, 2.5]
   ]
-#  obs_radii: [0.3, 0.3]
-  obs_radii: [0.3]
+  obs_radii: [0.3, 0.3]
+#  obs_radii: [0.3]
   obs_vel: [
     [0.0, 0.5],
 #    [-0.5, 0.0]
