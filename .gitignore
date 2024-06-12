@@ -29,3 +29,4 @@ test.py
 figure
 *.gif
 data
+.idea
