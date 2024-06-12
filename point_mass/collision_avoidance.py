@@ -13,7 +13,7 @@ class Collision_Avoidance:
         """ collision avoidance with obstacles """
         with open(file_name) as file:
             config = yaml.safe_load(file)
-        
+
         robot_params = config['robot']
         controller_params = config['controller']
         self.cbf_qp = Integral_Sdf_Cbf_Clf(file_name)
@@ -32,16 +32,16 @@ class Collision_Avoidance:
             self.cir_obs_list = [None for i in range(self.cir_obs_num)]
             for i in range(self.cir_obs_num):
                 self.cir_obs_list[i] = obs.Circle_Obs(
-                    index=i, 
-                    radius=cir_obs_params['obs_radiuses'][i], 
-                    center=cir_obs_params['obs_states'][i], 
-                    vel=cir_obs_params['obs_vels'][i], 
+                    index=i,
+                    radius=cir_obs_params['obs_radiuses'][i],
+                    center=cir_obs_params['obs_states'][i],
+                    vel=cir_obs_params['obs_vels'][i],
                     mode=cir_obs_params['modes'][i],
                 )
-                            
+
             # get cir_obstacles' center position and velocity as well as radius
             self.cir_obs_init_states_list = [
-                self.cir_obs_list[i].get_current_state() 
+                self.cir_obs_list[i].get_current_state()
                 for i in range(self.cir_obs_num)
             ]
             self.cir_obs_states_list = np.copy(self.cir_obs_init_states_list)
@@ -71,20 +71,20 @@ class Collision_Avoidance:
         #     self.step_time,
         # )
         self.show_obs = True
-    
+
     def navigation_destination(self, add_slack=False):
         """ navigate the robot to its destination """
         t = 0
         process_time = []
         # approach the destination or exceed the maximum time
         while (
-            np.linalg.norm(self.robot_cur_state[0:3] - self.robot_target_state[0:3])
-            >= self.destination_margin
-            and t - self.time_steps < 0.0
+                np.linalg.norm(self.robot_cur_state[0:3] - self.robot_target_state[0:3])
+                >= self.destination_margin
+                and t - self.time_steps < 0.0
         ):
             if t % 100 == 0:
                 print(f't = {t}')
-        
+
             start_time = time.time()
             optimal_result = self.cbf_qp.clf_qp(self.robot_cur_state, add_slack=add_slack)
             process_time.append(time.time() - start_time)
@@ -103,7 +103,7 @@ class Collision_Avoidance:
             self.robot_cur_state = self.cbf_qp.robot.next_state(self.robot_cur_state, optimal_result.u, self.step_time)
             t = t + 1
 
-        self.terminal_time = t 
+        self.terminal_time = t
         # storage the last state of robot
         self.xt[:, t] = np.copy(self.robot_cur_state)
         self.show_obs = False
@@ -126,9 +126,9 @@ class Collision_Avoidance:
         process_time = []
         # approach the destination or exceed the maximum time
         while (
-            np.linalg.norm(self.robot_cur_state[0:3] - self.robot_target_state[0:3])
-            >= self.destination_margin
-            and t - self.time_steps < 0.0
+                np.linalg.norm(self.robot_cur_state[0:3] - self.robot_target_state[0:3])
+                >= self.destination_margin
+                and t - self.time_steps < 0.0
         ):
             if t % 100 == 0:
                 print(f't = {t}')
@@ -159,8 +159,8 @@ class Collision_Avoidance:
                 self.cir_obs_states_list = [self.cir_obs_list[i].get_current_state() for i in range(self.cir_obs_num)]
             t = t + 1
 
-        self.terminal_time = t 
-        
+        self.terminal_time = t
+
         # storage the last state of robot and obstacles
         self.xt[:, t] = np.copy(self.robot_cur_state)
         if self.cir_obs_states_list is not None:
@@ -177,15 +177,35 @@ class Collision_Avoidance:
         print('Maxinum_time:', max(process_time))
         print('Minimum_time:', min(process_time))
         print('Median_time:', statistics.median(process_time))
-        print('Average_time:', statistics.mean(process_time))    
+        print('Average_time:', statistics.mean(process_time))
 
-        for i in range(self.terminal_time + 1):
-            print()
-    
-        
+        # plot 3D figure: the self.xt (the shape is (3, self.time_steps + 1))
+        plt.figure()
+        ax = plt.axes(projection='3d')
+        ax.plot3D(self.xt[0, :self.terminal_time], self.xt[1, :self.terminal_time], self.xt[2, :self.terminal_time],
+                  'gray')
+        ax.scatter3D(self.xt[0, 0], self.xt[1, 0], self.xt[2, 0], c='r', label='start')
+        ax.scatter3D(self.xt[0, self.terminal_time], self.xt[1, self.terminal_time], self.xt[2, self.terminal_time],
+                     c='b', label='end')
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        ax.set_zlabel('z')
+        # plot the 3d circle obstacle
+        cir_state = np.array(self.cir_obstacle_state_t[0][:3, 0])
+        cir_radius = self.cir_obstacle_state_t[0][6][0]
+        u = np.linspace(0, 2 * np.pi, 100)
+        v = np.linspace(0, np.pi, 100)
+        x = cir_radius * np.outer(np.cos(u), np.sin(v)) + cir_state[0]
+        y = cir_radius * np.outer(np.sin(u), np.sin(v)) + cir_state[1]
+        z = cir_radius * np.outer(np.ones(np.size(u)), np.cos(v)) + cir_state[2]
+        ax.plot_surface(x, y, z, color='r', alpha=0.5)
+
+        ax.legend()
+        plt.show()
+
     def render(self):
         self.ani.render(self.xt, self.cir_obstacle_state_t, self.terminal_time, self.show_obs)
-    
+
     def show_cbf(self, i):
         self.ani.show_cbf(i, self.cir_obs_cbf_t, self.terminal_time)
 
@@ -198,13 +218,14 @@ class Collision_Avoidance:
     def show_slack(self):
         self.ani.show_slack(self.slackt[0], self.terminal_time)
 
+
 if __name__ == '__main__':
     # file_name = 'dynamic_setting.yaml'
     file_name = 'static_setting.yaml'
 
     test_target = Collision_Avoidance(file_name)
     # test_target.navigation_destination()
-    
+
     test_target.collision_avoidance()
 
     # test_target.render()
@@ -212,4 +233,3 @@ if __name__ == '__main__':
     # test_target.show_clf()
     # test_target.show_slack()
     # test_target.show_cbf(0)
-    

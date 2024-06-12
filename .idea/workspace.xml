@@ -1,0 +1,719 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="99f61aec-86c6-4bae-9edb-21e4a0556989" name="Changes" comment="update gitignore" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$" value="jihao/test" />
+      </map>
+    </option>
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;xueminchi&quot;
+  }
+}</component>
+  <component name="GithubPullRequestsUISettings">
+    <option name="selectedUrlAndAccountId">
+      <UrlAndAccount>
+        <option name="accountId" value="c6b593fc-d635-492b-818f-84b496ba79e7" />
+        <option name="url" value="https://github.com/jihaoh98/SDF_CBF.git" />
+      </UrlAndAccount>
+    </option>
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 2
+}</component>
+  <component name="ProjectId" id="2ZD34UGnJU7jOM8CQRuXBAcPipH" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "WebServerToolWindowFactoryState": "false",
+    "git-widget-placeholder": "jihao/test",
+    "last_opened_file_path": "/home/cxm/PycharmProjects/SDF_CBF/point_mass_cdf",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "PyScientificConfigurable",
+    "vue.rearranger.settings.migration": "true"
+  }
+}]]></component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/point_mass_cdf" />
+      <recent name="$PROJECT_DIR$" />
+      <recent name="$PROJECT_DIR$/point_mass" />
+      <recent name="$PROJECT_DIR$/learning_sdf/joint_space_sdf" />
+      <recent name="$PROJECT_DIR$/learning_sdf" />
+    </key>
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/learning_sdf/sdf_tools" />
+      <recent name="$PROJECT_DIR$/polytope/unicycle_model" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Python.collision_avoidance (1)">
+    <configuration name="SDF_point_vs_polytope" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="SDF_CBF" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/SDF_point_vs_polytope.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="collision_avoidance (1)" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="SDF_CBF" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/point_mass" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/point_mass/collision_avoidance.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="collision_avoidance (2)" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="SDF_CBF" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/point_mass_cdf" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/point_mass_cdf/collision_avoidance.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="render_show (1)" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="SDF_CBF" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/point_mass_cdf" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/point_mass_cdf/render_show.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="test" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="SDF_CBF" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/point_mass_cdf" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/point_mass_cdf/test.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Python.collision_avoidance (1)" />
+        <item itemvalue="Python.test" />
+        <item itemvalue="Python.SDF_point_vs_polytope" />
+        <item itemvalue="Python.render_show (1)" />
+        <item itemvalue="Python.collision_avoidance (2)" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="99f61aec-86c6-4bae-9edb-21e4a0556989" name="Changes" comment="" />
+      <created>1701942631694</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1701942631694</updated>
+      <workItem from="1701942632726" duration="78000" />
+      <workItem from="1701942717207" duration="406000" />
+      <workItem from="1701957699601" duration="271000" />
+      <workItem from="1701957977693" duration="2374000" />
+      <workItem from="1702157711268" duration="34000" />
+      <workItem from="1702158161324" duration="65000" />
+      <workItem from="1702665850081" duration="1931000" />
+      <workItem from="1702670442490" duration="28000" />
+      <workItem from="1702670530595" duration="2000" />
+      <workItem from="1702671148684" duration="368000" />
+      <workItem from="1702671591276" duration="1066000" />
+      <workItem from="1702686525765" duration="2506000" />
+      <workItem from="1702720058991" duration="4556000" />
+      <workItem from="1702744357025" duration="7480000" />
+      <workItem from="1702762357367" duration="1758000" />
+      <workItem from="1702937645398" duration="565000" />
+      <workItem from="1703378841110" duration="26000" />
+      <workItem from="1703436605547" duration="101000" />
+      <workItem from="1703975438354" duration="575000" />
+      <workItem from="1703976235154" duration="215000" />
+      <workItem from="1703976483726" duration="3047000" />
+      <workItem from="1704066235923" duration="178000" />
+      <workItem from="1704126860161" duration="3000" />
+      <workItem from="1704445074316" duration="661000" />
+      <workItem from="1704491309657" duration="7000" />
+      <workItem from="1704672792437" duration="1236000" />
+      <workItem from="1704674036863" duration="212000" />
+      <workItem from="1705323895357" duration="832000" />
+      <workItem from="1705325647824" duration="509000" />
+      <workItem from="1705326556722" duration="130000" />
+      <workItem from="1705335716504" duration="8000" />
+      <workItem from="1705496649503" duration="188000" />
+      <workItem from="1705496844092" duration="206000" />
+      <workItem from="1705531364357" duration="777000" />
+      <workItem from="1705535135017" duration="914000" />
+      <workItem from="1705574637112" duration="371000" />
+      <workItem from="1705575162321" duration="183000" />
+      <workItem from="1705575586056" duration="795000" />
+      <workItem from="1705754819971" duration="10000" />
+      <workItem from="1705757239747" duration="1000" />
+      <workItem from="1706091268967" duration="30000" />
+      <workItem from="1706091302159" duration="1777000" />
+      <workItem from="1706101501867" duration="2096000" />
+      <workItem from="1706104380999" duration="344000" />
+      <workItem from="1706135831191" duration="79000" />
+      <workItem from="1706178168083" duration="9573000" />
+      <workItem from="1706377424630" duration="1289000" />
+      <workItem from="1706432036068" duration="12604000" />
+      <workItem from="1706451958304" duration="5000" />
+      <workItem from="1706525968272" duration="51000" />
+      <workItem from="1706533676029" duration="1519000" />
+      <workItem from="1706537229383" duration="6061000" />
+      <workItem from="1706567138845" duration="7537000" />
+      <workItem from="1706574755378" duration="8000" />
+      <workItem from="1706575689603" duration="4971000" />
+      <workItem from="1706580841117" duration="756000" />
+      <workItem from="1706608704848" duration="2000" />
+      <workItem from="1706700945188" duration="12000" />
+      <workItem from="1706986757017" duration="1076000" />
+      <workItem from="1708248798395" duration="610000" />
+      <workItem from="1708381505690" duration="2000" />
+      <workItem from="1708503915238" duration="1174000" />
+      <workItem from="1708593821921" duration="2424000" />
+      <workItem from="1708606008908" duration="542000" />
+      <workItem from="1717547435540" duration="641000" />
+      <workItem from="1717578355361" duration="2647000" />
+      <workItem from="1717602153886" duration="22121000" />
+      <workItem from="1717660749220" duration="32162000" />
+      <workItem from="1717712913197" duration="7000" />
+      <workItem from="1717713041917" duration="3000" />
+      <workItem from="1717716053484" duration="182000" />
+      <workItem from="1717716242901" duration="84000" />
+      <workItem from="1717780113205" duration="23013000" />
+      <workItem from="1717927014687" duration="27683000" />
+      <workItem from="1718044840994" duration="613000" />
+      <workItem from="1718090505824" duration="1455000" />
+      <workItem from="1718111981473" duration="34513000" />
+      <workItem from="1718180263669" duration="890000" />
+      <workItem from="1718181159125" duration="5274000" />
+      <workItem from="1718194962172" duration="1127000" />
+      <workItem from="1718197239915" duration="127000" />
+      <workItem from="1718197374199" duration="79000" />
+      <workItem from="1718197460983" duration="104000" />
+      <workItem from="1718197571942" duration="83000" />
+      <workItem from="1718197663082" duration="1085000" />
+    </task>
+    <task id="LOCAL-00001" summary="some modification.">
+      <option name="closed" value="true" />
+      <created>1702686511251</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1702686511251</updated>
+    </task>
+    <task id="LOCAL-00002" summary="The differentiability of signed distance.">
+      <option name="closed" value="true" />
+      <created>1702764009915</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1702764009915</updated>
+    </task>
+    <task id="LOCAL-00003" summary="sdf update">
+      <option name="closed" value="true" />
+      <created>1704066264480</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1704066264480</updated>
+    </task>
+    <task id="LOCAL-00004" summary="test commit and push">
+      <option name="closed" value="true" />
+      <created>1705496930310</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1705496930310</updated>
+    </task>
+    <task id="LOCAL-00005" summary="joint space SDF">
+      <option name="closed" value="true" />
+      <created>1705535259804</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1705535259804</updated>
+    </task>
+    <task id="LOCAL-00006" summary="single integrator point mass">
+      <option name="closed" value="true" />
+      <created>1706103936961</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1706103936961</updated>
+    </task>
+    <task id="LOCAL-00007" summary="add the CDF obstacle">
+      <option name="closed" value="true" />
+      <created>1706525983683</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1706525983683</updated>
+    </task>
+    <task id="LOCAL-00008" summary="Xuemin: add obstacles">
+      <option name="closed" value="true" />
+      <created>1706577542784</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1706577542784</updated>
+    </task>
+    <task id="LOCAL-00009" summary="Xuemin: add obstacles">
+      <option name="closed" value="true" />
+      <created>1706580653502</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1706580653502</updated>
+    </task>
+    <task id="LOCAL-00010" summary="Xuemin: add obstacles">
+      <option name="closed" value="true" />
+      <created>1706581591143</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1706581591143</updated>
+    </task>
+    <task id="LOCAL-00011" summary="Xuemin: add obstacles">
+      <option name="closed" value="true" />
+      <created>1717603053590</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1717603053590</updated>
+    </task>
+    <task id="LOCAL-00012" summary="clean codes">
+      <option name="closed" value="true" />
+      <created>1717621749720</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1717621749720</updated>
+    </task>
+    <task id="LOCAL-00013" summary="copy the point mass model and start working on it.">
+      <option name="closed" value="true" />
+      <created>1717621806266</created>
+      <option name="number" value="00013" />
+      <option name="presentableId" value="LOCAL-00013" />
+      <option name="project" value="LOCAL" />
+      <updated>1717621806266</updated>
+    </task>
+    <task id="LOCAL-00014" summary="add the obstacle in configuration space.">
+      <option name="closed" value="true" />
+      <created>1717622266382</created>
+      <option name="number" value="00014" />
+      <option name="presentableId" value="LOCAL-00014" />
+      <option name="project" value="LOCAL" />
+      <updated>1717622266382</updated>
+    </task>
+    <task id="LOCAL-00015" summary="test the obstacle's distance and the gradeint field.">
+      <option name="closed" value="true" />
+      <created>1717622750673</created>
+      <option name="number" value="00015" />
+      <option name="presentableId" value="LOCAL-00015" />
+      <option name="project" value="LOCAL" />
+      <updated>1717622750673</updated>
+    </task>
+    <task id="LOCAL-00016" summary="adapt the domain size.">
+      <option name="closed" value="true" />
+      <created>1717624472748</created>
+      <option name="number" value="00016" />
+      <option name="presentableId" value="LOCAL-00016" />
+      <option name="project" value="LOCAL" />
+      <updated>1717624472748</updated>
+    </task>
+    <task id="LOCAL-00017" summary="add the visualization of the gradient">
+      <option name="closed" value="true" />
+      <created>1717635003577</created>
+      <option name="number" value="00017" />
+      <option name="presentableId" value="LOCAL-00017" />
+      <option name="project" value="LOCAL" />
+      <updated>1717635003577</updated>
+    </task>
+    <task id="LOCAL-00018" summary="add the test for normalizing the gradient">
+      <option name="closed" value="true" />
+      <created>1717663448846</created>
+      <option name="number" value="00018" />
+      <option name="presentableId" value="LOCAL-00018" />
+      <option name="project" value="LOCAL" />
+      <updated>1717663448846</updated>
+    </task>
+    <task id="LOCAL-00019" summary="added visualizations and finished debugging.">
+      <option name="closed" value="true" />
+      <created>1717680957032</created>
+      <option name="number" value="00019" />
+      <option name="presentableId" value="LOCAL-00019" />
+      <option name="project" value="LOCAL" />
+      <updated>1717680957032</updated>
+    </task>
+    <task id="LOCAL-00020" summary="Finish debugging. It's working in a static environment now.">
+      <option name="closed" value="true" />
+      <created>1717709309526</created>
+      <option name="number" value="00020" />
+      <option name="presentableId" value="LOCAL-00020" />
+      <option name="project" value="LOCAL" />
+      <updated>1717709309526</updated>
+    </task>
+    <task id="LOCAL-00021" summary="modify some codes to test the two static obstacle case">
+      <option name="closed" value="true" />
+      <created>1717712867785</created>
+      <option name="number" value="00021" />
+      <option name="presentableId" value="LOCAL-00021" />
+      <option name="project" value="LOCAL" />
+      <updated>1717712867785</updated>
+    </task>
+    <task id="LOCAL-00022" summary="add visualizations for the manipulator.">
+      <option name="closed" value="true" />
+      <created>1717716319804</created>
+      <option name="number" value="00022" />
+      <option name="presentableId" value="LOCAL-00022" />
+      <option name="project" value="LOCAL" />
+      <updated>1717716319804</updated>
+    </task>
+    <task id="LOCAL-00023" summary="add the gradient with respect to the obstacle">
+      <option name="closed" value="true" />
+      <created>1717948513656</created>
+      <option name="number" value="00023" />
+      <option name="presentableId" value="LOCAL-00023" />
+      <option name="project" value="LOCAL" />
+      <updated>1717948513657</updated>
+    </task>
+    <task id="LOCAL-00024" summary="add the dynamic obstacle case.">
+      <option name="closed" value="true" />
+      <created>1717979134520</created>
+      <option name="number" value="00024" />
+      <option name="presentableId" value="LOCAL-00024" />
+      <option name="project" value="LOCAL" />
+      <updated>1717979134520</updated>
+    </task>
+    <task id="LOCAL-00025" summary="test the cbf parameters.">
+      <option name="closed" value="true" />
+      <created>1717981206581</created>
+      <option name="number" value="00025" />
+      <option name="presentableId" value="LOCAL-00025" />
+      <option name="project" value="LOCAL" />
+      <updated>1717981206581</updated>
+    </task>
+    <task id="LOCAL-00026" summary="防止丢失，保存一下。">
+      <option name="closed" value="true" />
+      <created>1718123440496</created>
+      <option name="number" value="00026" />
+      <option name="presentableId" value="LOCAL-00026" />
+      <option name="project" value="LOCAL" />
+      <updated>1718123440496</updated>
+    </task>
+    <task id="LOCAL-00027" summary="use `yaml` file to manage the environment parameters">
+      <option name="closed" value="true" />
+      <created>1718125315660</created>
+      <option name="number" value="00027" />
+      <option name="presentableId" value="LOCAL-00027" />
+      <option name="project" value="LOCAL" />
+      <updated>1718125315660</updated>
+    </task>
+    <task id="LOCAL-00028" summary="Fix the bugs of dynamic collision avoidance.">
+      <option name="closed" value="true" />
+      <created>1718140771968</created>
+      <option name="number" value="00028" />
+      <option name="presentableId" value="LOCAL-00028" />
+      <option name="project" value="LOCAL" />
+      <updated>1718140771968</updated>
+    </task>
+    <task id="LOCAL-00029" summary="add the arrows for the docbf">
+      <option name="closed" value="true" />
+      <created>1718143425335</created>
+      <option name="number" value="00029" />
+      <option name="presentableId" value="LOCAL-00029" />
+      <option name="project" value="LOCAL" />
+      <updated>1718143425335</updated>
+    </task>
+    <task id="LOCAL-00030" summary="update the yaml file">
+      <option name="closed" value="true" />
+      <created>1718145342054</created>
+      <option name="number" value="00030" />
+      <option name="presentableId" value="LOCAL-00030" />
+      <option name="project" value="LOCAL" />
+      <updated>1718145342054</updated>
+    </task>
+    <task id="LOCAL-00031" summary="fix the bugs for multiple constraints.">
+      <option name="closed" value="true" />
+      <created>1718157216084</created>
+      <option name="number" value="00031" />
+      <option name="presentableId" value="LOCAL-00031" />
+      <option name="project" value="LOCAL" />
+      <updated>1718157216084</updated>
+    </task>
+    <task id="LOCAL-00032" summary="add labels">
+      <option name="closed" value="true" />
+      <created>1718184218240</created>
+      <option name="number" value="00032" />
+      <option name="presentableId" value="LOCAL-00032" />
+      <option name="project" value="LOCAL" />
+      <updated>1718184218240</updated>
+    </task>
+    <task id="LOCAL-00033" summary="fix visualization bugs">
+      <option name="closed" value="true" />
+      <created>1718184735240</created>
+      <option name="number" value="00033" />
+      <option name="presentableId" value="LOCAL-00033" />
+      <option name="project" value="LOCAL" />
+      <updated>1718184735240</updated>
+    </task>
+    <task id="LOCAL-00034" summary="add visualizations for the manipulator">
+      <option name="closed" value="true" />
+      <created>1718186304075</created>
+      <option name="number" value="00034" />
+      <option name="presentableId" value="LOCAL-00034" />
+      <option name="project" value="LOCAL" />
+      <updated>1718186304075</updated>
+    </task>
+    <task id="LOCAL-00035" summary="add visualizations for the manipulator">
+      <option name="closed" value="true" />
+      <created>1718197075450</created>
+      <option name="number" value="00035" />
+      <option name="presentableId" value="LOCAL-00035" />
+      <option name="project" value="LOCAL" />
+      <updated>1718197075451</updated>
+    </task>
+    <task id="LOCAL-00036" summary="update gitignore">
+      <option name="closed" value="true" />
+      <created>1718197606262</created>
+      <option name="number" value="00036" />
+      <option name="presentableId" value="LOCAL-00036" />
+      <option name="project" value="LOCAL" />
+      <updated>1718197606262</updated>
+    </task>
+    <option name="localTasksCounter" value="37" />
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State>
+              <option name="FILTERS">
+                <map>
+                  <entry key="branch">
+                    <value>
+                      <list>
+                        <option value="main" />
+                      </list>
+                    </value>
+                  </entry>
+                </map>
+              </option>
+            </State>
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="Xuemin: add obstacles" />
+    <MESSAGE value="clean codes" />
+    <MESSAGE value="copy the point mass model and start working on it." />
+    <MESSAGE value="add the obstacle in configuration space." />
+    <MESSAGE value="test the obstacle's distance and the gradeint field." />
+    <MESSAGE value="adapt the domain size." />
+    <MESSAGE value="add the visualization of the gradient" />
+    <MESSAGE value="add the test for normalizing the gradient" />
+    <MESSAGE value="added visualizations and finished debugging." />
+    <MESSAGE value="Finish debugging. It's working in a static environment now." />
+    <MESSAGE value="modify some codes to test the two static obstacle case" />
+    <MESSAGE value="add visualizations for the manipulator." />
+    <MESSAGE value="add the gradient with respect to the obstacle" />
+    <MESSAGE value="add the dynamic obstacle case." />
+    <MESSAGE value="test the cbf parameters." />
+    <MESSAGE value="防止丢失，保存一下。" />
+    <MESSAGE value="use `yaml` file to manage the environment parameters" />
+    <MESSAGE value="Fix the bugs of dynamic collision avoidance." />
+    <MESSAGE value="add the arrows for the docbf" />
+    <MESSAGE value="update the yaml file" />
+    <MESSAGE value="fix the bugs for multiple constraints." />
+    <MESSAGE value="add labels" />
+    <MESSAGE value="fix visualization bugs" />
+    <MESSAGE value="add visualizations for the manipulator" />
+    <MESSAGE value="update gitignore" />
+    <option name="LAST_COMMIT_MESSAGE" value="update gitignore" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/polytope/integral_sdf_qp.py</url>
+          <line>112</line>
+          <option name="timeStamp" value="1" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/polytope/integral_sdf_qp.py</url>
+          <line>122</line>
+          <option name="timeStamp" value="2" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/polytope/integral_sdf_qp.py</url>
+          <line>116</line>
+          <option name="timeStamp" value="3" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/l_shape/integral_robot_sdf.py</url>
+          <line>194</line>
+          <option name="timeStamp" value="66" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/l_shape/integral_robot_sdf.py</url>
+          <line>212</line>
+          <option name="timeStamp" value="67" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/l_shape/integral_robot_sdf.py</url>
+          <line>188</line>
+          <option name="timeStamp" value="69" />
+        </line-breakpoint>
+      </breakpoints>
+      <default-breakpoints>
+        <breakpoint type="python-exception">
+          <properties notifyOnTerminate="true" exception="BaseException">
+            <option name="notifyOnTerminate" value="true" />
+          </properties>
+        </breakpoint>
+      </default-breakpoints>
+    </breakpoint-manager>
+  </component>
+  <component name="com.intellij.coverage.CoverageDataManagerImpl">
+    <SUITE FILE_PATH="coverage/SDF_CBF$collision_avoidance__2_.coverage" NAME="collision_avoidance (2) Coverage Results" MODIFIED="1718195094728" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/point_mass_cdf" />
+    <SUITE FILE_PATH="coverage/SDF_CBF$l_shape_robot__1_.coverage" NAME="l_shape_robot (1) Coverage Results" MODIFIED="1701943040905" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/l_shape/unicycle_model" />
+    <SUITE FILE_PATH="coverage/SDF_CBF$55.coverage" NAME="55 Coverage Results" MODIFIED="1702744713501" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/SDF_CBF$integral_robot_sdf.coverage" NAME="integral_robot_sdf Coverage Results" MODIFIED="1706091821986" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/polytope" />
+    <SUITE FILE_PATH="coverage/SDF_CBF$123.coverage" NAME="SDF_point_vs_polytope Coverage Results" MODIFIED="1702763954382" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/SDF_CBF$SDF_linearized.coverage" NAME="SDF_linearized Coverage Results" MODIFIED="1702937670161" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/SDF_CBF$cdf__1_.coverage" NAME="cdf (1) Coverage Results" MODIFIED="1706568653057" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/point_mass" />
+    <SUITE FILE_PATH="coverage/SDF_CBF$delete.coverage" NAME="delete Coverage Results" MODIFIED="1717633369030" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/point_mass_cdf" />
+    <SUITE FILE_PATH="coverage/SDF_CBF$SDF_non_differentiable.coverage" NAME="SDF_non_differentiable Coverage Results" MODIFIED="1702937658384" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/SDF_CBF$sdf_qp.coverage" NAME="sdf_qp Coverage Results" MODIFIED="1702667091774" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/polytope/integral_robot" />
+    <SUITE FILE_PATH="coverage/SDF_CBF$gemini.coverage" NAME="gemini Coverage Results" MODIFIED="1702761928889" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/SDF_CBF$l_shape_robot.coverage" NAME="l_shape_robot Coverage Results" MODIFIED="1704673409844" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/polytope/integral_robot" />
+    <SUITE FILE_PATH="coverage/SDF_CBF$interactive_bezier_curves_move.coverage" NAME="interactive_bezier_curves_move Coverage Results" MODIFIED="1703975577664" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/learning_sdf" />
+    <SUITE FILE_PATH="coverage/SDF_CBF$collision_avoidance.coverage" NAME="collision_avoidance Coverage Results" MODIFIED="1706091517799" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/polytope" />
+    <SUITE FILE_PATH="coverage/SDF_CBF$train_nn.coverage" NAME="train_nn Coverage Results" MODIFIED="1705575237608" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/learning_sdf/joint_space_sdf" />
+    <SUITE FILE_PATH="coverage/SDF_CBF$cdf.coverage" NAME="cdf Coverage Results" MODIFIED="1718140578450" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/point_mass_cdf" />
+    <SUITE FILE_PATH="coverage/SDF_CBF$render_show__1_.coverage" NAME="render_show (1) Coverage Results" MODIFIED="1718146335214" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/point_mass_cdf" />
+    <SUITE FILE_PATH="coverage/SDF_CBF$collision_avoidance__1_.coverage" NAME="collision_avoidance (1) Coverage Results" MODIFIED="1718198403295" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/point_mass" />
+    <SUITE FILE_PATH="coverage/SDF_CBF$bezier_curves.coverage" NAME="bezier_curves Coverage Results" MODIFIED="1703975548900" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/learning_sdf" />
+    <SUITE FILE_PATH="coverage/SDF_CBF$rectangle_sdf_robot.coverage" NAME="rectangle_sdf_robot Coverage Results" MODIFIED="1705324062304" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/learning_sdf" />
+    <SUITE FILE_PATH="coverage/SDF_CBF$collision_avoidance__3_.coverage" NAME="collision_avoidance (3) Coverage Results" MODIFIED="1702671991092" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/polytope/unicycle_model" />
+    <SUITE FILE_PATH="coverage/SDF_CBF$render_show.coverage" NAME="render_show Coverage Results" MODIFIED="1706581528735" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/point_mass" />
+    <SUITE FILE_PATH="coverage/SDF_CBF$test.coverage" NAME="test Coverage Results" MODIFIED="1718184098344" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/point_mass_cdf" />
+    <SUITE FILE_PATH="coverage/SDF_CBF$linearized.coverage" NAME="SDF_linearized Coverage Results" MODIFIED="1702763981559" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/SDF_CBF$sdf_obstacle_2d_sample.coverage" NAME="sdf_obstacle_2d_sample Coverage Results" MODIFIED="1705323921446" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/learning_sdf/sdf_tools" />
+    <SUITE FILE_PATH="coverage/SDF_CBF$sdf_robot_2d.coverage" NAME="sdf_robot_2d Coverage Results" MODIFIED="1703975630766" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/learning_sdf" />
+    <SUITE FILE_PATH="coverage/SDF_CBF$SDF_point_vs_polytope.coverage" NAME="SDF_point_vs_polytope Coverage Results" MODIFIED="1702937650452" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/SDF_CBF$interactive_bezier_curves.coverage" NAME="interactive_bezier_curves Coverage Results" MODIFIED="1703975562869" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/learning_sdf" />
+    <SUITE FILE_PATH="coverage/SDF_CBF$sdf_2d.coverage" NAME="sdf_2d Coverage Results" MODIFIED="1703975599204" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/learning_sdf" />
+    <SUITE FILE_PATH="coverage/SDF_CBF$12.coverage" NAME="12 Coverage Results" MODIFIED="1702723360888" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/SDF_CBF$44.coverage" NAME="44 Coverage Results" MODIFIED="1702744740688" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/SDF_CBF$robot_sdf.coverage" NAME="robot_sdf Coverage Results" MODIFIED="1701959066356" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/l_shape/unicycle_model" />
+  </component>
+</project>
