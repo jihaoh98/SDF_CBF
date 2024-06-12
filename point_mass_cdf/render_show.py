@@ -54,6 +54,8 @@ class Render_Animation:
         self.show_ob_arrow = False
         self.sample_num = 40
 
+        self.color_palette = ['k', 'purple', 'y']
+
         # settings of Times New Roman
         # set the text in Times New Roman
         config = {
@@ -71,10 +73,8 @@ class Render_Animation:
                            }
         self.legend_font = {"family": "Times New Roman", "weight": "normal", "size": 12}
 
-    def render_cdf(self, i, cdf, xt, obs_list, terminal_time, show_obs, dxcbft, save_gif=False, show_arrow=False):
+    def render_cdf(self, cdf, xt, obs_list, terminal_time, show_obs, dxcbft, save_gif=False, show_arrow=False):
         # visualize the cdf field
-        color_palette = ['k', 'purple', 'y']
-        self.color_palette = color_palette
         cdf.obj_lists = obs_list
         cdf.obj_lists = []
         cdf.q_template = torch.load(os.path.join(CUR_PATH, 'data2D_100.pt'))
@@ -84,7 +84,7 @@ class Render_Animation:
             cdf.obj_lists = [
                 Circle(center=torch.from_numpy(obs_list[i].state), radius=obs_list[i].radius, device=device)]
             d, grad = cdf.inference_c_space_sdf_using_data(cdf.Q_sets, 60)
-            cdf.plot_cdf(d.detach().cpu().numpy(), grad.detach().cpu().numpy(), color=color_palette[i])
+            cdf.plot_cdf(d.detach().cpu().numpy(), grad.detach().cpu().numpy(), color=self.color_palette[i])
         # plot the unit other level set
         cdf.obj_lists = []
         for i in range(len(obs_list)):
@@ -129,7 +129,7 @@ class Render_Animation:
                     gradientField[i][0, 0] * 0.05 * norm,
                     gradientField[i][1, 0] * 0.05 * norm,
                     width=0.025,
-                    color=color_palette[i],
+                    color=self.color_palette[i],
                 )
                 self.ax.add_patch(self.robot_arrow)
 
@@ -209,13 +209,16 @@ class Render_Animation:
 
     def render_dynamic_cdf(self, cdf, log_circle_center, log_gradient_field, xt, terminal_time, show_obs, dxcbft,
                            obs_num, save_gif=False, show_arrow=False, show_ob_arrow=False):
+        # load the distance field
         cdf.q_template = torch.load(os.path.join(CUR_PATH, 'data2D_100.pt'))
         cdf.obj_lists = None
+
+        # the robot trajectory
         line, = self.ax.plot([], [], color='yellow', linestyle='--', linewidth=2)
 
         # plot the start and goal point of the robot
-        self.ax.plot(xt[0, 0], xt[1, 0], 'r*', label='Start')
-        self.ax.plot(self.robot_target_state[0], self.robot_target_state[1], 'r*', label='Goal')
+        l1, = self.ax.plot(xt[0, 0], xt[1, 0], 'g*', label='start', markersize=10)
+        l2, = self.ax.plot(self.robot_target_state[0], self.robot_target_state[1], 'r*', label='goal', markersize=10)
 
         num_obs = obs_num
         self.show_arrow = show_arrow
@@ -223,29 +226,32 @@ class Render_Animation:
         self.xt = xt
 
         if self.show_arrow:
-            gradientField = dxcbft[0, :, :]  # shape is (2, time_steps)
-            self.gradientField = gradientField
-            norm = np.linalg.norm(gradientField[:, 0])
-            self.robot_arrow = mpatches.FancyArrow(
-                self.robot_init_state[0],
-                self.robot_init_state[1],
-                self.gradientField[0, 0] * 0.1 * norm,
-                self.gradientField[1, 0] * 0.1 * norm,
-                width=0.05,
-                color='k',
-            )
-            self.ax.add_patch(self.robot_arrow)
+            gradientField = np.zeros((num_obs, 3, terminal_time))
+            for i in range(num_obs):
+                gradientField[i] = dxcbft[i, :, :terminal_time]
+                self.gradientField.append(gradientField[i])
+                norm = np.linalg.norm(gradientField[i][:, 0])
+                self.robot_arrow = mpatches.FancyArrow(
+                    self.robot_init_state[0],
+                    self.robot_init_state[1],
+                    gradientField[i][0, 0] * 0.1 * norm,
+                    gradientField[i][1, 0] * 0.1 * norm,
+                    width=0.05,
+                    color=self.color_palette[i],
+                )
+                self.ax.add_patch(self.robot_arrow)
 
         if self.show_ob_arrow:
-            self.docbf_arrow = mpatches.FancyArrow(
-                log_gradient_field[0][0],
-                log_gradient_field[0][1],
-                log_gradient_field[0][2] * 0.1,
-                log_gradient_field[0][3] * 0.1,
-                width=0.05,
-                color='r',
-            )
-            self.ax.add_patch(self.docbf_arrow)
+            for i in range(num_obs):
+                self.docbf_arrow = mpatches.FancyArrow(
+                    log_gradient_field[0][i][0][0],
+                    log_gradient_field[0][i][0][1],
+                    log_gradient_field[0][i][1][0] * 0.1,
+                    log_gradient_field[0][i][1][1] * 0.1,
+                    width=0.05,
+                    color=self.color_palette[i],
+                )
+                self.ax.add_patch(self.docbf_arrow)
 
         def update_distance_field(frame, obstacle_elements, ax, line):
 
@@ -256,11 +262,13 @@ class Render_Animation:
                         coll.remove()
 
                 obstacle_elements.clear()  # Clear the list outside the loop
-                object_center = log_circle_center[frame]
-                cdf.obj_lists = [Circle(center=torch.from_numpy(object_center), radius=0.3, device=device)]
+                # object_center = log_circle_center[frame]
+                cdf.obj_lists = [
+                    Circle(center=torch.from_numpy(log_circle_center[frame][0]), radius=0.3, device=device)]
+                # cdf.obj_lists = [Circle(center=torch.from_numpy(object_center), radius=0.3, device=device)]
                 d_grad, grad_plot = cdf.inference_c_space_sdf_using_data(cdf.Q_sets)
                 # plot the distance field
-                contour, contourf, ct_zero = cdf.plot_cdf_ax(d_grad.detach().cpu().numpy(), ax)
+                contour, contourf, ct_zero, hatch_handle = cdf.plot_cdf_ax(d_grad.detach().cpu().numpy(), ax)
                 # Add new elements to the list
                 obstacle_elements.extend([contour, contourf, ct_zero])
 
@@ -279,34 +287,41 @@ class Render_Animation:
                 obstacle_elements.extend([contour, contourf, ct_zero])
 
             if self.show_arrow:
-                norm = np.linalg.norm(self.gradientField[:, frame])
-                self.robot_arrow = mpatches.FancyArrow(
-                    self.xt[:, frame][0],
-                    self.xt[:, frame][1],
-                    self.gradientField[0, frame] * 0.1 * norm,
-                    self.gradientField[1, frame] * 0.1 * norm,
-                    width=0.05,
-                    color='k',
-                )
-                self.ax.add_patch(self.robot_arrow)
-
+                for i in range(len(self.gradientField)):
+                    norm = np.linalg.norm(self.gradientField[i][:, frame])
+                    self.robot_arrow = mpatches.FancyArrow(
+                        self.xt[0][frame],
+                        self.xt[1][frame],
+                        self.gradientField[i][0, frame] * 0.1 * norm,
+                        self.gradientField[i][1, frame] * 0.1 * norm,
+                        width=0.05,
+                        color=self.color_palette[i],
+                    )
+                    self.ax.add_patch(self.robot_arrow)
             if self.show_ob_arrow:
-                self.docbf_arrow = mpatches.FancyArrow(
-                    log_gradient_field[frame][0],
-                    log_gradient_field[frame][1],
-                    log_gradient_field[frame][2] * 0.1,
-                    log_gradient_field[frame][3] * 0.1,
-                    width=0.05,
-                    color='r',
-                )
-                self.ax.add_patch(self.docbf_arrow)
+                for i in range(num_obs):
+                    self.docbf_arrow = mpatches.FancyArrow(
+                        log_gradient_field[frame][i][0][0],
+                        log_gradient_field[frame][i][0][1],
+                        log_gradient_field[frame][i][1][0] * 0.1,
+                        log_gradient_field[frame][i][1][1] * 0.1,
+                        width=0.05,
+                        color=self.color_palette[i],
+                    )
+                    self.ax.add_patch(self.docbf_arrow)
 
             line.set_data(xt[0, :frame + 1], xt[1, :frame + 1])
 
-            return obstacle_elements
+            return obstacle_elements, hatch_handle
 
         obstacle_elements = []
-        # plt.legend(loc='upper center', ncols=2)
+        _, hatch_handle = update_distance_field(0, obstacle_elements, self.ax, line)
+        # self.ax.legend(handles=[hatch_handle], loc='upper center', ncol=2)
+        # self.ax.legend([l1, l2], ['Start', 'goal'])
+        handles_all = [l1, l2, hatch_handle]
+        labels_all = [l.get_label() for l in handles_all]
+        self.ax.legend(handles=handles_all, labels=labels_all, loc='upper center', ncol=3)
+
         num_frames = terminal_time
         ani = FuncAnimation(self.fig, lambda frame: update_distance_field(frame, obstacle_elements, self.ax, line),
                             frames=num_frames, interval=50)

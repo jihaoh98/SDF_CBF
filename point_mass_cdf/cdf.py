@@ -209,10 +209,12 @@ class CDF2D:
         for c in ct_zero.collections:
             c.set_hatch('///')
 
+        hatch_handle = mpatches.Patch(facecolor='none', edgecolor='k', hatch='///', label='Obstacle')
+
         ax.set_xlabel('$q_0$', size=15)
         ax.set_ylabel('$q_1$', size=15)
 
-        return contour, contourf, ct_zero  # Ensure these match the names used in the animation function
+        return contour, contourf, ct_zero, hatch_handle  # Ensure these match the names used in the animation function
 
     def plot_sdf_ax(self, ax):
         sdf, grad = self.inference_sdf_grad(self.Q_sets.requires_grad_(True))
