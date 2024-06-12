@@ -116,7 +116,7 @@ class CDF2D:
     def inference_c_space_sdf_using_data(self, q):
         # q : (N,2)
 
-        obj_points = torch.cat([obj.sample_surface(200) for obj in self.obj_lists])
+        obj_points = torch.cat([obj.sample_surface(100) for obj in self.obj_lists])
         grid = self.x_to_grid(obj_points)
 
         q_list = (self.q_template[grid[:, 0], grid[:, 1]]).reshape(-1, 2)

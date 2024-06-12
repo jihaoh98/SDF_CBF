@@ -128,7 +128,7 @@ class Integral_Robot_Sdf:
 
         # TODO: need to fix when considering the dynamic obstacle
         dox_cbf_symbolic = obs_cdf_gradient
-        dt_obs_cbf = np.dot(dox_cbf_symbolic,obstacle_list.vel)
+        dt_obs_cbf = np.dot(dox_cbf_symbolic, obstacle_list.vel)
 
         return lf_cbf, lg_cbf, dt_obs_cbf
 

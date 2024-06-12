@@ -134,10 +134,10 @@ class CDF2D:
         grad_obj = torch.autograd.grad(d_obj, q_obj, torch.ones_like(d), retain_graph=True)[0]
         return d_obj, grad_obj, q_obj
 
-    def inference_c_space_sdf_using_data(self, q):
+    def inference_c_space_sdf_using_data(self, q, sample_size=70):
         # q : (N,2)
         q.requires_grad = True
-        obj_points = torch.cat([obj.sample_surface(70) for obj in self.obj_lists])
+        obj_points = torch.cat([obj.sample_surface(sample_size) for obj in self.obj_lists])
         grid = self.x_to_grid(obj_points)
         q_list = (self.q_template[grid[:, 0], grid[:, 1]]).reshape(-1, 2)
         q_list = q_list[q_list[:, 0] != torch.inf]  # filter out the invalid data
@@ -161,7 +161,7 @@ class CDF2D:
         plt.xlabel('$q_0$', size=15)
         plt.ylabel('$q_1$', size=15)
 
-    def plot_cdf(self, d, g):
+    def plot_cdf(self, d, g, color='k'):
         sdf, grad = self.inference_sdf_grad(self.Q_sets.requires_grad_(True))
         sdf = sdf.detach().cpu().numpy()
         cmap = plt.cm.get_cmap('coolwarm')
@@ -169,19 +169,26 @@ class CDF2D:
                           cmap=cmap, levels=[-0.5, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0], linewidths=1)
         plt.clabel(ct, [], inline=False, fontsize=10, colors='black')
         ct_zero = plt.contour(self.q0, self.q1, sdf.reshape(self.nbData, self.nbData), levels=[0], linewidths=2,
-                              colors='k',
+                              colors=color,
                               alpha=1.0)
         for c in ct_zero.collections:
             c.set_hatch('///')  # Apply the hatch patter
 
-        # use streamline to plot gradient field
-        # x = np.linspace(-PI, PI, self.nbData)
-        # y = np.linspace(-PI, PI, self.nbData)
-        # X, Y = np.meshgrid(x, y)
-        # U = g[:, 0].reshape(self.nbData, self.nbData)
-        # V = g[:, 1].reshape(self.nbData, self.nbData)
-        # # Create the streamplot and get the returned LineCollection object
-        # streams = plt.streamplot(X, Y, U, V, color='blue', linewidth=0.5)
+        plt.xlabel('$q_0$', size=15)
+        plt.ylabel('$q_1$', size=15)
+
+    def plot_non_zero_cdf(self, d, g):
+        sdf, grad = self.inference_sdf_grad(self.Q_sets.requires_grad_(True))
+        sdf = sdf.detach().cpu().numpy()
+        cmap = plt.cm.get_cmap('coolwarm')
+        ct = plt.contourf(self.q0, self.q1, d.reshape(self.nbData, self.nbData),
+                          cmap=cmap, levels=[-0.5, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0], linewidths=1)
+        plt.clabel(ct, [], inline=False, fontsize=10, colors='black')
+        # ct_zero = plt.contour(self.q0, self.q1, sdf.reshape(self.nbData, self.nbData), levels=[0], linewidths=2,
+        #                       colors=color,
+        #                       alpha=1.0)
+        # for c in ct_zero.collections:
+        #     c.set_hatch('///')  # Apply the hatch patter
 
         plt.xlabel('$q_0$', size=15)
         plt.ylabel('$q_1$', size=15)
@@ -348,7 +355,6 @@ if __name__ == "__main__":
     # print(torch.norm(grad, dim=-1).min())
     # print(torch.norm(grad, dim=-1).mean())
     # cdf.plot_sdf()
-
 
     # cdf.plot_cdf(d.detach().cpu().numpy(), grad.detach().cpu().numpy())
     # # plot the test point

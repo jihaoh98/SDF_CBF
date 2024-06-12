@@ -46,12 +46,13 @@ class Render_Animation:
         self.robot_arrow = None
         self.docbf_arrow = None
 
-        self.gradientField = None
+        self.gradientField = []
         self.docbfield = None
 
         self.show_obs = True
         self.show_arrow = False
         self.show_ob_arrow = False
+        self.sample_num = 40
 
         # settings of Times New Roman
         # set the text in Times New Roman
@@ -70,11 +71,27 @@ class Render_Animation:
                            }
         self.legend_font = {"family": "Times New Roman", "weight": "normal", "size": 12}
 
-    def render_cdf(self, cdf, xt, terminal_time, show_obs, dxcbft, save_gif=False, show_arrow=False):
+    def render_cdf(self, i, cdf, xt, obs_list, terminal_time, show_obs, dxcbft, save_gif=False, show_arrow=False):
         # visualize the cdf field
+        color_palette = ['k', 'purple', 'y']
+        self.color_palette = color_palette
+        cdf.obj_lists = obs_list
+        cdf.obj_lists = []
         cdf.q_template = torch.load(os.path.join(CUR_PATH, 'data2D_100.pt'))
-        d, grad = cdf.inference_c_space_sdf_using_data(cdf.Q_sets)
-        cdf.plot_cdf(d.detach().cpu().numpy(), grad.detach().cpu().numpy())
+
+        # plot the colorful zero level set
+        for i in range(len(obs_list)):
+            cdf.obj_lists = [
+                Circle(center=torch.from_numpy(obs_list[i].state), radius=obs_list[i].radius, device=device)]
+            d, grad = cdf.inference_c_space_sdf_using_data(cdf.Q_sets, 60)
+            cdf.plot_cdf(d.detach().cpu().numpy(), grad.detach().cpu().numpy(), color=color_palette[i])
+        # plot the unit other level set
+        cdf.obj_lists = []
+        for i in range(len(obs_list)):
+            cdf.obj_lists.append(
+                Circle(center=torch.from_numpy(obs_list[i].state), radius=obs_list[i].radius, device=device))
+            d, grad = cdf.inference_c_space_sdf_using_data(cdf.Q_sets, 60)
+            cdf.plot_non_zero_cdf(d.detach().cpu().numpy(), grad.detach().cpu().numpy())
 
         """ Visualization """
         self.fig.set_size_inches(7, 6.5)
@@ -101,28 +118,29 @@ class Render_Animation:
         self.ax.add_patch(self.robot_body)
 
         if show_arrow:
-            gradientField = dxcbft[0, :, :]  # shape is (2, time_steps)
-            self.gradientField = gradientField
-            norm = np.linalg.norm(gradientField[:, 0])
-            self.robot_arrow = mpatches.FancyArrow(
-                self.robot_init_state[0],
-                self.robot_init_state[1],
-                self.gradientField[0, 0] * 0.05 * norm,
-                self.gradientField[1, 0] * 0.05 * norm,
-                width=0.025,
-                color='k',
-            )
-            self.ax.add_patch(self.robot_arrow)
+            gradientField = np.zeros((len(obs_list), 3, terminal_time))
+            for i in range(len(obs_list)):
+                gradientField[i] = dxcbft[i, :, :]
+                self.gradientField.append(gradientField[i])
+                norm = np.linalg.norm(gradientField[i][:, 0])
+                self.robot_arrow = mpatches.FancyArrow(
+                    self.robot_init_state[0],
+                    self.robot_init_state[1],
+                    gradientField[i][0, 0] * 0.05 * norm,
+                    gradientField[i][1, 0] * 0.05 * norm,
+                    width=0.025,
+                    color=color_palette[i],
+                )
+                self.ax.add_patch(self.robot_arrow)
 
         self.ani = animation.FuncAnimation(
             self.fig,
             func=self.animation_loop_cdf,
-            frames=terminal_time + 1,
+            frames=terminal_time,
             init_func=self.animation_init,
             interval=200,
             repeat=False,
         )
-        plt.grid('--')
         if save_gif:
             writer = animation.PillowWriter(fps=15, metadata=dict(artist='Me'), bitrate=1800)
             file_path = os.path.join(CUR_PATH, 'integral.gif')
@@ -137,7 +155,7 @@ class Render_Animation:
             ax.add_patch(obj.create_patch())
 
         xf_2d = self.robot_target_state[0:2]
-        manipulator_angles = (xt[0:2, :]).T
+        manipulator_angles = (xt[0:2, :terminal_time]).T
         self.plot_2d_manipulators(joint_angles_batch=manipulator_angles)
         f_rob_end = cdf.robot.forward_kinematics_all_joints(torch.from_numpy(xf_2d).to(device).unsqueeze(0))[
             0].detach().cpu().numpy()
@@ -190,7 +208,7 @@ class Render_Animation:
             plt.plot(0, 0, marker='o', markersize=15, markerfacecolor='#DDA15E', markeredgecolor='k')
 
     def render_dynamic_cdf(self, cdf, log_circle_center, log_gradient_field, xt, terminal_time, show_obs, dxcbft,
-                           save_gif=False, show_arrow=False, show_ob_arrow=False):
+                           obs_num, save_gif=False, show_arrow=False, show_ob_arrow=False):
         cdf.q_template = torch.load(os.path.join(CUR_PATH, 'data2D_100.pt'))
         cdf.obj_lists = None
         line, = self.ax.plot([], [], color='yellow', linestyle='--', linewidth=2)
@@ -199,7 +217,7 @@ class Render_Animation:
         self.ax.plot(xt[0, 0], xt[1, 0], 'r*', label='Start')
         self.ax.plot(self.robot_target_state[0], self.robot_target_state[1], 'r*', label='Goal')
 
-        num_obs = 1
+        num_obs = obs_num
         self.show_arrow = show_arrow
         self.show_ob_arrow = show_ob_arrow
         self.xt = xt
@@ -246,6 +264,20 @@ class Render_Animation:
                 # Add new elements to the list
                 obstacle_elements.extend([contour, contourf, ct_zero])
 
+            elif num_obs == 2:
+                for element in obstacle_elements:
+                    for coll in element.collections:
+                        coll.remove()
+
+                obstacle_elements.clear()
+                cdf.obj_lists = [
+                    Circle(center=torch.from_numpy(log_circle_center[frame][0]), radius=0.3, device=device),
+                    Circle(center=torch.from_numpy(log_circle_center[frame][1]), radius=0.3, device=device)]
+                d_grad, grad_plot = cdf.inference_c_space_sdf_using_data(cdf.Q_sets, self.sample_num)
+                contour, contourf, ct_zero = cdf.plot_cdf_ax(d_grad.detach().cpu().numpy(), ax)
+                # Add new elements to the list
+                obstacle_elements.extend([contour, contourf, ct_zero])
+
             if self.show_arrow:
                 norm = np.linalg.norm(self.gradientField[:, frame])
                 self.robot_arrow = mpatches.FancyArrow(
@@ -269,24 +301,8 @@ class Render_Animation:
                 )
                 self.ax.add_patch(self.docbf_arrow)
 
-                # elif num_obs == 2:
-            #     for element in obstacle_elements:
-            #         for coll in element.collections:
-            #             coll.remove()
-            #
-            #     obstacle_elements.clear()
-            #     object_center = log_circle_center[frame]
-            #     cdf.obj_lists = [Circle(center=torch.from_numpy(object_center[:2]), radius=0.3, device=device),
-            #                      Circle(center=torch.from_numpy(object_center[2:]), radius=0.3, device=device)]
-            #     d_grad, grad_plot = cdf.inference_c_space_sdf_using_data(cdf.Q_sets)
-            #     if distance_filed == 'sdf':
-            #         contour, contourf, ct_zero = cdf.plot_sdf_ax(ax)
-            #     else:
-            #         contour, contourf, ct_zero = cdf.plot_cdf_ax(d_grad.detach().cpu().numpy(), ax)
-            #         # Add new elements to the list
-            #     obstacle_elements.extend([contour, contourf, ct_zero])
-
             line.set_data(xt[0, :frame + 1], xt[1, :frame + 1])
+
             return obstacle_elements
 
         obstacle_elements = []
@@ -352,8 +368,8 @@ class Render_Animation:
         self.robot_arrow = mpatches.FancyArrow(
             self.robot_init_state[0],
             self.robot_init_state[1],
-            self.gradientField[0, 0] * 0.1 * norm,
-            self.gradientField[1, 0] * 0.1 * norm,
+            self.gradientField[0, 0] * 0.05 * norm,
+            self.gradientField[1, 0] * 0.05 * norm,
             width=0.05,
             color='k',
         )
@@ -362,9 +378,9 @@ class Render_Animation:
         self.docbf_arrow = mpatches.FancyArrow(
             cir_obs_list_t[i][0, 0],
             cir_obs_list_t[i][1, 0],
-            self.docbfield[0, 0] * 0.1 * norm2,
-            self.docbfield[1, 0] * 0.1 * norm2,
-            width=0.05,
+            self.docbfield[0, 0] * 0.05 * norm2,
+            self.docbfield[1, 0] * 0.05 * norm2,
+            width=0.025,
             color='r',
         )
         self.ax.add_patch(self.docbf_arrow)
@@ -409,10 +425,10 @@ class Render_Animation:
     def animation_init(self):
         """ init the robot start and end position """
         # start body and target body
-        self.start_body, = plt.plot(self.robot_init_state[0], self.robot_init_state[1], color='purple', marker='*',
-                                    markersize=8)
-        self.end_body, = plt.plot(self.robot_target_state[0], self.robot_target_state[1], color='purple', marker='*',
-                                  markersize=8)
+        self.start_body, = plt.plot(self.robot_init_state[0], self.robot_init_state[1], color='y', marker='*',
+                                    markersize=15)
+        self.end_body, = plt.plot(self.robot_target_state[0], self.robot_target_state[1], color='r', marker='*',
+                                  markersize=15)
 
         return self.ax.patches + self.ax.texts + self.ax.artists
 
@@ -424,32 +440,17 @@ class Render_Animation:
         self.ax.add_patch(self.robot_body)
 
         if self.show_arrow:
-            norm = np.linalg.norm(self.gradientField[:, indx])
-            self.robot_arrow = mpatches.FancyArrow(
-                self.xt[:, indx][0],
-                self.xt[:, indx][1],
-                self.gradientField[0, indx] * 0.05 * norm,
-                self.gradientField[1, indx] * 0.05 * norm,
-                width=0.025,
-                color='k',
-            )
-            self.ax.add_patch(self.robot_arrow)
-
-        # # obs
-        # if self.show_obs:
-        #     if self.cir_obs_list_t is not None:
-        #         for i in range(self.cir_obs_num):
-        #             self.cir_obs[i].remove()
-        #             self.cir_obs[i] = mpatches.Circle(
-        #                 xy=self.cir_obs_list_t[i][:, indx][0:2],
-        #                 radius=self.cir_obs_list_t[i][:, indx][4],
-        #                 edgecolor='k',
-        #                 fill=False
-        #             )
-        #             self.ax.add_patch(self.cir_obs[i])
-        #
-        #             # plot the center of the circle obstacle
-        #             self.ax.plot(self.cir_obs_list_t[i][:, indx][0], self.cir_obs_list_t[i][:, indx][1], 'k*')
+            for i in range(len(self.gradientField)):
+                norm = np.linalg.norm(self.gradientField[i][:, indx])
+                self.robot_arrow = mpatches.FancyArrow(
+                    self.xt[0][indx],
+                    self.xt[1][indx],
+                    self.gradientField[i][0, indx] * 0.05 * norm,
+                    self.gradientField[i][1, indx] * 0.05 * norm,
+                    width=0.025,
+                    color=self.color_palette[i],
+                )
+                self.ax.add_patch(self.robot_arrow)
 
         # show past trajecotry of robot and obstacles
         if indx != 0:
