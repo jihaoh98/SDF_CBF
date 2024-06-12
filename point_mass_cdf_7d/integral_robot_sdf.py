@@ -14,24 +14,26 @@ class Integral_Robot_Sdf:
         define the clf and cbf based on point mass robot and circular-shaped obstacle
         """
         # robot system states, half width with half height
-        self.state_dim = 3
-        self.control_dim = 2
+        self.state_dim = 7
+        self.control_dim = 7
         self.margin = params['margin']
 
         # robot's current state
-        x, y, theta = sp.symbols('x y theta')
-        self.robot_state = sp.Matrix([x, y, theta])
+        x1, x2, x3, x4, x5, x6, x7 = sp.symbols('x1 x2 x3 x4 x5 x6 x7')
+        self.robot_state = sp.Matrix([x1, x2, x3, x4, x5, x6, x7])
         radius = sp.symbols('radius')
-        self.robot_state_cbf = sp.Matrix([x, y, theta, radius])
+        self.robot_state_cbf = sp.Matrix([x1, x2, x3, x4, x5, x6, x7, radius])
 
         # robot's target state
-        e_x, e_y, e_theta = sp.symbols('e_x e_y, e_theta')
-        self.target_state = sp.Matrix([e_x, e_y, e_theta])
+        e_1, e_2, e_3, e_4, e_5, e_6, e_7 = sp.symbols('e_1 e_2, e_3 e4 e5 e6 e7')
+        self.target_state = sp.Matrix([e_1, e_2, e_3, e_4, e_5, e_6, e_7])
 
         # circular-shaped obstacle
-        self.cir_obs_dim = 5
-        o_x, o_y, o_vx, o_vy, o_radius = sp.symbols('o_x o_y o_vx o_vy o_radius')
-        self.cir_obstacle_state = sp.Matrix([o_x, o_y, o_vx, o_vy, o_radius])
+        self.cir_obs_dim = 8
+        o_1, o_2, o_3, o_4, o_5, o_6, o_7, o_radius = sp.symbols('o_1 o_2 o_3 o_4 o_5 o_6 o_7 o_radius')
+        self.cir_obstacle_state = sp.Matrix([o_1, o_2, o_3, o_4, o_5, o_6, o_7, o_radius])
+        ov1, ov2, ov3, ov4, ov5, ov6, ov7 = sp.symbols('ov1 ov2 ov3 ov4 ov5 ov6 ov7')
+        self.cir_obstacle_vel = sp.Matrix([ov1, ov2, ov3, ov4, ov5, ov6, ov7])
 
         # robot system dynamics
         self.f = None
@@ -69,29 +71,47 @@ class Integral_Robot_Sdf:
         self.g = lambdify([self.robot_state], self.g_symbolic)
 
         self.cir_obstacle_dynamics_symbolic = sp.Matrix(
-            [self.cir_obstacle_state[2], self.cir_obstacle_state[3], 0.0, 0.0, 0.0])
-        self.cir_obstacle_dynamics = lambdify([self.cir_obstacle_state], self.cir_obstacle_dynamics_symbolic)
+            [self.cir_obstacle_vel[0], self.cir_obstacle_vel[1], self.cir_obstacle_vel[2], self.cir_obstacle_vel[3],
+             self.cir_obstacle_vel[4], self.cir_obstacle_vel[5], self.cir_obstacle_vel[6], 0.0])
+
+        self.cir_obstacle_dynamics = lambdify([self.cir_obstacle_vel], self.cir_obstacle_dynamics_symbolic)
 
         self.init_clf()
         self.init_cbf()
 
     def define_system_dynamics(self):
         """ define the system dynamics """
-        f = sp.Matrix([0, 0, 0])
+        f = sp.Matrix([0, 0, 0, 0, 0, 0, 0])
         g = sp.Matrix([
-            [1, 0],
-            [0, 1],
-            [0, 0]])
+            [1, 0, 0, 0, 0, 0, 0],
+            [0, 1, 0, 0, 0, 0, 0],
+            [0, 0, 1, 0, 0, 0, 0],
+            [0, 0, 0, 1, 0, 0, 0],
+            [0, 0, 0, 0, 1, 0, 0],
+            [0, 0, 0, 0, 0, 1, 0],
+            [0, 0, 0, 0, 0, 0, 1]])
 
         return f, g
 
     def init_clf(self):
         """ init the control lyapunov function for navigation """
-        H = sp.Matrix([[1.0, 0.0],
-                       [0.0, 1.0]])
-        relative_x = self.robot_state[0] - self.target_state[0]
-        relative_y = self.robot_state[1] - self.target_state[1]
-        relative_state = sp.Matrix([relative_x, relative_y])
+        H = sp.Matrix([[1.0, 0.0, 0., 0., 0., 0., 0.],
+                       [0.0, 1.0, 0., 0., 0., 0., 0.],
+                       [0., 0., 1.0, 0., 0., 0., 0.],
+                       [0., 0., 0., 1.0, 0., 0., 0.],
+                       [0., 0., 0., 0., 1.0, 0., 0.],
+                       [0., 0., 0., 0., 0., 1.0, 0.],
+                       [0., 0., 0., 0., 0., 0., 1.0]])
+
+        relative_x1 = self.robot_state[0] - self.target_state[0]
+        relative_x2 = self.robot_state[1] - self.target_state[1]
+        relative_x3 = self.robot_state[2] - self.target_state[2]
+        relative_x4 = self.robot_state[3] - self.target_state[3]
+        relative_x5 = self.robot_state[4] - self.target_state[4]
+        relative_x6 = self.robot_state[5] - self.target_state[5]
+        relative_x7 = self.robot_state[6] - self.target_state[6]
+        relative_state = sp.Matrix([relative_x1, relative_x2, relative_x3, relative_x4, relative_x5, relative_x6,
+                                    relative_x7])
 
         clf_symbolic = (relative_state.T @ H @ relative_state)[0, 0]
         self.clf = lambdify([self.robot_state, self.target_state], clf_symbolic)
@@ -163,8 +183,13 @@ class Integral_Robot_Sdf:
             cbf based on Euclidean distance
         """
         cbf_symbolic = (self.robot_state_cbf[0] - self.cir_obstacle_state[0]) ** 2 + (
-                self.robot_state_cbf[1] - self.cir_obstacle_state[1]) ** 2
-        cbf_symbolic = cbf_symbolic - (self.robot_state_cbf[3] + self.cir_obstacle_state[4]) ** 2
+                self.robot_state_cbf[1] - self.cir_obstacle_state[1]) ** 2 + (
+                               self.robot_state_cbf[2] - self.cir_obstacle_state[2]) ** 2 + (
+                               self.robot_state_cbf[3] - self.cir_obstacle_state[3]) ** 2 + (
+                               self.robot_state_cbf[4] - self.cir_obstacle_state[4]) ** 2 + (
+                               self.robot_state_cbf[5] - self.cir_obstacle_state[5]) ** 2 + (
+                               self.robot_state_cbf[6] - self.cir_obstacle_state[6]) ** 2
+        cbf_symbolic = cbf_symbolic - (self.robot_state_cbf[7] + self.cir_obstacle_state[7]) ** 2
         cbf_symbolic = cbf_symbolic - self.margin
         self.cbf = lambdify([self.robot_state_cbf, self.cir_obstacle_state], cbf_symbolic)
 
@@ -178,7 +203,7 @@ class Integral_Robot_Sdf:
 
         self.lf_cbf = lambdify([self.robot_state_cbf, self.cir_obstacle_state], lf_cbf_symbolic)
         self.lg_cbf = lambdify([self.robot_state_cbf, self.cir_obstacle_state], lg_cbf_symbolic)
-        self.dt_cbf = lambdify([self.robot_state_cbf, self.cir_obstacle_state], dt_cbf_symbolic)
+        self.dt_cbf = lambdify([self.robot_state_cbf, self.cir_obstacle_state, self.cir_obstacle_vel], dt_cbf_symbolic)
         self.dx_cbf = lambdify([self.robot_state_cbf, self.cir_obstacle_state], dx_cbf_symbolic)
         self.do_cbf = lambdify([self.robot_state_cbf, self.cir_obstacle_state], dox_cbf_symbolic)
 

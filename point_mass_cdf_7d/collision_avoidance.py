@@ -58,6 +58,12 @@ class Collision_Avoidance:
                 self.cir_obs_list[i].get_current_state()
                 for i in range(self.cir_obs_num)
             ]
+
+            self.cir_obs_vel = [
+                self.cir_obs_list[i].get_current_vel()
+                for i in range(self.cir_obs_num)
+            ]
+
             self.cir_obs_states_list = np.copy(self.cir_obs_init_states_list)
 
         if cdf_sta_obs_params is not None:
@@ -92,8 +98,8 @@ class Collision_Avoidance:
         self.terminal_time = self.time_steps
 
         # storage
-        self.xt = np.zeros((3, self.time_steps + 1))
-        self.ut = np.zeros((2, self.time_steps))
+        self.xt = np.zeros((7, self.time_steps + 1))
+        self.ut = np.zeros((7, self.time_steps))
         self.clft = np.zeros((1, self.time_steps))
         self.slackt = np.zeros((1, self.time_steps))
 
@@ -102,7 +108,7 @@ class Collision_Avoidance:
             self.cir_obstacle_state_t = None
             self.cir_obs_cbf_t = None
             self.cir_obs_dx_cbf_t = None
-            self.cir_obstacle_state_t = np.zeros((self.cir_obs_num, 5, self.time_steps + 1))
+            self.cir_obstacle_state_t = np.zeros((self.cir_obs_num, 8, self.time_steps + 1))
             self.cir_obs_cbf_t = np.zeros((self.cir_obs_num, self.time_steps))
             self.cir_obs_dx_cbf_t = np.zeros((self.cir_obs_num, 2, self.time_steps))
             self.cir_obs_dot_cbf_t = np.zeros((self.cir_obs_num, 2, self.time_steps))
@@ -181,7 +187,7 @@ class Collision_Avoidance:
 
         # approach the destination or exceed the maximum time
         while (
-                np.linalg.norm(self.robot_cur_state[0:2] - self.robot_target_state[0:2])
+                np.linalg.norm(self.robot_cur_state[0:7] - self.robot_target_state[0:7])
                 >= self.destination_margin
                 and t - self.time_steps < 0.0
         ):
@@ -191,7 +197,8 @@ class Collision_Avoidance:
             start_time = time.time()
 
             if cdf is None:
-                optimal_result = self.cbf_qp.cbf_clf_qp(self.robot_cur_state, self.cir_obs_states_list, add_clf=add_clf)
+                optimal_result = self.cbf_qp.cbf_clf_qp(self.robot_cur_state, self.cir_obs_states_list,
+                                                        self.cir_obs_vel, add_clf=add_clf)
             else:
                 if self.cdf_dyn_obs_num == 0:
                     cdf.obj_lists = None
@@ -321,7 +328,7 @@ class Collision_Avoidance:
                     self.cir_obstacle_state_t[i][:, t] = np.copy(self.cir_obs_states_list[i])
 
         print('Total time: ', self.terminal_time)
-        if np.linalg.norm(self.robot_cur_state[0:2] - self.robot_target_state[0:2]) <= self.destination_margin:
+        if np.linalg.norm(self.robot_cur_state[0:7] - self.robot_target_state[0:7]) <= self.destination_margin:
             print('Robot has arrived its destination!')
         else:
             print('Robot has not arrived its destination!')
@@ -379,7 +386,7 @@ if __name__ == '__main__':
 
     }
 
-    case = 4
+    case = 1
     file_name = os.path.join(CURRENT_DIR, file_names[case])
     cdf = CDF2D(device)
     test_target = Collision_Avoidance(file_name)
@@ -387,42 +394,42 @@ if __name__ == '__main__':
     if case == 1:
         "collision avoidance with circle cbf"
         test_target.collision_avoidance()
-        test_target.render(0)
-        test_target.show_controls()
-        test_target.show_clf()
-        test_target.show_slack()
-        test_target.show_cbf(0)
-        test_target.show_dx_cbf(0)
-
-    elif case == 2:
-        "collision avoidance with dynamic circle cbf"
-        test_target.collision_avoidance()
-        test_target.render(0)
-        test_target.show_controls()
-        test_target.show_clf()
-        test_target.show_slack()
-        test_target.show_cbf(0)
-        test_target.show_dx_cbf(0)
-
-    elif case == 3:
-        "collision avoidance with static cdf cbf"
-        test_target.collision_avoidance(cdf=cdf)
-        # test_target.render_cdf(cdf)
-        # test_target.render_manipulator()
-        # test_target.show_clf()
-        test_target.show_cdf_cbf(0)
-        # test_target.show_cdf_cbf(1)  # show the cbf of the second obstacle
+        # test_target.render(0)
         # test_target.show_controls()
+        test_target.show_clf()
         # test_target.show_slack()
+        test_target.show_cbf(0)
+        # test_target.show_dx_cbf(0)
 
-    elif case == 4:
-        "collision avoidance with dynamic cdf cbf"
-        test_target.collision_avoidance(cdf=cdf)
-        # test_target.render_dynamic_cdf(cdf, test_target.cdf_dyn_obs_center_list,
-        #                                test_target.dyn_obstacle_gradient_filed)
-        # test_target.render_ani_manipulator(cdf, test_target.cdf_dyn_obs_center_list)
-        # test_target.show_clf()
-        # test_target.show_cdf_cbf(0)
-        # test_target.show_cdf_cbf(1)  # show the cbf of the second obstacle
-        # test_target.show_controls()
-        # test_target.show_slack()
+    # elif case == 2:
+    #     "collision avoidance with dynamic circle cbf"
+    #     test_target.collision_avoidance()
+    #     test_target.render(0)
+    #     test_target.show_controls()
+    #     test_target.show_clf()
+    #     test_target.show_slack()
+    #     test_target.show_cbf(0)
+    #     test_target.show_dx_cbf(0)
+    #
+    # elif case == 3:
+    #     "collision avoidance with static cdf cbf"
+    #     test_target.collision_avoidance(cdf=cdf)
+    #     # test_target.render_cdf(cdf)
+    #     # test_target.render_manipulator()
+    #     # test_target.show_clf()
+    #     test_target.show_cdf_cbf(0)
+    #     # test_target.show_cdf_cbf(1)  # show the cbf of the second obstacle
+    #     # test_target.show_controls()
+    #     # test_target.show_slack()
+    #
+    # elif case == 4:
+    #     "collision avoidance with dynamic cdf cbf"
+    #     test_target.collision_avoidance(cdf=cdf)
+    #     # test_target.render_dynamic_cdf(cdf, test_target.cdf_dyn_obs_center_list,
+    #     #                                test_target.dyn_obstacle_gradient_filed)
+    #     # test_target.render_ani_manipulator(cdf, test_target.cdf_dyn_obs_center_list)
+    #     # test_target.show_clf()
+    #     # test_target.show_cdf_cbf(0)
+    #     # test_target.show_cdf_cbf(1)  # show the cbf of the second obstacle
+    #     # test_target.show_controls()
+    #     # test_target.show_slack()

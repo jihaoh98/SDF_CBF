@@ -124,12 +124,12 @@ class Integral_Sdf_Cbf_Clf:
 
         return cbf, grad_input
 
-    def add_cir_cbf_cons(self, robot_state_cbf, cir_obs_state):
+    def add_cir_cbf_cons(self, robot_state_cbf, cir_obs_state, cir_obs_vel):
         """ add cons w.r.t circle obstacle """
         cbf = self.cbf(robot_state_cbf, cir_obs_state)
         lf_cbf = self.lf_cbf(robot_state_cbf, cir_obs_state)  # scalar
         lg_cbf = self.lg_cbf(robot_state_cbf, cir_obs_state)  # 1 x 2
-        dt_cbf = self.dt_cbf(robot_state_cbf, cir_obs_state)  # scalar
+        dt_cbf = self.dt_cbf(robot_state_cbf, cir_obs_state, cir_obs_vel)  # scalar
         dx_cbf = self.dx_cbf(robot_state_cbf, cir_obs_state)  # 1 x 3
         do_cbf = self.do_cbf(robot_state_cbf, cir_obs_state)  # 1 x 5
 
@@ -285,7 +285,7 @@ class Integral_Sdf_Cbf_Clf:
 
         return result
 
-    def cbf_clf_qp(self, robot_cur_state, cir_obs_states=None, add_clf=True, u_ref=None):
+    def cbf_clf_qp(self, robot_cur_state, cir_obs_states=None, cir_obs_vel=None, add_clf=True, u_ref=None):
         """
         This is a function to calculate the optimal control for the robot w.r.t circular-shaped obstacles
         Args:
@@ -312,8 +312,8 @@ class Integral_Sdf_Cbf_Clf:
             cir_cbf_list = []
             cir_dx_cbf_list = []
             cir_do_cbf_list = []
-            for cir_obs_state in cir_obs_states:
-                cbf, dx_cbf, do_cbf = self.add_cir_cbf_cons(robot_state_cbf, cir_obs_state)
+            for cir_obs_state, cir_obs_v in zip(cir_obs_states, cir_obs_vel):
+                cbf, dx_cbf, do_cbf = self.add_cir_cbf_cons(robot_state_cbf, cir_obs_state, cir_obs_v)
                 cir_cbf_list.append(cbf)
                 cir_dx_cbf_list.append(dx_cbf)
                 cir_do_cbf_list.append(do_cbf)
