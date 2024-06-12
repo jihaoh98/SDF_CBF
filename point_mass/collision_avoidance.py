@@ -4,6 +4,7 @@ import time
 import yaml
 import obs
 from render_show import Render_Animation
+import matplotlib.pyplot as plt
 import statistics
 
 
@@ -53,22 +54,22 @@ class Collision_Avoidance:
 
         # storage
         self.xt = np.zeros((3, self.time_steps + 1))
-        self.ut = np.zeros((2, self.time_steps))
+        self.ut = np.zeros((3, self.time_steps))
         self.clft = np.zeros((1, self.time_steps))
         self.slackt = np.zeros((1, self.time_steps))
 
         self.cir_obstacle_state_t = None
         self.cir_obs_cbf_t = None
         if cir_obs_params is not None:
-            self.cir_obstacle_state_t = np.zeros((self.cir_obs_num, 5, self.time_steps + 1))
+            self.cir_obstacle_state_t = np.zeros((self.cir_obs_num, 7, self.time_steps + 1))
             self.cir_obs_cbf_t = np.zeros((self.cir_obs_num, self.time_steps))
 
         # plot
-        self.ani = Render_Animation(
-            robot_params, 
-            cir_obs_params, 
-            self.step_time,
-        )
+        # self.ani = Render_Animation(
+        #     robot_params, 
+        #     cir_obs_params, 
+        #     self.step_time,
+        # )
         self.show_obs = True
     
     def navigation_destination(self, add_slack=False):
@@ -77,7 +78,7 @@ class Collision_Avoidance:
         process_time = []
         # approach the destination or exceed the maximum time
         while (
-            np.linalg.norm(self.robot_cur_state[0:2] - self.robot_target_state[0:2])
+            np.linalg.norm(self.robot_cur_state[0:3] - self.robot_target_state[0:3])
             >= self.destination_margin
             and t - self.time_steps < 0.0
         ):
@@ -108,7 +109,7 @@ class Collision_Avoidance:
         self.show_obs = False
 
         print('Total time: ', self.terminal_time)
-        if np.linalg.norm(self.robot_cur_state[0:2] - self.robot_target_state[0:2]) <= self.destination_margin:
+        if np.linalg.norm(self.robot_cur_state[0:3] - self.robot_target_state[0:3]) <= self.destination_margin:
             print('Robot has arrived its destination!')
         else:
             print('Robot has not arrived its destination!')
@@ -125,7 +126,7 @@ class Collision_Avoidance:
         process_time = []
         # approach the destination or exceed the maximum time
         while (
-            np.linalg.norm(self.robot_cur_state[0:2] - self.robot_target_state[0:2])
+            np.linalg.norm(self.robot_cur_state[0:3] - self.robot_target_state[0:3])
             >= self.destination_margin
             and t - self.time_steps < 0.0
         ):
@@ -167,7 +168,7 @@ class Collision_Avoidance:
                 self.cir_obstacle_state_t[i][:, t] = np.copy(self.cir_obs_states_list[i])
 
         print('Total time: ', self.terminal_time)
-        if np.linalg.norm(self.robot_cur_state[0:2] - self.robot_target_state[0:2]) <= self.destination_margin:
+        if np.linalg.norm(self.robot_cur_state[0:3] - self.robot_target_state[0:3]) <= self.destination_margin:
             print('Robot has arrived its destination!')
         else:
             print('Robot has not arrived its destination!')
@@ -177,6 +178,10 @@ class Collision_Avoidance:
         print('Minimum_time:', min(process_time))
         print('Median_time:', statistics.median(process_time))
         print('Average_time:', statistics.mean(process_time))    
+
+        for i in range(self.terminal_time + 1):
+            print()
+    
         
     def render(self):
         self.ani.render(self.xt, self.cir_obstacle_state_t, self.terminal_time, self.show_obs)
@@ -201,9 +206,10 @@ if __name__ == '__main__':
     # test_target.navigation_destination()
     
     test_target.collision_avoidance()
-    test_target.render()
-    test_target.show_controls()
-    test_target.show_clf()
-    test_target.show_slack()
-    test_target.show_cbf(0)
+
+    # test_target.render()
+    # test_target.show_controls()
+    # test_target.show_clf()
+    # test_target.show_slack()
+    # test_target.show_cbf(0)
     

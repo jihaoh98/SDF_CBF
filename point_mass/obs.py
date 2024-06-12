@@ -4,7 +4,7 @@ from math import sqrt
 
 
 class Circle_Obs:
-    def __init__(self, index, radius, center, vel=np.zeros((2, )), goal=np.zeros((2, 1)), mode='static', **kwargs) -> None:
+    def __init__(self, index, radius, center, vel=np.zeros((3, )), goal=np.zeros((3, 1)), mode='static', **kwargs) -> None:
         """ init the circular-shaped obstacle, index to distinguish different obstacles """
         self.id = index
         self.radius = radius
@@ -28,11 +28,11 @@ class Circle_Obs:
 
     def arrive_destination(self):
         """ determine if the robot arrives its goal position """
-        dist = np.linalg.norm(self.state.reshape(2, 1) - self.goal[0:2])
+        dist = np.linalg.norm(self.state.reshape(3, 1) - self.goal[0:3])
 
         if dist < 0.1:
             self.arrive_flag = True
-            self.vel = np.zeros((2, ))
+            self.vel = np.zeros((3, ))
             return True
         else:
             self.arrive_flag = False
@@ -49,8 +49,5 @@ class Circle_Obs:
 
     def get_current_state(self):
         """ return the obstacle's position and velocity, as well as radius """
-        current_state = np.array([self.state[0], self.state[1], self.vel[0], self.vel[1], self.radius])
+        current_state = np.array([self.state[0], self.state[1], self.state[2], self.vel[0], self.vel[1], self.vel[2], self.radius])
         return current_state
-    
-
-
