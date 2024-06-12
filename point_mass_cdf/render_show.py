@@ -147,6 +147,74 @@ class Render_Animation:
             self.ani.save(file_path, writer=writer)
         plt.show()
 
+    def plot_2d_manipulators(link1_length=2, link2_length=2, joint_angles_batch=None):
+        # Check if joint_angles_batch is None or has incorrect shape
+        if joint_angles_batch is None or joint_angles_batch.shape[1] != 2:
+            raise ValueError("joint_angles_batch must be provided with shape (N, 2)")
+
+        # Number of sets of joint angles
+        num_sets = joint_angles_batch.shape[0]
+
+        # Create a figure
+        cmap = cm.get_cmap('Greens', num_sets)  # You can choose other colormaps like 'Greens', 'Reds', etc.
+        cmap2 = cm.get_cmap('Reds', num_sets)  # You can choose other colormaps like 'Greens', 'Reds', etc.
+        # the color will
+        for i in range(num_sets):
+            # Extract joint angles for the current set
+            theta1, theta2 = joint_angles_batch[i]
+
+            # Calculate the position of the first joint
+            joint1_x = link1_length * np.cos(theta1)
+            joint1_y = link1_length * np.sin(theta1)
+
+            # Calculate the position of the end effector (tip of the second link)
+            end_effector_x = joint1_x + link2_length * np.cos(theta1 + theta2)
+            end_effector_y = joint1_y + link2_length * np.sin(theta1 + theta2)
+
+            # Stack the base, joint, and end effector positions
+            positions = np.vstack([[0, 0], [joint1_x, joint1_y], [end_effector_x, end_effector_y]])  # shape: (3, 2)
+
+            # Plotting
+            plt.plot(positions[:, 0], positions[:, 1], linestyle='-', color='green', marker='o', markersize=5,
+                     markerfacecolor='white',
+                     markeredgecolor='green', alpha=0.3)
+
+            # cover the end effector with different colors to hightlight the trajectory
+            plt.plot(positions[2, 0], positions[2, 1], linestyle='-', color=cmap(i), marker='o', markersize=5,
+                     markerfacecolor='white',
+                     markeredgecolor=cmap2(i))
+            # plot a bigger base center at (0, 0), which is a cirlce with golden color
+            plt.plot(0, 0, marker='o', markersize=15, markerfacecolor='#DDA15E', markeredgecolor='k')
+
+    def render_ani_manipulator(self, cdf, obs_center, xt, num_obs, terminal_time):
+        f_rob_start = \
+            cdf.robot.forward_kinematics_all_joints(torch.from_numpy(xt[:2, 0]).to(device).unsqueeze(0))[
+                0].detach().cpu().numpy()
+        f_rob_end = \
+            cdf.robot.forward_kinematics_all_joints(
+                torch.from_numpy(self.robot_target_state[0:2]).to(device).unsqueeze(0))[
+                0].detach().cpu().numpy()
+
+        def update(frame):
+            self.ax.clear()
+            # plot the start and end points
+            for i in range(num_obs):
+                circle_plot = plt.Circle(obs_center[frame][0], 0.3, color='k', hatch='///', fill=False,
+                                         label='Obstacle')
+                self.ax.add_artist(circle_plot)
+
+            plt.plot(f_rob_start[0, :], f_rob_start[1, :], linestyle='-', color='r', linewidth=2.0, label='Start')
+            plt.plot(f_rob_end[0, :], f_rob_end[1, :], linestyle='-', color='b', linewidth=2.0, label='Goal')
+            self.plot_2d_manipulators(joint_angles_batch=xt[:2, frame].reshape(1, 2))
+            plt.legend(loc='upper center', ncol=3)
+            self.ax.set_xlim([-4.5, 4.5])
+            self.ax.set_ylim([-4.5, 4.5])
+            self.ax.set_aspect('equal')
+
+        num_frames = terminal_time
+        ani = FuncAnimation(self.fig, update, frames=num_frames, interval=50)
+        plt.show()
+
     def render_manipulator(self, cdf, xt, terminal_time):
         plt.rcParams['axes.facecolor'] = '#eaeaf2'
         ax = plt.gca()
