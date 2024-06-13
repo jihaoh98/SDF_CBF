@@ -394,6 +394,17 @@ def ring(radius, center, rot):
     return points
 
 
+def mannully_observe_q(q):
+    pose = torch.eye(4).unsqueeze(0).to(device).float()
+    robot_mesh = []
+    for _q in q:
+        rm = cdf.panda.get_forward_robot_mesh(pose, _q.unsqueeze(0))[0]
+        mesh = np.sum(rm)
+        mesh.visual.face_colors = [0, 255, 0, 100]
+        robot_mesh.append(mesh)
+    return q, robot_mesh
+
+
 if __name__ == '__main__':
     file_names = {
         1: 'static_setting.yaml',
@@ -424,9 +435,17 @@ if __name__ == '__main__':
         sphere.visual.face_colors = [255, 0, 0, 100]
         sphere.apply_translation(p0)
         scene.add_geometry(sphere)
+
+    x0_7d_torch = torch.tensor([-0.41302193, -0.94202107, -0.32044236, -2.47843634, -0.16166646,
+        1.74380392,  0.75803596]).to(device).reshape(1, 7)
+    x0_7d_torch.requires_grad = True
+    distance_input, gradient_input = cdf.inference_d_wrt_q(p, x0_7d_torch, model, return_grad=True)
+    print('distance_input:', distance_input)
+    q, robot_mesh = mannully_observe_q(x0_7d_torch)
+    scene.add_geometry(robot_mesh[0])
     scene.show()
 
-    test_target = Collision_Avoidance(file_name)
+    # test_target = Collision_Avoidance(file_name)
 
     # if case == 1:
     #     "collision avoidance with circle cbf"
@@ -450,7 +469,7 @@ if __name__ == '__main__':
     # #
     # elif case == 3:
     #     "collision avoidance with static cdf cbf"
-    test_target.collision_avoidance(cdf=cdf)
+    # test_target.collision_avoidance(cdf=cdf)
     #     # test_target.render_cdf(cdf)
     #     # test_target.render_manipulator()
     #     # test_target.show_clf()

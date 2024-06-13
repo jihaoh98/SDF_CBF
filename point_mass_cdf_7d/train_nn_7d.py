@@ -10,12 +10,15 @@ import time
 import math
 import trimesh
 
-CUR_PATH = os.path.dirname(os.path.realpath(__file__))
-sys.path.append(os.path.join(CUR_PATH, 'RDF'))
-# import bf_sdf
 from mlp import MLPRegression
 
-from panda_layer.panda_layer import PandaLayer
+CUR_PATH = os.path.dirname(os.path.realpath(__file__))
+sys.path.append(os.path.join(CUR_PATH, 'RDF'))
+import bf_sdf
+from RDF.panda_layer.panda_layer import PandaLayer
+
+sys.path.append(os.path.join(CUR_PATH, 'Neural-JSDF/learning/nn-learning'))
+from sdf.robot_sdf import RobotSdfCollisionNet
 
 # import bf_sdf
 
