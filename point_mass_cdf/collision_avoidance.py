@@ -382,7 +382,7 @@ if __name__ == '__main__':
 
     }
 
-    case = 4
+    case = 3
     file_name = os.path.join(CURRENT_DIR, file_names[case])
     cdf = CDF2D(device)
     test_target = Collision_Avoidance(file_name)
@@ -411,13 +411,13 @@ if __name__ == '__main__':
         "collision avoidance with static cdf cbf"
         test_target.collision_avoidance(cdf=cdf)
         test_target.render_cdf(cdf)
-        # test_target.render_manipulator()
+        test_target.render_manipulator()
         test_target.render_sta_ani_manipulator(cdf, test_target.cdf_sta_obs_list)
-        # test_target.show_clf()
+        test_target.show_clf()
         test_target.show_cdf_cbf(0)
         # test_target.show_cdf_cbf(1)  # show the cbf of the second obstacle
-        # test_target.show_controls()
-        # test_target.show_slack()
+        test_target.show_controls()
+        test_target.show_slack()
 
     elif case == 4:
         "collision avoidance with dynamic cdf cbf"
@@ -425,8 +425,8 @@ if __name__ == '__main__':
         test_target.render_dynamic_cdf(cdf, test_target.cdf_dyn_obs_center_list,
                                        test_target.dyn_obstacle_gradient_filed)
         test_target.render_ani_manipulator(cdf, test_target.cdf_dyn_obs_center_list)
-        # test_target.show_clf()
+        test_target.show_clf()
         test_target.show_cdf_cbf(0)
         # test_target.show_cdf_cbf(1)  # show the cbf of the second obstacle
-        # test_target.show_controls()
-        # test_target.show_slack()
+        test_target.show_controls()
+        test_target.show_slack()

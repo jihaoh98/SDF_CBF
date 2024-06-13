@@ -252,6 +252,10 @@ class Render_Animation:
         plt.rcParams['axes.facecolor'] = '#eaeaf2'
         ax = plt.gca()
 
+        # plot a circle with radius 2
+        circle = plt.Circle((0, 0), 2, color='r', fill=True, linestyle='--', linewidth=1.0, alpha=0.1)
+        ax.add_artist(circle)
+
         for obj in cdf.obj_lists:
             ax.add_patch(obj.create_patch())
 

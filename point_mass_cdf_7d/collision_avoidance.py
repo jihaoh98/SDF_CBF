@@ -6,9 +6,12 @@ import obs
 import statistics
 import os
 import torch
+import trimesh
 from cdf import CDF2D
 from primitives2D_torch import Circle
 from render_show import Render_Animation
+from mlp import MLPRegression
+from train_nn_7d import CDF
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -377,6 +380,20 @@ class Collision_Avoidance:
         self.ani.show_dx_cbf(i, self.cir_obs_dx_cbf_t, self.terminal_time)
 
 
+def ring(radius, center, rot):
+    # center: (3,)
+    # size: (3,)
+    # return: (N,3)
+    # the gap of the linspace is 0.1
+    theta = torch.arange(0, 2 * PI, 0.05).to(device)
+    x = radius * torch.cos(theta)
+    y = radius * torch.sin(theta)
+    z = torch.zeros_like(x).to(device)
+    points = torch.stack([x, y, z], dim=-1)
+    points = torch.matmul(points, rot.transpose(0, 1)) + center
+    return points
+
+
 if __name__ == '__main__':
     file_names = {
         1: 'static_setting.yaml',
@@ -385,35 +402,55 @@ if __name__ == '__main__':
         4: 'dynamic_cdf_setting.yaml'
 
     }
+    PI = 3.14
 
-    case = 1
+    case = 3
     file_name = os.path.join(CURRENT_DIR, file_names[case])
-    cdf = CDF2D(device)
+    cdf = CDF(device)
+    model = MLPRegression(input_dims=10, output_dims=1, mlp_layers=[1024, 512, 256, 128, 128], skips=[],
+                          act_fn=torch.nn.ReLU, nerf=True)
+    model.load_state_dict(torch.load(os.path.join(CURRENT_DIR, 'model_dict_tension_2.pt'))[49900])
+    model.to(device)
+    ring_radius = 0.25
+    ring_center = torch.tensor([0.5, 0.0, 0.45]).to(device)
+    ring_rot = torch.tensor([[0.0, 0.0, -1.0],
+                             [0.0, 1.0, 0.0],
+                             [1.0, 0.0, 0.0], ]).to(device)
+
+    p = ring(ring_radius, ring_center, ring_rot)
+    scene = trimesh.Scene()
+    for p0 in p.data.cpu().numpy():
+        sphere = trimesh.creation.icosphere(subdivisions=3, radius=0.05)
+        sphere.visual.face_colors = [255, 0, 0, 100]
+        sphere.apply_translation(p0)
+        scene.add_geometry(sphere)
+    scene.show()
+
     test_target = Collision_Avoidance(file_name)
 
-    if case == 1:
-        "collision avoidance with circle cbf"
-        test_target.collision_avoidance()
-        # test_target.render(0)
-        # test_target.show_controls()
-        test_target.show_clf()
-        # test_target.show_slack()
-        test_target.show_cbf(0)
-        # test_target.show_dx_cbf(0)
-
-    # elif case == 2:
-    #     "collision avoidance with dynamic circle cbf"
+    # if case == 1:
+    #     "collision avoidance with circle cbf"
     #     test_target.collision_avoidance()
-    #     test_target.render(0)
-    #     test_target.show_controls()
+    #     # test_target.render(0)
+    #     # test_target.show_controls()
     #     test_target.show_clf()
-    #     test_target.show_slack()
+    #     # test_target.show_slack()
     #     test_target.show_cbf(0)
-    #     test_target.show_dx_cbf(0)
+    #     # test_target.show_dx_cbf(0)
     #
+    # # elif case == 2:
+    # #     "collision avoidance with dynamic circle cbf"
+    # #     test_target.collision_avoidance()
+    # #     test_target.render(0)
+    # #     test_target.show_controls()
+    # #     test_target.show_clf()
+    # #     test_target.show_slack()
+    # #     test_target.show_cbf(0)
+    # #     test_target.show_dx_cbf(0)
+    # #
     # elif case == 3:
     #     "collision avoidance with static cdf cbf"
-    #     test_target.collision_avoidance(cdf=cdf)
+    test_target.collision_avoidance(cdf=cdf)
     #     # test_target.render_cdf(cdf)
     #     # test_target.render_manipulator()
     #     # test_target.show_clf()
