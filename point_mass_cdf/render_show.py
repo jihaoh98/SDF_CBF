@@ -186,6 +186,37 @@ class Render_Animation:
             # plot a bigger base center at (0, 0), which is a cirlce with golden color
             plt.plot(0, 0, marker='o', markersize=15, markerfacecolor='#DDA15E', markeredgecolor='k')
 
+    def render_sta_ani_manipulator(self, cdf, obs_center, xt, num_obs, terminal_time):
+        f_rob_start = \
+            cdf.robot.forward_kinematics_all_joints(torch.from_numpy(xt[:2, 0]).to(device).unsqueeze(0))[
+                0].detach().cpu().numpy()
+        f_rob_end = \
+            cdf.robot.forward_kinematics_all_joints(
+                torch.from_numpy(self.robot_target_state[0:2]).to(device).unsqueeze(0))[
+                0].detach().cpu().numpy()
+
+        self.fig, self.ax = plt.subplots()
+
+        def update(frame):
+            self.ax.clear()
+            # plot the start and end points
+            for i in range(num_obs):
+                circle_plot = plt.Circle(obs_center[0].state, 0.3, color='k', hatch='///', fill=False,
+                                         label='Obstacle')
+                self.ax.add_artist(circle_plot)
+
+            plt.plot(f_rob_start[0, :], f_rob_start[1, :], linestyle='-', color='r', linewidth=2.0, label='Start')
+            plt.plot(f_rob_end[0, :], f_rob_end[1, :], linestyle='-', color='b', linewidth=2.0, label='Goal')
+            self.plot_2d_manipulators(joint_angles_batch=xt[:2, frame].reshape(1, 2))
+            plt.legend(loc='upper center', ncol=3)
+            self.ax.set_xlim([-4.5, 4.5])
+            self.ax.set_ylim([-4.5, 4.5])
+            self.ax.set_aspect('equal')
+
+        num_frames = terminal_time
+        ani = FuncAnimation(self.fig, update, frames=num_frames, interval=50)
+        plt.show()
+
     def render_ani_manipulator(self, cdf, obs_center, xt, num_obs, terminal_time):
         f_rob_start = \
             cdf.robot.forward_kinematics_all_joints(torch.from_numpy(xt[:2, 0]).to(device).unsqueeze(0))[
@@ -194,6 +225,8 @@ class Render_Animation:
             cdf.robot.forward_kinematics_all_joints(
                 torch.from_numpy(self.robot_target_state[0:2]).to(device).unsqueeze(0))[
                 0].detach().cpu().numpy()
+
+        self.fig, self.ax = plt.subplots()
 
         def update(frame):
             self.ax.clear()

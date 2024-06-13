@@ -6,17 +6,17 @@ controller:
   smooth_input: [1.0, 1.0]
   weight_slack: 100
   clf_lambda: 1.0
-  cbf_gamma: 0.8  # 1.0 for one obstacle case
+  cbf_gamma: 1.0  # 1.0 for one obstacle case
 
 robot:
-  u_max: [2.0, 2.0]
-  u_min: [-2.0, -2.0]
+  u_max: [2.5, 2.5]
+  u_min: [-2.5, -2.5]
   # case 1: one obstacle case
-#  initial_state: [-2.5, 0.0, 0.0]  # one obstacle case, y \in [-2.0, 2.1]
-#  target_state: [2.0, -0.5, 0.0]
+  initial_state: [-2.5, 1.0, 0.0]  # one obstacle case, y \in [-2.0, 2.1]
+  target_state: [2.0, -0.5, 0.0]
   # case 2: one obstacle case
-  initial_state: [2.0, 0.0, 0.0]  # one obstacle case, y \in [-2.5, 2.5]
-  target_state: [-2.0, 1.0, 0.0]
+#  initial_state: [2.0,-0.5, 0.0]  # one obstacle case, y \in [-2.5, 2.5]
+#  target_state: [-2.0, 1.0, 0.0]
   # case 3
 #  initial_state: [2.5, 0.8, 0.0]
 #  target_state: [-2.0, 0.4, 0.0]
@@ -33,7 +33,7 @@ cdf_dyn_obstacle_list:
   obs_radii: [0.3, 0.3]
 #  obs_radii: [0.3]
   obs_vel: [
-    [0.0, 0.5],
+    [0.0, 0.3],
 #    [-0.5, 0.0]
   ]
   modes: [
