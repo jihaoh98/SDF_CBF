@@ -1,19 +1,22 @@
 controller:
   Tmax: 20
   step_time: 0.1
-  weight_input: [1.1, 1.0]  # for the static case
-  smooth_input: [1.0, 1.0]
+  weight_input: [ 1.1, 1.0, 1.0, 1.0, 1.0, 1.1, 1.2 ]
+  smooth_input: [ 1.0, 1.0,1.0, 1., 1., 1., 1. ]
   weight_slack: 100
-  clf_lambda: 1.0
-  cbf_gamma: 1.0  # bigger value more aggressive, smaller value more conservative
+  clf_lambda: 1.5  # bigger value more aggressive, smaller value more conservative
+  cbf_gamma: 0.1  # bigger value more aggressive, smaller value more conservative
 
 robot:
-  u_max: [2.0, 2.0]
-  u_min: [-2.0, -2.0]
-  initial_state: [-0.41302193, -0.94202107, -0.32044236, -2.47843634, -0.16166646,
-        1.74380392,  0.75803596]
-  target_state: [-0.23643478, -0.06273081,  0.16822745, -2.54468149, -0.32664142,
-        3.57070459,  1.14682636]
+  u_max: [ 1.0, 1.0 , 1.0, 1.0, 1.0, 1.0, 1.0 ]
+  u_min: [ -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0 ]
+#  target_state: [ -0.41302193, -0.94202107, -0.32044236, -2.47843634, -0.16166646,
+#                   1.74380392, 0.75803596 ]
+  initial_state: [ -0.03610672,  0.14759123,  0.60442339, -2.45172895, -0.06231244,2.53993935,  1.10256184 ]
+
+#  initial_state: [ -0.23643478, -0.06273081,  0.16822745, -2.54468149, -0.32664142,
+#                  3.57070459,  1.14682636 ]
+  target_state: [ -0.25802498, -0.01593395, -0.35283275, -2.24489454, -0.06160258, 2.35934126,  0.34169443 ]
   radius: 0.1
   destination_margin: 0.0
   sensor_range: 6.0
@@ -21,17 +24,18 @@ robot:
 
 cdf_sta_obstacle_list:
   obs_states: [
-    [2.0, -2.3],
-    [0.0, 2.4]
+    [ 2.0, -2.3 ],
+    #    [0.0, 2.4]
   ]
-  obs_radii: [0.3, 0.3]
-#  obs_radii: [0.3]
+  obs_radii: [ 0.3, 0.3 ]
+  #  obs_radii: [0.3]
   obs_vel: [
-    [0.0, 0.0],
-    [0.0, 0.0]
+    [ 0.0, 0.0 ],
+    #    [0.0, 0.0]
   ]
   modes: [
     'static',
-    'static'
+    #    'static'
   ]
+  obs_num: 126
 

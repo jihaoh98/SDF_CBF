@@ -733,18 +733,28 @@ class Render_Animation:
         figure = plt.figure()
         figure.set_dpi(150)
 
-        plt.plot(t, ut[0][0:terminal_time].reshape(terminal_time, ), linewidth=3, color="b", label="vx", )
-        plt.plot(t, self.umax[0] * np.ones(t.shape[0]), color="b", linestyle='dashed')
-        plt.plot(t, self.umin[0] * np.ones(t.shape[0]), color="b", linestyle='dashed')
+        for i in range(ut.shape[0]):
+            plt.plot(t, ut[i][0:terminal_time].reshape(terminal_time, ), linewidth=3, label='u{}'.format(i))
 
-        plt.plot(t, ut[1][0:terminal_time].reshape(terminal_time, ), linewidth=3, color="r", label="vy", )
-        plt.title("Control Variables", self.label_font)
-        plt.xlabel("Time (s)", self.label_font)
-        plt.ylabel("vx (m/s) / vy (m/s)", self.label_font)
+        plt.title('Control Variables', self.label_font)
+        plt.xlabel('Time (s)', self.label_font)
+        plt.ylabel('Control Variables', self.label_font)
 
-        self.ax.tick_params(labelsize=16)
-        labels = self.ax.get_xticklabels() + self.ax.get_yticklabels()
-        [label.set_fontname("Times New Roman") for label in labels]
+
+
+
+        # plt.plot(t, ut[0][0:terminal_time].reshape(terminal_time, ), linewidth=3, color="b", label="vx", )
+        # plt.plot(t, self.umax[0] * np.ones(t.shape[0]), color="b", linestyle='dashed')
+        # plt.plot(t, self.umin[0] * np.ones(t.shape[0]), color="b", linestyle='dashed')
+
+        # plt.plot(t, ut[1][0:terminal_time].reshape(terminal_time, ), linewidth=3, color="r", label="vy", )
+        # plt.title("Control Variables", self.label_font)
+        # plt.xlabel("Time (s)", self.label_font)
+        # plt.ylabel("vx (m/s) / vy (m/s)", self.label_font)
+
+        # self.ax.tick_params(labelsize=16)
+        # labels = self.ax.get_xticklabels() + self.ax.get_yticklabels()
+        # [label.set_fontname("Times New Roman") for label in labels]
 
         plt.legend(loc="upper right", prop=self.legend_font)
         plt.grid()

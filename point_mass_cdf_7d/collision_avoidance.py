@@ -70,16 +70,16 @@ class Collision_Avoidance:
             self.cir_obs_states_list = np.copy(self.cir_obs_init_states_list)
 
         if cdf_sta_obs_params is not None:
-            self.cdf_sta_obs_num = len(cdf_sta_obs_params['obs_states'])
+            self.cdf_sta_obs_num = cdf_sta_obs_params['obs_num']
             self.cdf_sta_obs_list = [None for i in range(self.cdf_sta_obs_num)]
-            for i in range(self.cdf_sta_obs_num):
-                self.cdf_sta_obs_list[i] = obs.Cdf_Obs(
-                    index=i,
-                    radius=cdf_sta_obs_params['obs_radii'][i],
-                    center=cdf_sta_obs_params['obs_states'][i],
-                    vel=cdf_sta_obs_params['obs_vel'][i],
-                    mode=cdf_sta_obs_params['modes'][i],
-                )
+            # for i in range(self.cdf_sta_obs_num):
+            #     self.cdf_sta_obs_list[i] = obs.Cdf_Obs(
+            #         index=i,
+            #         radius=cdf_sta_obs_params['obs_radii'][i],
+            #         center=cdf_sta_obs_params['obs_states'][i],
+            #         vel=cdf_sta_obs_params['obs_vel'][i],
+            #         mode=cdf_sta_obs_params['modes'][i],
+            #     )
 
         if cdf_dyn_obs_params is not None:
             self.dyn_obstacle_gradient_filed = []
@@ -119,12 +119,12 @@ class Collision_Avoidance:
         "storage for static cdf obstacles"
         if cdf_sta_obs_params is not None:
             self.cdf_obs_cbf_t = np.zeros((self.cdf_sta_obs_num, 1, self.time_steps))
-            self.cdf_obs_dx_cbf_t = np.zeros((self.cdf_sta_obs_num, 3, self.time_steps))
+            self.cdf_obs_dx_cbf_t = np.zeros((self.cdf_sta_obs_num, 7, self.time_steps))
 
         "storage for dynamic cdf obstacles"
         if cdf_dyn_obs_params is not None:
             self.cdf_obs_cbf_t = np.zeros((self.cdf_dyn_obs_num, 1, self.time_steps))
-            self.cdf_obs_dx_cbf_t = np.zeros((self.cdf_dyn_obs_num, 3, self.time_steps))
+            self.cdf_obs_dx_cbf_t = np.zeros((self.cdf_dyn_obs_num, 7, self.time_steps))
         # plot
         self.ani = Render_Animation(
             robot_params,
@@ -188,6 +188,23 @@ class Collision_Avoidance:
         distance_input = None
         gradient_input = None
 
+        wall_size = torch.tensor([0.5, 0.5]).to(device)
+        wall_center = torch.tensor([0.5, 0.0, 0.2]).to(device)
+        wall_rot = torch.tensor([[1.0, 0.0, 0.0],
+                                 [0.0, 0.0, -1.0],
+                                 [0.0, 1.0, 0.0], ]).to(device)
+        p = wall(wall_size, wall_center, wall_rot)
+        # p = p[0].reshape(-1, 3) + torch.tensor([0.25, 0.0, 0.35]).to(device)
+        # put obstacles here
+        # ring_radius = 0.3
+        # ring_center = torch.tensor([0.4, 0.0, 0.45]).to(device)
+        # ring_rot = torch.tensor([[0.0, 0.0, -1.0],
+        #                          [0.0, 1.0, 0.0],
+        #                          [1.0, 0.0, 0.0], ]).to(device)
+        # p = ring(ring_radius, ring_center, ring_rot)
+
+        self.cdf_sta_obs_num = p.shape[0]
+
         # approach the destination or exceed the maximum time
         while (
                 np.linalg.norm(self.robot_cur_state[0:7] - self.robot_target_state[0:7])
@@ -207,14 +224,20 @@ class Collision_Avoidance:
                     cdf.obj_lists = None
                     distance_input_list = []
                     gradient_input_list = []
-                    for i in range(self.cdf_sta_obs_num):
-                        cdf.obj_lists = [Circle(center=torch.from_numpy(self.cdf_sta_obs_list[i].state),
-                                                radius=self.cdf_sta_obs_list[i].radius, device=device)]
-                        robot_states = torch.from_numpy(self.robot_cur_state[:2]).to(device).reshape(1, 2)
-                        distance_input, gradient_input = cdf.inference_c_space_sdf_using_data(robot_states)
+                    for i in range(p.shape[0]):
+                        # for i in range(1):
+                        # cdf.obj_lists = [Circle(center=torch.from_numpy(self.cdf_sta_obs_list[i].state),
+                        #                         radius=self.cdf_sta_obs_list[i].radius, device=device)]
+                        robot_states = torch.from_numpy(self.robot_cur_state[:7]).to(device).float().reshape(1, 7)
+                        robot_states.requires_grad = True
+                        distance_input, gradient_input = cdf.inference_d_wrt_q(p[i].reshape(1, 3), robot_states, model,
+                                                                               return_grad=True)
+                        # distance_input, gradient_input = cdf.inference_d_wrt_q(p, robot_states, model,
+                        #                                                        return_grad=True)
+                        # distance_input, gradient_input = cdf.inference_c_space_sdf_using_data(robot_states)
                         distance_input = distance_input.cpu().detach().numpy()
                         gradient_input = gradient_input.cpu().detach().numpy()
-                        gradient_input = np.array([gradient_input[0][0], gradient_input[0][1], 0.0]).reshape(1, 3)
+                        # gradient_input = np.hstack((gradient_input, np.array([[0.0]])))
                         distance_input = distance_input - self.margin
                         distance_input_list.append(distance_input)
                         gradient_input_list.append(gradient_input)
@@ -245,7 +268,7 @@ class Collision_Avoidance:
                     for i in range(self.cdf_dyn_obs_num):
                         cdf.obj_lists = [Circle(center=torch.from_numpy(self.cdf_dyn_obs_list[i].state),
                                                 radius=self.cdf_dyn_obs_list[i].radius, device=device)]
-                        robot_states = torch.from_numpy(self.robot_cur_state[:2]).to(device).reshape(1, 2)
+                        robot_states = torch.from_numpy(self.robot_cur_state[:2]).to(device).reshape(1, 7)
                         distance_input, gradient_input = cdf.inference_c_space_sdf_using_data(robot_states)
                         ob_distance_input, ob_gradient_input, ob_state = cdf.inference_t_space_sdf_using_data(
                             robot_states)
@@ -284,6 +307,7 @@ class Collision_Avoidance:
             self.ut[:, t] = optimal_result.u
             self.clft[0, t] = optimal_result.clf
             self.slackt[0, t] = optimal_result.slack
+            self.obs_7d = p
 
             # storage and update the state of robot and obstacle
             self.xt[:, t] = np.copy(self.robot_cur_state)
@@ -405,6 +429,21 @@ def mannully_observe_q(q):
     return q, robot_mesh
 
 
+def wall(size, center, rot):
+    # center: (3,)
+    # size: (3,)
+    # return: (N,3)
+    # the gap of the linspace is 0.1
+    x = torch.arange(-size[0] / 2, size[0] / 2, 0.1).to(device)
+    y = torch.arange(-size[1] / 2, size[1] / 2, 0.1).to(device)
+    x, y = torch.meshgrid(x, y)
+    x, y = x.reshape(-1), y.reshape(-1)
+    z = torch.zeros_like(x).to(device)
+    points = torch.stack([x, y, z], dim=-1)
+    points = torch.matmul(points, rot.transpose(0, 1)) + center
+    return points
+
+
 if __name__ == '__main__':
     file_names = {
         1: 'static_setting.yaml',
@@ -422,30 +461,20 @@ if __name__ == '__main__':
                           act_fn=torch.nn.ReLU, nerf=True)
     model.load_state_dict(torch.load(os.path.join(CURRENT_DIR, 'model_dict_tension_2.pt'))[49900])
     model.to(device)
-    ring_radius = 0.25
-    ring_center = torch.tensor([0.5, 0.0, 0.45]).to(device)
-    ring_rot = torch.tensor([[0.0, 0.0, -1.0],
-                             [0.0, 1.0, 0.0],
-                             [1.0, 0.0, 0.0], ]).to(device)
 
-    p = ring(ring_radius, ring_center, ring_rot)
-    scene = trimesh.Scene()
-    for p0 in p.data.cpu().numpy():
-        sphere = trimesh.creation.icosphere(subdivisions=3, radius=0.05)
-        sphere.visual.face_colors = [255, 0, 0, 100]
-        sphere.apply_translation(p0)
-        scene.add_geometry(sphere)
+    #
+    # x0_7d_torch = torch.tensor([-0.41302193, -0.94202107, -0.32044236, -2.47843634, -0.16166646,
+    #                             1.74380392, 0.75803596]).to(device).reshape(1, 7)
+    # x0_7d_torch.requires_grad = True
+    # # distance_input, gradient_input = cdf.inference_d_wrt_q(p, x0_7d_torch, model, return_grad=True)
+    # # print('distance_input:', distance_input)
+    # q, robot_mesh = mannully_observe_q(x0_7d_torch)
+    # scene.add_geometry(robot_mesh[0])
+    # scene.show()
 
-    x0_7d_torch = torch.tensor([-0.41302193, -0.94202107, -0.32044236, -2.47843634, -0.16166646,
-        1.74380392,  0.75803596]).to(device).reshape(1, 7)
-    x0_7d_torch.requires_grad = True
-    distance_input, gradient_input = cdf.inference_d_wrt_q(p, x0_7d_torch, model, return_grad=True)
-    print('distance_input:', distance_input)
-    q, robot_mesh = mannully_observe_q(x0_7d_torch)
-    scene.add_geometry(robot_mesh[0])
-    scene.show()
+    test_target = Collision_Avoidance(file_name)
 
-    # test_target = Collision_Avoidance(file_name)
+    "hard code to visualize the robot and obstacles"
 
     # if case == 1:
     #     "collision avoidance with circle cbf"
@@ -469,23 +498,37 @@ if __name__ == '__main__':
     # #
     # elif case == 3:
     #     "collision avoidance with static cdf cbf"
-    # test_target.collision_avoidance(cdf=cdf)
-    #     # test_target.render_cdf(cdf)
-    #     # test_target.render_manipulator()
-    #     # test_target.show_clf()
-    #     test_target.show_cdf_cbf(0)
-    #     # test_target.show_cdf_cbf(1)  # show the cbf of the second obstacle
-    #     # test_target.show_controls()
-    #     # test_target.show_slack()
-    #
-    # elif case == 4:
-    #     "collision avoidance with dynamic cdf cbf"
-    #     test_target.collision_avoidance(cdf=cdf)
-    #     # test_target.render_dynamic_cdf(cdf, test_target.cdf_dyn_obs_center_list,
-    #     #                                test_target.dyn_obstacle_gradient_filed)
-    #     # test_target.render_ani_manipulator(cdf, test_target.cdf_dyn_obs_center_list)
-    #     # test_target.show_clf()
-    #     # test_target.show_cdf_cbf(0)
-    #     # test_target.show_cdf_cbf(1)  # show the cbf of the second obstacle
-    #     # test_target.show_controls()
-    #     # test_target.show_slack()
+    test_target.collision_avoidance(cdf=cdf)
+    test_target.show_cdf_cbf(0)
+    test_target.show_controls()
+    test_target.show_clf()
+    test_target.show_slack()
+    scene = trimesh.Scene()
+
+    "Visualize the obstacles"
+    robot_q = test_target.xt.T
+    for p0 in test_target.obs_7d.data.cpu().numpy():
+        sphere = trimesh.creation.icosphere(subdivisions=3, radius=0.05)
+        sphere.visual.face_colors = [255, 0, 0, 100]
+        sphere.apply_translation(p0)
+        scene.add_geometry(sphere)
+
+    "Visualize the robot trajectory"
+    q_init, robot_mesh_init = mannully_observe_q(
+        torch.from_numpy(test_target.robot_init_state.reshape(1, 7)).to(device).float())
+    robot_mesh_init[0].visual.face_colors = [255, 0, 0, 100]
+    scene.add_geometry(robot_mesh_init[0])
+
+    q_target, robot_mesh_target = mannully_observe_q(
+        torch.from_numpy(test_target.robot_target_state.reshape(1, 7)).to(device).float())
+    robot_mesh_target[0].visual.face_colors = [0, 191, 255, 100]
+    scene.add_geometry(robot_mesh_target[0])
+
+    robot_q = robot_q[::2, :]  # downsample the trajectory
+    q, robot_mesh_final = mannully_observe_q(torch.from_numpy(robot_q).to(device).float())
+    robot_mesh_final[0].visual.face_colors = [0, 0, 255, 250]
+
+    for _q, m in zip(q, robot_mesh_final):
+        m.visual.face_colors = [0, 255, 0, 100]
+        scene.add_geometry(m)
+    scene.show()

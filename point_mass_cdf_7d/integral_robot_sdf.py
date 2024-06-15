@@ -165,7 +165,7 @@ class Integral_Robot_Sdf:
         # dh_dx = np.array([dh_dp[0], dh_dp[1], 0])
 
         lf_cbf = (dx_dp @ self.f(robot_state))[0]
-        lg_cbf = (dx_dp @ self.g(robot_state)).reshape(1, 2)
+        lg_cbf = (dx_dp @ self.g(robot_state)).reshape(1, 7)
 
         # TODO: need to fix when considering the dynamic obstacle
         # dt_obs_cbf = (cdf_gradient @ self.cdf_obstacle_dynamics(obstacle_state)[0:2])[0]
