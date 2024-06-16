@@ -446,10 +446,8 @@ def wall(size, center, rot):
 
 if __name__ == '__main__':
     file_names = {
-        1: 'static_setting.yaml',
-        2: 'dynamic_setting.yaml',
-        3: 'static_cdf_setting.yaml',
-        4: 'dynamic_cdf_setting.yaml'
+        1: 'static_cdf_setting.yaml',
+        2: 'dynamic_cdf_setting.yaml'
 
     }
     PI = 3.14
@@ -498,37 +496,38 @@ if __name__ == '__main__':
     # #
     # elif case == 3:
     #     "collision avoidance with static cdf cbf"
-    test_target.collision_avoidance(cdf=cdf)
-    test_target.show_cdf_cbf(0)
-    test_target.show_controls()
-    test_target.show_clf()
-    test_target.show_slack()
-    scene = trimesh.Scene()
+    if case == 1:
+        test_target.collision_avoidance(cdf=cdf)
+        test_target.show_cdf_cbf(0)
+        test_target.show_controls()
+        test_target.show_clf()
+        test_target.show_slack()
 
-    "Visualize the obstacles"
-    robot_q = test_target.xt.T
-    for p0 in test_target.obs_7d.data.cpu().numpy():
-        sphere = trimesh.creation.icosphere(subdivisions=3, radius=0.05)
-        sphere.visual.face_colors = [255, 0, 0, 100]
-        sphere.apply_translation(p0)
-        scene.add_geometry(sphere)
+        scene = trimesh.Scene()
+        "Visualize the obstacles"
+        robot_q = test_target.xt.T
+        for p0 in test_target.obs_7d.data.cpu().numpy():
+            sphere = trimesh.creation.icosphere(subdivisions=3, radius=0.05)
+            sphere.visual.face_colors = [255, 0, 0, 100]
+            sphere.apply_translation(p0)
+            scene.add_geometry(sphere)
 
-    "Visualize the robot trajectory"
-    q_init, robot_mesh_init = mannully_observe_q(
-        torch.from_numpy(test_target.robot_init_state.reshape(1, 7)).to(device).float())
-    robot_mesh_init[0].visual.face_colors = [255, 0, 0, 100]
-    scene.add_geometry(robot_mesh_init[0])
+        "Visualize the robot trajectory"
+        q_init, robot_mesh_init = mannully_observe_q(
+            torch.from_numpy(test_target.robot_init_state.reshape(1, 7)).to(device).float())
+        robot_mesh_init[0].visual.face_colors = [255, 0, 0, 100]
+        scene.add_geometry(robot_mesh_init[0])
 
-    q_target, robot_mesh_target = mannully_observe_q(
-        torch.from_numpy(test_target.robot_target_state.reshape(1, 7)).to(device).float())
-    robot_mesh_target[0].visual.face_colors = [0, 191, 255, 100]
-    scene.add_geometry(robot_mesh_target[0])
+        q_target, robot_mesh_target = mannully_observe_q(
+            torch.from_numpy(test_target.robot_target_state.reshape(1, 7)).to(device).float())
+        robot_mesh_target[0].visual.face_colors = [0, 191, 255, 100]
+        scene.add_geometry(robot_mesh_target[0])
 
-    robot_q = robot_q[::2, :]  # downsample the trajectory
-    q, robot_mesh_final = mannully_observe_q(torch.from_numpy(robot_q).to(device).float())
-    robot_mesh_final[0].visual.face_colors = [0, 0, 255, 250]
+        robot_q = robot_q[::3, :]  # downsample the trajectory
+        q, robot_mesh_final = mannully_observe_q(torch.from_numpy(robot_q).to(device).float())
+        robot_mesh_final[0].visual.face_colors = [0, 0, 255, 250]
 
-    for _q, m in zip(q, robot_mesh_final):
-        m.visual.face_colors = [0, 255, 0, 100]
-        scene.add_geometry(m)
-    scene.show()
+        for _q, m in zip(q, robot_mesh_final):
+            m.visual.face_colors = [0, 255, 0, 100]
+            scene.add_geometry(m)
+        scene.show()

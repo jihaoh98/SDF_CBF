@@ -35,6 +35,7 @@ class Render_Animation:
 
         # plot
         self.fig, self.ax = plt.subplots()
+        # self.fig, self.ax = None
 
         # start and end state of robot
         self.start_body = None
@@ -739,9 +740,6 @@ class Render_Animation:
         plt.title('Control Variables', self.label_font)
         plt.xlabel('Time (s)', self.label_font)
         plt.ylabel('Control Variables', self.label_font)
-
-
-
 
         # plt.plot(t, ut[0][0:terminal_time].reshape(terminal_time, ), linewidth=3, color="b", label="vx", )
         # plt.plot(t, self.umax[0] * np.ones(t.shape[0]), color="b", linestyle='dashed')
