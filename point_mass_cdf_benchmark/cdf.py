@@ -27,7 +27,7 @@ class CDF2D:
 
         # self.obj_lists = []
         # one obstacle case
-        self.obj_lists = [Circle(center=torch.tensor([2.0, 1.0]), radius=0.3, device=device)]
+        self.obj_lists = [Circle(center=torch.tensor([2.3, 1.0]), radius=0.3, device=device)]
 
         # # # two obstacles case
         # self.obj_lists = [Circle(center=torch.tensor([2.3, -2.3]), radius=0.3, device=device),
@@ -90,6 +90,18 @@ class CDF2D:
         sdf = sdf.min(dim=-1)[0]
         grad = torch.autograd.grad(sdf, q, torch.ones_like(sdf), create_graph=True)[0]
         return sdf, grad
+
+    def inference_t_sdf_grad(self, q):
+        # q.requires_grad = True
+        kpts = self.robot.surface_points_sampler(q)
+        B, N = kpts.size(0), kpts.size(1)
+        dist = torch.cat([obj.signed_distance(kpts.reshape(-1, 2)).reshape(B, N, -1) for obj in self.obj_lists], dim=-1)
+        sdf, min_ind = torch.min(dist[0].T, dim=-1)
+        points_on_robot = kpts[torch.arange(B), min_ind]
+        obj_points = self.obj_lists[0].center.requires_grad_(True)
+        dist_robot_obj = torch.norm(points_on_robot - obj_points, dim=1)
+        grad = torch.autograd.grad(dist_robot_obj, obj_points, torch.ones_like(sdf), create_graph=True)[0]
+        return dist_robot_obj, grad, obj_points
 
     def c_space_distance(self, q):
         # x : (Nx,3)
@@ -294,79 +306,99 @@ if __name__ == "__main__":
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     cdf = CDF2D(device)
-
-    # observe the generated data
     cdf.q_template = torch.load(os.path.join(CUR_PATH, 'data2D_100.pt'))
-    test_Q1 = torch.tensor([[2., 2.]]).to(device)
-    d, grad = cdf.inference_c_space_sdf_using_data(cdf.Q_sets)
 
-    d_test, grad_obj, point_obj = cdf.inference_t_space_sdf_using_data(test_Q1)
-    print("distance: ", d_test)
-    print("gradient: ", grad_obj)
+    case = 2
 
-    cdf.plot_cdf(d.detach().cpu().numpy(), grad.detach().cpu().numpy())
-    # plot the test point
-    plt.scatter(test_Q1[:, 0].detach().cpu().numpy(), test_Q1[:, 1].detach().cpu().numpy(), color='red')
-    # plot the point_obj
-    plt.scatter(point_obj[:, 0].detach().cpu().numpy(), point_obj[:, 1].detach().cpu().numpy(), color='red')
-    # use fancyarrow to plot the gradient
-    arrow = mpatches.FancyArrow(point_obj[0, 0].detach().cpu().numpy(),
-                                point_obj[0, 1].detach().cpu().numpy(),
-                                grad_obj[0, 0].detach().cpu().numpy(),
-                                grad_obj[0, 1].detach().cpu().numpy(),
-                                width=0.05,
-                                color='red')
-    ax = plt.gca()
-    ax.add_patch(arrow)
+    if case == 1:
+        "observe the cdf in the configuration space"
+        sample_joint_angles = torch.tensor([[2., 2.]]).to(device)
+        d_test, grad_obj, point_obj = cdf.inference_t_space_sdf_using_data(sample_joint_angles)
+        d, grad = cdf.inference_c_space_sdf_using_data(cdf.Q_sets)
+        print("distance: ", d_test)
+        print("gradient: ", grad_obj)
+        cdf.plot_cdf(d.detach().cpu().numpy(), grad.detach().cpu().numpy())
+        plt.scatter(sample_joint_angles[:, 0].detach().cpu().numpy(), sample_joint_angles[:, 1].detach().cpu().numpy(),
+                    color='red')
+        plt.scatter(point_obj[:, 0].detach().cpu().numpy(), point_obj[:, 1].detach().cpu().numpy(), color='red')
+        arrow = mpatches.FancyArrow(point_obj[0, 0].detach().cpu().numpy(),
+                                    point_obj[0, 1].detach().cpu().numpy(),
+                                    grad_obj[0, 0].detach().cpu().numpy(),
+                                    grad_obj[0, 1].detach().cpu().numpy(),
+                                    width=0.05,
+                                    color='red')
+        ax = plt.gca()
+        ax.add_patch(arrow)
+        plt.show()
+        "observe the cdf in the task space"
+        plt.figure()
+        plt.rcParams['axes.facecolor'] = '#eaeaf2'
+        ax = plt.gca()
+        for obj in cdf.obj_lists:
+            ax.add_patch(obj.create_patch())
 
-    plt.show()
+        xf_2d = sample_joint_angles.detach().cpu().numpy()
+        xg_2d = point_obj.detach().cpu().numpy()
+        plot_2d_manipulators(joint_angles_batch=xf_2d)
+        plot_2d_manipulators(joint_angles_batch=xg_2d)
 
-    plt.figure()
-    plt.rcParams['axes.facecolor'] = '#eaeaf2'
-    ax = plt.gca()
-    for obj in cdf.obj_lists:
-        ax.add_patch(obj.create_patch())
-    # use fancyarrow to plot the gradient
-    # arrow = mpatches.FancyArrow(point_test[0, 0].detach().cpu().numpy(),
-    #                             point_test[0, 1].detach().cpu().numpy(),
-    #                             grad_test[0, 0].detach().cpu().numpy(),
-    #                             grad_test[0, 1].detach().cpu().numpy(),
-    #                             width=0.05,
-    #                             color='red')
-    # ax.add_patch(arrow)
-    xf_2d = test_Q1.detach().cpu().numpy()
-    xg_2d = point_obj.detach().cpu().numpy()
-    plot_2d_manipulators(joint_angles_batch=xf_2d)
-    plot_2d_manipulators(joint_angles_batch=xg_2d)
+        f_rob_end = cdf.robot.forward_kinematics_all_joints(torch.from_numpy(xf_2d).to(device))[
+            0].detach().cpu().numpy()
+        plt.scatter(f_rob_end[0, -1], f_rob_end[1, -1], color='r', s=100, zorder=10, label='Goal')
+        ax.set_aspect('equal')
+        plt.xlim(-4, 4)
+        plt.ylim(-4, 4)
+        plt.xlabel('x (m)')
+        plt.ylabel('y (m)')
+        plt.legend(loc='upper left')
+        plt.show()
 
-    f_rob_end = cdf.robot.forward_kinematics_all_joints(torch.from_numpy(xf_2d).to(device))[
-        0].detach().cpu().numpy()
-    plt.scatter(f_rob_end[0, -1], f_rob_end[1, -1], color='r', s=100, zorder=10, label='Goal')
-    ax.set_aspect('equal')
-    plt.xlim(-4, 4)
-    plt.ylim(-4, 4)
-    plt.xlabel('x (m)')
-    plt.ylabel('y (m)')
-    plt.legend(loc='upper left')
-    plt.show()
+    elif case == 2:
+        "observe the sdf in the configuration space"
+        sample_joint_angles = torch.tensor([[1., 1]]).to(device)
+        sdf, grad = cdf.inference_sdf_grad(sample_joint_angles)
+        print("distance: ", sdf)
 
-    # print("distance: ", d_test)
-    # print("gradient: ", grad_test)
-    # test the norm of the gradient
-    # print(torch.norm(grad, dim=-1).max())
-    # print(torch.norm(grad, dim=-1).min())
-    # print(torch.norm(grad, dim=-1).mean())
-    # cdf.plot_sdf()
+        sdf_obj, grad_obj, q_obj = cdf.inference_t_sdf_grad(sample_joint_angles)
+        print("distance: ", sdf_obj)
 
-    # cdf.plot_cdf(d.detach().cpu().numpy(), grad.detach().cpu().numpy())
-    # # plot the test point
-    # plt.scatter(test_Q1[:, 0].detach().cpu().numpy(), test_Q1[:, 1].detach().cpu().numpy(), color='red')
-    # # use the gradient to plot the matches fancy arrow
-    # arrow = mpatches.FancyArrow(test_Q1[0, 0].detach().cpu().numpy(),
-    #                     test_Q1[0, 1].detach().cpu().numpy(),
-    #                     grad_test[0, 0].detach().cpu().numpy(),
-    #                     grad_test[0, 1].detach().cpu().numpy(),
-    #                     width = 0.05,
-    #                     color='red')
-    # plt.gca().add_patch(arrow)
-    # plt.show()
+        cdf.plot_sdf()
+        plt.scatter(sample_joint_angles[:, 0].detach().cpu().numpy(), sample_joint_angles[:, 1].detach().cpu().numpy(),
+                    color='red')
+        arrow = mpatches.FancyArrow(sample_joint_angles[0, 0].detach().cpu().numpy(),
+                                    sample_joint_angles[0, 1].detach().cpu().numpy(),
+                                    grad[0, 0].detach().cpu().numpy(),
+                                    grad[0, 1].detach().cpu().numpy(),
+                                    width=0.05,
+                                    color='red')
+        plt.gca().add_patch(arrow)
+
+        plt.show()
+
+        "observe the sdf in the task space"
+        plt.figure()
+        plt.rcParams['axes.facecolor'] = '#eaeaf2'
+        ax = plt.gca()
+        for obj in cdf.obj_lists:
+            ax.add_patch(obj.create_patch())
+
+        xf_2d = sample_joint_angles.detach().cpu().numpy()
+
+        plot_2d_manipulators(joint_angles_batch=xf_2d)
+
+        plt.scatter(q_obj[0].detach().cpu().numpy(), q_obj[1].detach().cpu().numpy(), color='red')
+
+        arrow = mpatches.FancyArrow(q_obj[0].detach().cpu().numpy(),
+                                    q_obj[1].detach().cpu().numpy(),
+                                    grad_obj[0].detach().cpu().numpy()*1,
+                                    grad_obj[1].detach().cpu().numpy()*1,
+                                    width=0.05,
+                                    color='red')
+        ax.add_patch(arrow)
+        ax.set_aspect('equal')
+        plt.xlim(-4, 4)
+        plt.ylim(-4, 4)
+        plt.xlabel('x (m)')
+        plt.ylabel('y (m)')
+        # plt.legend(loc='upper left')
+        plt.show()

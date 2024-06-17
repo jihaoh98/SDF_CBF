@@ -360,10 +360,10 @@ if __name__ == "__main__":
 
     # cdf.plot_cdf(d.detach().cpu().numpy(), grad.detach().cpu().numpy())
     # # plot the test point
-    # plt.scatter(test_Q1[:, 0].detach().cpu().numpy(), test_Q1[:, 1].detach().cpu().numpy(), color='red')
+    # plt.scatter(sample_joint_angles[:, 0].detach().cpu().numpy(), sample_joint_angles[:, 1].detach().cpu().numpy(), color='red')
     # # use the gradient to plot the matches fancy arrow
-    # arrow = mpatches.FancyArrow(test_Q1[0, 0].detach().cpu().numpy(),
-    #                     test_Q1[0, 1].detach().cpu().numpy(),
+    # arrow = mpatches.FancyArrow(sample_joint_angles[0, 0].detach().cpu().numpy(),
+    #                     sample_joint_angles[0, 1].detach().cpu().numpy(),
     #                     grad_test[0, 0].detach().cpu().numpy(),
     #                     grad_test[0, 1].detach().cpu().numpy(),
     #                     width = 0.05,

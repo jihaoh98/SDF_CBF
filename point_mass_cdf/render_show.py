@@ -2,6 +2,8 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import matplotlib.patches as mpatches
 from matplotlib.animation import FuncAnimation
+from matplotlib.animation import PillowWriter
+
 import matplotlib.cm as cm
 import numpy as np
 import torch
@@ -217,7 +219,7 @@ class Render_Animation:
         ani = FuncAnimation(self.fig, update, frames=num_frames, interval=50)
         plt.show()
 
-    def render_ani_manipulator(self, cdf, obs_center, xt, num_obs, terminal_time):
+    def render_ani_manipulator(self, cdf, obs_center, xt, num_obs, terminal_time, save_gif=False):
         f_rob_start = \
             cdf.robot.forward_kinematics_all_joints(torch.from_numpy(xt[:2, 0]).to(device).unsqueeze(0))[
                 0].detach().cpu().numpy()
@@ -246,6 +248,9 @@ class Render_Animation:
 
         num_frames = terminal_time
         ani = FuncAnimation(self.fig, update, frames=num_frames, interval=50)
+        # save the animation gif
+        if save_gif:
+            ani.save('cbf_clf_cdf.gif', writer=PillowWriter(fps=20))
         plt.show()
 
     def render_manipulator(self, cdf, xt, terminal_time):

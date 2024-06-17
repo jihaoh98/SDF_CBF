@@ -348,8 +348,9 @@ class Collision_Avoidance:
     def render_manipulator(self):
         self.ani.render_manipulator(cdf, self.xt, self.terminal_time)
 
-    def render_ani_manipulator(self, cdf, log_circle_center):
-        self.ani.render_ani_manipulator(cdf, log_circle_center, self.xt, self.cdf_dyn_obs_num, self.terminal_time)
+    def render_ani_manipulator(self, cdf, log_circle_center, save_flag=False):
+        self.ani.render_ani_manipulator(cdf, log_circle_center, self.xt, self.cdf_dyn_obs_num, self.terminal_time,
+                                        save_flag)
 
     def render_sta_ani_manipulator(self, cdf, circle_center):
         self.ani.render_sta_ani_manipulator(cdf, circle_center, self.xt, self.cdf_sta_obs_num, self.terminal_time)
@@ -382,7 +383,7 @@ if __name__ == '__main__':
 
     }
 
-    case = 3
+    case = 4
     file_name = os.path.join(CURRENT_DIR, file_names[case])
     cdf = CDF2D(device)
     test_target = Collision_Avoidance(file_name)
@@ -424,7 +425,7 @@ if __name__ == '__main__':
         test_target.collision_avoidance(cdf=cdf)
         test_target.render_dynamic_cdf(cdf, test_target.cdf_dyn_obs_center_list,
                                        test_target.dyn_obstacle_gradient_filed)
-        test_target.render_ani_manipulator(cdf, test_target.cdf_dyn_obs_center_list)
+        test_target.render_ani_manipulator(cdf, test_target.cdf_dyn_obs_center_list, save_flag=False)
         test_target.show_clf()
         test_target.show_cdf_cbf(0)
         # test_target.show_cdf_cbf(1)  # show the cbf of the second obstacle

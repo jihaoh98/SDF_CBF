@@ -382,7 +382,7 @@ if __name__ == '__main__':
 
     }
 
-    case = 3
+    case = 1
     file_name = os.path.join(CURRENT_DIR, file_names[case])
     cdf = CDF2D(device)
     test_target = Collision_Avoidance(file_name)
