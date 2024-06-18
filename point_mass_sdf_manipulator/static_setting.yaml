@@ -12,7 +12,7 @@ robot:
   u_max: [ 2.0, 2.0 ]
   u_min: [ -2.0, -2.0 ]
   initial_state: [ 2.5, -0.9 ]  # in configuration space
-  target_state: [ 2.0, 2.0 ]  # in task space
+  target_state: [ 2.0, 2.4 ]  # in task space
   radius: 0.1
   destination_margin: 0.0
   sensor_range: 6.0
@@ -21,7 +21,7 @@ robot:
 
 sdf_sta_obstacle_list:
   obs_states: [
-    [ 3.3, 3.3 ],
+    [ 0.75, 2.8 ],
   ]
   obs_radii: [ 0.3 ]
   obs_vel: [

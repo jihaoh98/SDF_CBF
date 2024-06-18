@@ -138,9 +138,9 @@ class Collision_Avoidance:
 
         "storage for static sdf obstacles"
         if self.sdf_flag:
-            self.sdf_obs_cbf_t = None
-            self.sdf_obs_dx_cbf_t = None
-            self.sdf_obs_cbf_t = None
+            self.sdf_obs_cbf_t = np.zeros((self.sdf_sta_obs_num, 1, self.time_steps))
+            self.sdf_obs_dx_cbf_t = np.zeros((self.sdf_sta_obs_num, 2, self.time_steps))
+
         # plot
         self.ani = Render_Animation(
             robot_params,
@@ -233,32 +233,31 @@ class Collision_Avoidance:
                     distance_input_list = []
                     gradient_input_list = []
                     for i in range(self.sdf_sta_obs_num):
+                        sdf.obj_lists = [Circle(center=torch.from_numpy(self.sdf_sta_obs_list[i].state),
+                                                radius=self.sdf_sta_obs_list[i].radius, device=device)]
                         robot_states = torch.from_numpy(self.robot_cur_state[:2]).to(device).reshape(1, 2)
-                        end_effector = sdf.robot.forward_kinematics_all_joints(robot_states)[0].detach().cpu().numpy()
+                        dist_k, grad_k = sdf.inference_sdf_grad(robot_states)
+                        dist_k = dist_k.cpu().detach().numpy()
+                        grad_k = grad_k.cpu().detach().numpy()
+
+                        # end_effector = sdf.robot.forward_kinematics_all_joints(robot_states)[0].detach().cpu().numpy()
                         # compute the distance between end-effector and obstacles
-                        distance_input_x = np.linalg.norm(end_effector[0, 2] - self.sdf_sta_obs_list[i].state[0]) - \
-                                           self.sdf_sta_obs_list[i].radius
-                        distance_input_y = np.linalg.norm(end_effector[1, 2] - self.sdf_sta_obs_list[i].state[1]) - \
-                                           self.sdf_sta_obs_list[i].radius
-
-                        e = 0.01
+                        # distance_input_x = end_effector[0, 2] - self.sdf_sta_obs_list[i].state[0] - self.sdf_sta_obs_list[i].radius
+                        # distance_input_y = end_effector[1, 2] - self.sdf_sta_obs_list[i].state[1] - self.sdf_sta_obs_list[i].radius
+                        # e = 0.01
                         # compute the numerical gradient
-                        robot_states_next = robot_states + e
-                        end_effector_next = sdf.robot.forward_kinematics_all_joints(robot_states_next)[
-                            0].detach().cpu().numpy()
-                        distance_input_next_x = np.linalg.norm(
-                            end_effector_next[0, 2] - self.sdf_sta_obs_list[i].state[0]) - self.sdf_sta_obs_list[
-                                                    i].radius
-                        distance_input_next_y = np.linalg.norm(
-                            end_effector_next[1, 2] - self.sdf_sta_obs_list[i].state[1]) - self.sdf_sta_obs_list[
-                                                    i].radius
+                        # robot_states_next = robot_states + e
+                        # end_effector_next = sdf.robot.forward_kinematics_all_joints(robot_states_next)[
+                        #     0].detach().cpu().numpy()
+                        # distance_input_next_x =end_effector_next[0, 2] - self.sdf_sta_obs_list[i].state[0] - self.sdf_sta_obs_list[i].radius
+                        # distance_input_next_y =end_effector_next[1, 2] - self.sdf_sta_obs_list[i].state[1] - self.sdf_sta_obs_list[i].radius
 
-                        gradient_input_x = (distance_input_next_x - distance_input_x) / e
-                        gradient_input_y = (distance_input_next_y - distance_input_y) / e
-                        gradient_input = np.array([gradient_input_x, gradient_input_y])
-                        distance_input = np.array([distance_input_x, distance_input_y]).reshape(1, 2)
-                        distance_input_list.append(distance_input)
-                        gradient_input_list.append(gradient_input)
+                        # gradient_input_x = (distance_input_next_x - distance_input_x) / e
+                        # gradient_input_y = (distance_input_next_y - distance_input_y) / e
+                        # gradient_input = np.array([gradient_input_x, gradient_input_y])
+                        # distance_input = np.sqrt(distance_input_x ** 2 + distance_input_y ** 2) - self.margin
+                        distance_input_list.append(dist_k)
+                        gradient_input_list.append(grad_k)
                     optimal_result = self.cbf_qp.cbf_clf_sdf_qp(self.robot_cur_state, distance_input_list,
                                                                 gradient_input_list, add_clf=add_clf)
 
@@ -361,10 +360,10 @@ class Collision_Avoidance:
                         self.cir_obs_list[i].move_forward(self.step_time)
                     self.cir_obs_states_list = [self.cir_obs_list[i].get_current_state() for i in
                                                 range(self.cir_obs_num)]
-                # if self.sdf_flag:
-                #     for i in range(self.sdf_sta_obs_num):
-                #         self.sdf_obs_cbf_t[i][:, t] = optimal_result.sdf_cbf_list[i]
-                #         self.sdf_obs_dx_cbf_t[i][:, t] = optimal_result.sdf_dx_cbf_list[i]
+                if self.sdf_flag:
+                    for i in range(self.sdf_sta_obs_num):
+                        self.sdf_obs_cbf_t[i][:, t] = optimal_result.sdf_cbf_list[i]
+                        self.sdf_obs_dx_cbf_t[i][:, t] = optimal_result.sdf_dx_cbf_list[i]
 
             else:
                 if self.cdf_dyn_obs_num == 0:
@@ -421,7 +420,7 @@ class Collision_Avoidance:
                                     show_ob_arrow=True)
 
     def render_manipulator(self):
-        self.ani.render_manipulator(cdf, self.xt, self.terminal_time)
+        self.ani.render_manipulator(cdf, self.xt, self.terminal_time, show_obs=True)
 
     def render_ani_manipulator(self, cdf, log_circle_center):
         self.ani.render_ani_manipulator(cdf, log_circle_center, self.xt, self.cdf_dyn_obs_num, self.terminal_time)
@@ -436,7 +435,7 @@ class Collision_Avoidance:
         pass
 
     def show_cbf(self, i):
-        self.ani.show_cbf(i, self.cir_obs_cbf_t, self.terminal_time)
+        self.ani.show_cbf(i, self.sdf_obs_cbf_t, self.terminal_time)
 
     def show_cdf_cbf(self, i):
         self.ani.show_cdf_cbf(i, self.cdf_obs_cbf_t, self.terminal_time)
@@ -473,12 +472,12 @@ if __name__ == '__main__':
         test_target.collision_avoidance(sdf=cdf)
         # test_target.navigation_destination()
         # test_target.render(0)
-        # test_target.render_manipulator()
+        test_target.render_manipulator()
         test_target.render_sta_sdf_manipulator(cdf, test_target.sdf_sta_obs_list, test_target.terminal_time)
+        test_target.show_cbf(0)
         test_target.show_controls()
         test_target.show_clf()
         test_target.show_slack()
-        # test_target.show_cbf(0)
         # test_target.show_dx_cbf(0)
 
     elif case == 2:

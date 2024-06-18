@@ -248,8 +248,8 @@ class Integral_Sdf_Cbf_Clf:
             sdf_cbf_list = []
             sdf_dx_cbf_list = []
             for i in range(len(dist_input)):
-                sbf, dx_cbf = self.add_cdf_cbf_cons(robot_cur_state, dist_input[i], grad_input[i])
-                sdf_cbf_list.append(sbf)
+                sdf, dx_cbf = self.add_cdf_cbf_cons(robot_cur_state, dist_input[i], grad_input[i])
+                sdf_cbf_list.append(sdf)
                 sdf_dx_cbf_list.append(dx_cbf)
 
         self.add_controls_physical_cons()
@@ -257,8 +257,8 @@ class Integral_Sdf_Cbf_Clf:
         # result
         result = lambda: None
         result.clf = clf
-        result.cdf_cbf_list = sdf_cbf_list
-        result.cdf_dx_cbf_list = sdf_dx_cbf_list
+        result.sdf_cbf_list = sdf_cbf_list
+        result.sdf_dx_cbf_list = sdf_dx_cbf_list
 
         # optimize the qp problem
         try:
