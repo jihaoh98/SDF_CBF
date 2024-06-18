@@ -26,6 +26,9 @@ class Collision_Avoidance:
         controller_params = config['controller']
         self.cbf_qp = Integral_Sdf_Cbf_Clf(file_name)
 
+        # sdf parameters
+        self.sdf_flag = controller_params['sdf_flag']
+
         # init robot state
         self.robot_init_state = np.array(robot_params['initial_state'])
         self.robot_cur_state = np.copy(self.robot_init_state)
@@ -38,6 +41,8 @@ class Collision_Avoidance:
         cir_obs_params = config.get('cir_obstacle_list')
         cdf_sta_obs_params = config.get('cdf_sta_obstacle_list')
         cdf_dyn_obs_params = config.get('cdf_dyn_obstacle_list')
+        sdf_sta_obs_params = config.get('sdf_sta_obstacle_list')
+
         self.cir_obs_states_list = None
         self.cdf_dyn_obs_states_list = None
         self.cdf_dyn_obs_num = 0
@@ -87,6 +92,18 @@ class Collision_Avoidance:
                     mode=cdf_dyn_obs_params['modes'][i],
                 )
 
+        if self.sdf_flag:
+            self.sdf_sta_obs_num = len(sdf_sta_obs_params['obs_states'])
+            self.sdf_sta_obs_list = [None for i in range(self.sdf_sta_obs_num)]
+            for i in range(self.sdf_sta_obs_num):
+                self.sdf_sta_obs_list[i] = obs.Sdf_Obs(
+                    index=i,
+                    radius=sdf_sta_obs_params['obs_radii'][i],
+                    center=sdf_sta_obs_params['obs_states'][i],
+                    vel=sdf_sta_obs_params['obs_vel'][i],
+                    mode=sdf_sta_obs_params['modes'][i],
+                )
+
         # controller
         self.T = controller_params['Tmax']
         self.step_time = controller_params['step_time']
@@ -118,6 +135,12 @@ class Collision_Avoidance:
         if cdf_dyn_obs_params is not None:
             self.cdf_obs_cbf_t = np.zeros((self.cdf_dyn_obs_num, 1, self.time_steps))
             self.cdf_obs_dx_cbf_t = np.zeros((self.cdf_dyn_obs_num, 3, self.time_steps))
+
+        "storage for static sdf obstacles"
+        if self.sdf_flag:
+            self.sdf_obs_cbf_t = None
+            self.sdf_obs_dx_cbf_t = None
+            self.sdf_obs_cbf_t = None
         # plot
         self.ani = Render_Animation(
             robot_params,
@@ -184,7 +207,7 @@ class Collision_Avoidance:
         print('Median_time:', statistics.median(process_time))
         print('Average_time:', statistics.mean(process_time))
 
-    def collision_avoidance(self, cdf=None, add_clf=True):
+    def collision_avoidance(self, cdf=None, add_clf=True, sdf=None):
         """ solve the collision avoidance between robot and obstacles based on sdf-cbf """
         t = 0
         process_time = []
@@ -202,79 +225,113 @@ class Collision_Avoidance:
 
             start_time = time.time()
 
-            if cdf is None:
-
+            if cdf is None and sdf is None:
                 optimal_result = self.cbf_qp.cbf_clf_qp(self.robot_cur_state, self.cir_obs_states_list, add_clf=add_clf)
             else:
-                if self.cdf_dyn_obs_num == 0:
-                    cdf.obj_lists = None
+                if self.sdf_flag:
+                    # compute the distance between robot and obstacles
                     distance_input_list = []
                     gradient_input_list = []
-                    for i in range(self.cdf_sta_obs_num):
-                        cdf.obj_lists = [Circle(center=torch.from_numpy(self.cdf_sta_obs_list[i].state),
-                                                radius=self.cdf_sta_obs_list[i].radius, device=device)]
+                    for i in range(self.sdf_sta_obs_num):
                         robot_states = torch.from_numpy(self.robot_cur_state[:2]).to(device).reshape(1, 2)
-                        distance_input, gradient_input = cdf.inference_c_space_sdf_using_data(robot_states)
-                        distance_input = distance_input.cpu().detach().numpy()
-                        gradient_input = gradient_input.cpu().detach().numpy()
-                        gradient_input = np.array([gradient_input[0][0], gradient_input[0][1], 0.0]).reshape(1, 3)
-                        distance_input = distance_input - self.margin
+                        end_effector = sdf.robot.forward_kinematics_all_joints(robot_states)[0].detach().cpu().numpy()
+                        # compute the distance between end-effector and obstacles
+                        distance_input_x = np.linalg.norm(end_effector[0, 2] - self.sdf_sta_obs_list[i].state[0]) - \
+                                           self.sdf_sta_obs_list[i].radius
+                        distance_input_y = np.linalg.norm(end_effector[1, 2] - self.sdf_sta_obs_list[i].state[1]) - \
+                                           self.sdf_sta_obs_list[i].radius
+
+                        e = 0.01
+                        # compute the numerical gradient
+                        robot_states_next = robot_states + e
+                        end_effector_next = sdf.robot.forward_kinematics_all_joints(robot_states_next)[
+                            0].detach().cpu().numpy()
+                        distance_input_next_x = np.linalg.norm(
+                            end_effector_next[0, 2] - self.sdf_sta_obs_list[i].state[0]) - self.sdf_sta_obs_list[
+                                                    i].radius
+                        distance_input_next_y = np.linalg.norm(
+                            end_effector_next[1, 2] - self.sdf_sta_obs_list[i].state[1]) - self.sdf_sta_obs_list[
+                                                    i].radius
+
+                        gradient_input_x = (distance_input_next_x - distance_input_x) / e
+                        gradient_input_y = (distance_input_next_y - distance_input_y) / e
+                        gradient_input = np.array([gradient_input_x, gradient_input_y])
+                        distance_input = np.array([distance_input_x, distance_input_y]).reshape(1, 2)
                         distance_input_list.append(distance_input)
                         gradient_input_list.append(gradient_input)
-                    optimal_result = self.cbf_qp.cbf_clf_cdf_qp(self.robot_cur_state, distance_input_list,
+                    optimal_result = self.cbf_qp.cbf_clf_sdf_qp(self.robot_cur_state, distance_input_list,
                                                                 gradient_input_list, add_clf=add_clf)
 
                 else:
-                    # cdf.obj_lists = [None for i in range(self.cdf_dyn_obs_num)]
-                    # print(t)
-                    # for i in range(self.cdf_dyn_obs_num):
-                    #     cdf.obj_lists[i] = Circle(center=torch.from_numpy(self.cdf_dyn_obs_list[i].state),
-                    #                               radius=self.cdf_dyn_obs_list[i].radius, device=device)
-                    # robot_states = torch.from_numpy(self.robot_cur_state[:2]).to(device).reshape(1, 2)
-                    # distance_input, gradient_input = cdf.inference_c_space_sdf_using_data(robot_states)
-                    # ob_distance_input, ob_gradient_input, ob_state = cdf.inference_t_space_sdf_using_data(robot_states)
-                    # distance_input = distance_input.cpu().detach().numpy()
-                    # gradient_input = gradient_input.cpu().detach().numpy()
-                    # ob_distance_input = ob_distance_input.cpu().detach().numpy()
-                    # ob_gradient_input = ob_gradient_input.cpu().detach().numpy()
-                    # ob_state = ob_state.cpu().detach().numpy()
+                    if self.cdf_dyn_obs_num == 0:
+                        cdf.obj_lists = None
+                        distance_input_list = []
+                        gradient_input_list = []
+                        for i in range(self.cdf_sta_obs_num):
+                            cdf.obj_lists = [Circle(center=torch.from_numpy(self.cdf_sta_obs_list[i].state),
+                                                    radius=self.cdf_sta_obs_list[i].radius, device=device)]
+                            robot_states = torch.from_numpy(self.robot_cur_state[:2]).to(device).reshape(1, 2)
+                            distance_input, gradient_input = cdf.inference_c_space_sdf_using_data(robot_states)
+                            distance_input = distance_input.cpu().detach().numpy()
+                            gradient_input = gradient_input.cpu().detach().numpy()
+                            gradient_input = np.array([gradient_input[0][0], gradient_input[0][1], 0.0]).reshape(1, 3)
+                            distance_input = distance_input - self.margin
+                            distance_input_list.append(distance_input)
+                            gradient_input_list.append(gradient_input)
+                        optimal_result = self.cbf_qp.cbf_clf_cdf_qp(self.robot_cur_state, distance_input_list,
+                                                                    gradient_input_list, add_clf=add_clf)
 
-                    cdf.obj_lists = None
-                    distance_input_list = []
-                    gradient_input_list = []
-                    ob_distance_input_list = []
-                    ob_gradient_input_list = []
-                    ob_state_list = []
-                    for i in range(self.cdf_dyn_obs_num):
-                        cdf.obj_lists = [Circle(center=torch.from_numpy(self.cdf_dyn_obs_list[i].state),
-                                                radius=self.cdf_dyn_obs_list[i].radius, device=device)]
-                        robot_states = torch.from_numpy(self.robot_cur_state[:2]).to(device).reshape(1, 2)
-                        distance_input, gradient_input = cdf.inference_c_space_sdf_using_data(robot_states)
-                        ob_distance_input, ob_gradient_input, ob_state = cdf.inference_t_space_sdf_using_data(
-                            robot_states)
-                        distance_input = distance_input.cpu().detach().numpy()
-                        gradient_input = gradient_input.cpu().detach().numpy()
-                        distance_input = distance_input - self.margin
-                        gradient_input = np.array([gradient_input[0][0], gradient_input[0][1], 0.0]).reshape(1, 3)
-                        ob_distance_input = ob_distance_input.cpu().detach().numpy()
-                        ob_gradient_input = ob_gradient_input.cpu().detach().numpy()
-                        ob_state = ob_state.cpu().detach().numpy()
-                        distance_input_list.append(distance_input)
-                        gradient_input_list.append(gradient_input)
-                        ob_distance_input_list.append(ob_distance_input)
-                        ob_gradient_input_list.append(ob_gradient_input)
-                        ob_state_list.append(ob_state)
+                    else:
+                        # cdf.obj_lists = [None for i in range(self.cdf_dyn_obs_num)]
+                        # print(t)
+                        # for i in range(self.cdf_dyn_obs_num):
+                        #     cdf.obj_lists[i] = Circle(center=torch.from_numpy(self.cdf_dyn_obs_list[i].state),
+                        #                               radius=self.cdf_dyn_obs_list[i].radius, device=device)
+                        # robot_states = torch.from_numpy(self.robot_cur_state[:2]).to(device).reshape(1, 2)
+                        # distance_input, gradient_input = cdf.inference_c_space_sdf_using_data(robot_states)
+                        # ob_distance_input, ob_gradient_input, ob_state = cdf.inference_t_space_sdf_using_data(robot_states)
+                        # distance_input = distance_input.cpu().detach().numpy()
+                        # gradient_input = gradient_input.cpu().detach().numpy()
+                        # ob_distance_input = ob_distance_input.cpu().detach().numpy()
+                        # ob_gradient_input = ob_gradient_input.cpu().detach().numpy()
+                        # ob_state = ob_state.cpu().detach().numpy()
 
-                    self.dyn_obstacle_gradient_filed.append(np.hstack((ob_state_list, ob_gradient_input_list)))
+                        cdf.obj_lists = None
+                        distance_input_list = []
+                        gradient_input_list = []
+                        ob_distance_input_list = []
+                        ob_gradient_input_list = []
+                        ob_state_list = []
+                        for i in range(self.cdf_dyn_obs_num):
+                            cdf.obj_lists = [Circle(center=torch.from_numpy(self.cdf_dyn_obs_list[i].state),
+                                                    radius=self.cdf_dyn_obs_list[i].radius, device=device)]
+                            robot_states = torch.from_numpy(self.robot_cur_state[:2]).to(device).reshape(1, 2)
+                            distance_input, gradient_input = cdf.inference_c_space_sdf_using_data(robot_states)
+                            ob_distance_input, ob_gradient_input, ob_state = cdf.inference_t_space_sdf_using_data(
+                                robot_states)
+                            distance_input = distance_input.cpu().detach().numpy()
+                            gradient_input = gradient_input.cpu().detach().numpy()
+                            distance_input = distance_input - self.margin
+                            gradient_input = np.array([gradient_input[0][0], gradient_input[0][1], 0.0]).reshape(1, 3)
+                            ob_distance_input = ob_distance_input.cpu().detach().numpy()
+                            ob_gradient_input = ob_gradient_input.cpu().detach().numpy()
+                            ob_state = ob_state.cpu().detach().numpy()
+                            distance_input_list.append(distance_input)
+                            gradient_input_list.append(gradient_input)
+                            ob_distance_input_list.append(ob_distance_input)
+                            ob_gradient_input_list.append(ob_gradient_input)
+                            ob_state_list.append(ob_state)
 
-                    optimal_result = self.cbf_qp.cbf_clf_dyn_cdf_qp(self.robot_cur_state, distance_input_list,
-                                                                    gradient_input_list, ob_gradient_input_list,
-                                                                    ob_state_list, self.cdf_dyn_obs_list,
-                                                                    add_clf=add_clf)
+                        self.dyn_obstacle_gradient_filed.append(np.hstack((ob_state_list, ob_gradient_input_list)))
 
-                    # optimal_result = self.cbf_qp.cbf_clf_dyn_cdf_qp(self.robot_cur_state, distance_input,
-                    #                                                 gradient_input, ob_gradient_input, ob_state,
-                    #                                                 self.cdf_dyn_obs_list, add_clf=add_clf)
+                        optimal_result = self.cbf_qp.cbf_clf_dyn_cdf_qp(self.robot_cur_state, distance_input_list,
+                                                                        gradient_input_list, ob_gradient_input_list,
+                                                                        ob_state_list, self.cdf_dyn_obs_list,
+                                                                        add_clf=add_clf)
+
+                        # optimal_result = self.cbf_qp.cbf_clf_dyn_cdf_qp(self.robot_cur_state, distance_input,
+                        #                                                 gradient_input, ob_gradient_input, ob_state,
+                        #                                                 self.cdf_dyn_obs_list, add_clf=add_clf)
 
             process_time.append(time.time() - start_time)
 
@@ -301,9 +358,14 @@ class Collision_Avoidance:
                         self.cir_obs_dx_cbf_t[i][:, t] = (optimal_result.cir_dx_cbf_list[i])[0][0:2]
                         self.cir_obs_dot_cbf_t[i][:, t] = (optimal_result.cir_do_cbf_list[i])[0][0:2]
                         # update the state of dynamic obstacles
-                        self.cir_obs_list[i].move_forward(self.step_time)  # todo: 为什么不会报错？
+                        self.cir_obs_list[i].move_forward(self.step_time)
                     self.cir_obs_states_list = [self.cir_obs_list[i].get_current_state() for i in
                                                 range(self.cir_obs_num)]
+                # if self.sdf_flag:
+                #     for i in range(self.sdf_sta_obs_num):
+                #         self.sdf_obs_cbf_t[i][:, t] = optimal_result.sdf_cbf_list[i]
+                #         self.sdf_obs_dx_cbf_t[i][:, t] = optimal_result.sdf_dx_cbf_list[i]
+
             else:
                 if self.cdf_dyn_obs_num == 0:
                     for i in range(len(distance_input_list)):
@@ -367,8 +429,8 @@ class Collision_Avoidance:
     def render_sta_ani_manipulator(self, cdf, circle_center):
         self.ani.render_sta_ani_manipulator(cdf, circle_center, self.xt, self.cdf_sta_obs_num, self.terminal_time)
 
-    def render_sta_sdf_manipulator(self, sdf, terminal_time):
-        self.ani.render_sta_sdf_ani_manipulator(sdf, self.xt, self.terminal_time)
+    def render_sta_sdf_manipulator(self, sdf, circle_center, terminal_time):
+        self.ani.render_sta_sdf_ani_manipulator(sdf, self.xt, circle_center, terminal_time)
 
     def render_dyn_sdf_manipulator(self):
         pass
@@ -408,11 +470,11 @@ if __name__ == '__main__':
 
     if case == 1:
         "collision avoidance with circle cbf"
-        # test_target.collision_avoidance()
-        test_target.navigation_destination()
+        test_target.collision_avoidance(sdf=cdf)
+        # test_target.navigation_destination()
         # test_target.render(0)
-        test_target.render_manipulator()
-        test_target.render_sta_sdf_manipulator(cdf, test_target.terminal_time)
+        # test_target.render_manipulator()
+        test_target.render_sta_sdf_manipulator(cdf, test_target.sdf_sta_obs_list, test_target.terminal_time)
         test_target.show_controls()
         test_target.show_clf()
         test_target.show_slack()

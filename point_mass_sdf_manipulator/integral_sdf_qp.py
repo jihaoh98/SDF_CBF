@@ -232,6 +232,59 @@ class Integral_Sdf_Cbf_Clf:
 
         return result
 
+    def cbf_clf_sdf_qp(self, robot_cur_state, dist_input, grad_input, add_clf=True, u_ref=None):
+        if u_ref is None:
+            u_ref = np.zeros(self.control_dim)
+        self.set_optimal_function(u_ref, add_slack=add_clf)
+
+        clf = None
+        if add_clf:
+            clf = self.add_clf_cons(robot_cur_state, add_slack=add_clf)
+        # add cbf constraints for each cdf obstacles
+        sdf_cbf_list = None
+        sdf_dx_cbf_list = None
+        # robot_state_cbf = np.hstack((robot_cur_state, np.array([self.robot_radius])))
+        if dist_input is not None and grad_input is not None:
+            sdf_cbf_list = []
+            sdf_dx_cbf_list = []
+            for i in range(len(dist_input)):
+                sbf, dx_cbf = self.add_cdf_cbf_cons(robot_cur_state, dist_input[i], grad_input[i])
+                sdf_cbf_list.append(sbf)
+                sdf_dx_cbf_list.append(dx_cbf)
+
+        self.add_controls_physical_cons()
+
+        # result
+        result = lambda: None
+        result.clf = clf
+        result.cdf_cbf_list = sdf_cbf_list
+        result.cdf_dx_cbf_list = sdf_dx_cbf_list
+
+        # optimize the qp problem
+        try:
+            start_time = time.time()
+            sol = self.opti.solve()
+            end_time = time.time()
+            optimal_control = sol.value(self.u)
+
+            result.u = optimal_control
+            result.time = end_time - start_time
+            result.feas = True
+
+            if add_clf:
+                slack = sol.value(self.slack)
+                result.slack = slack
+            else:
+                result.slack = None
+        except:
+            print(self.opti.return_status() + ' sdf-cbf with clf')
+            result.u = None
+            result.time = None
+            result.feas = False
+            result.slack = None
+
+        return result
+
     def cbf_clf_cdf_qp(self, robot_cur_state, dist_input, grad_input, add_clf=True, u_ref=None):
         if u_ref is None:
             u_ref = np.zeros(self.control_dim)

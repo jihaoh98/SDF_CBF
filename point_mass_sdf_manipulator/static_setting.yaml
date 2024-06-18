@@ -9,23 +9,23 @@ controller:
   sdf_flag: True
 
 robot:
-  u_max: [2.0, 2.0]
-  u_min: [-2.0, -2.0]
-  initial_state: [2.5, -0.9]
-  target_state: [2.0, 2.0]
+  u_max: [ 2.0, 2.0 ]
+  u_min: [ -2.0, -2.0 ]
+  initial_state: [ 2.5, -0.9 ]  # in configuration space
+  target_state: [ 2.0, 2.0 ]  # in task space
   radius: 0.1
   destination_margin: 0.0
   sensor_range: 6.0
   margin: 0.1
-  l: [2.0, 2.0]
+  l: [ 2.0, 2.0 ]
 
-cir_obstacle_list:
+sdf_sta_obstacle_list:
   obs_states: [
-    [0.0, 0.5],
+    [ 3.3, 3.3 ],
   ]
-  obs_radii: [1.8]
+  obs_radii: [ 0.3 ]
   obs_vel: [
-    [0.0, 0.0],
+    [ 0.0, 0.0 ],
   ]
   modes: [
     'static',

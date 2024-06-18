@@ -217,7 +217,7 @@ class Render_Animation:
         ani = FuncAnimation(self.fig, update, frames=num_frames, interval=50)
         plt.show()
 
-    def render_sta_sdf_ani_manipulator(self, cdf, xt, terminal_time):
+    def render_sta_sdf_ani_manipulator(self, cdf, xt, obs_center, terminal_time):
         f_rob_start = \
             cdf.robot.forward_kinematics_all_joints(torch.from_numpy(xt[:2, 0]).to(device).unsqueeze(0))[
                 0].detach().cpu().numpy()
@@ -231,10 +231,9 @@ class Render_Animation:
         def update(frame):
             self.ax.clear()
             # plot the start and end points
-            # for i in range(num_obs):
-            #     circle_plot = plt.Circle(obs_center[0].state, 0.3, color='k', hatch='///', fill=False,
-            #                              label='Obstacle')
-            #     self.ax.add_artist(circle_plot)
+            circle_plot = plt.Circle(obs_center[0].state, obs_center[0].radius, color='k', hatch='///', fill=False,
+                                     label='Obstacle')
+            self.ax.add_artist(circle_plot)
 
             plt.plot(f_rob_start[0, :], f_rob_start[1, :], linestyle='-', color='r', linewidth=2.0, label='Start')
             plt.scatter(self.robot_target_state[0], self.robot_target_state[1], color='b', linewidth=2.0,
