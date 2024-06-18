@@ -14,19 +14,20 @@ class Integral_Robot_Sdf:
         define the clf and cbf based on point mass robot and circular-shaped obstacle
         """
         # robot system states, half width with half height
-        self.state_dim = 3
-        self.control_dim = 2
+        self.state_dim = 2  # q1, q2
+        self.control_dim = 2  # v1, v2
         self.margin = params['margin']
+        self.l = params['l']
 
         # robot's current state
-        x, y, theta = sp.symbols('x y theta')
-        self.robot_state = sp.Matrix([x, y, theta])
-        radius = sp.symbols('radius')
-        self.robot_state_cbf = sp.Matrix([x, y, theta, radius])
+        q1, q2 = sp.symbols('q1 q2')
+        self.robot_state = sp.Matrix([q1, q2])
+        # radius = sp.symbols('radius')
+        # self.robot_state_cbf = sp.Matrix([x, y, theta, radius])
 
         # robot's target state
-        e_x, e_y, e_theta = sp.symbols('e_x e_y, e_theta')
-        self.target_state = sp.Matrix([e_x, e_y, e_theta])
+        e_q1, e_q2 = sp.symbols('e_q1 e_q2')
+        self.target_state = sp.Matrix([e_q1, e_q2])
 
         # circular-shaped obstacle
         self.cir_obs_dim = 5
@@ -73,15 +74,15 @@ class Integral_Robot_Sdf:
         self.cir_obstacle_dynamics = lambdify([self.cir_obstacle_state], self.cir_obstacle_dynamics_symbolic)
 
         self.init_clf()
-        self.init_cbf()
+        # self.init_cbf()
 
     def define_system_dynamics(self):
         """ define the system dynamics """
-        f = sp.Matrix([0, 0, 0])
+        f = sp.Matrix([0, 0])
         g = sp.Matrix([
             [1, 0],
-            [0, 1],
-            [0, 0]])
+            [0, 1]
+        ])
 
         return f, g
 
@@ -89,9 +90,16 @@ class Integral_Robot_Sdf:
         """ init the control lyapunov function for navigation """
         H = sp.Matrix([[1.0, 0.0],
                        [0.0, 1.0]])
-        relative_x = self.robot_state[0] - self.target_state[0]
-        relative_y = self.robot_state[1] - self.target_state[1]
+
+        relative_x = self.l[0] * sp.cos(self.robot_state[0]) + self.l[1] * sp.cos(
+            self.robot_state[0] + self.robot_state[1]) - self.target_state[0]
+        relative_y = self.l[0] * sp.sin(self.robot_state[0]) + self.l[1] * sp.sin(
+            self.robot_state[0] + self.robot_state[1]) - self.target_state[1]
         relative_state = sp.Matrix([relative_x, relative_y])
+
+        # relative_x = self.robot_state[0] - self.target_state[0]
+        # relative_y = self.robot_state[1] - self.target_state[1]
+        # relative_state = sp.Matrix([relative_x, relative_y])
 
         clf_symbolic = (relative_state.T @ H @ relative_state)[0, 0]
         self.clf = lambdify([self.robot_state, self.target_state], clf_symbolic)
@@ -158,7 +166,7 @@ class Integral_Robot_Sdf:
         init the cbf between a point mass and a circular-shaped obstacle
         Args:
         point mass params: center_pose (x, y, theta), radius for visualization
-        circle obs params: state of the circular obstacle (ox, oy, ovx, ovy, o_radius) 
+        circle obs params: state of the circular obstacle (ox, oy, ovx, ovy, o_radius)
         Returns:
             cbf based on Euclidean distance
         """

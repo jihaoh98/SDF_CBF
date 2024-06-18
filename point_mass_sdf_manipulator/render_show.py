@@ -217,6 +217,38 @@ class Render_Animation:
         ani = FuncAnimation(self.fig, update, frames=num_frames, interval=50)
         plt.show()
 
+    def render_sta_sdf_ani_manipulator(self, cdf, xt, terminal_time):
+        f_rob_start = \
+            cdf.robot.forward_kinematics_all_joints(torch.from_numpy(xt[:2, 0]).to(device).unsqueeze(0))[
+                0].detach().cpu().numpy()
+        f_rob_end = \
+            cdf.robot.forward_kinematics_all_joints(
+                torch.from_numpy(self.robot_target_state[0:2]).to(device).unsqueeze(0))[
+                0].detach().cpu().numpy()
+
+        self.fig, self.ax = plt.subplots()
+
+        def update(frame):
+            self.ax.clear()
+            # plot the start and end points
+            # for i in range(num_obs):
+            #     circle_plot = plt.Circle(obs_center[0].state, 0.3, color='k', hatch='///', fill=False,
+            #                              label='Obstacle')
+            #     self.ax.add_artist(circle_plot)
+
+            plt.plot(f_rob_start[0, :], f_rob_start[1, :], linestyle='-', color='r', linewidth=2.0, label='Start')
+            plt.scatter(self.robot_target_state[0], self.robot_target_state[1], color='b', linewidth=2.0,
+                     label='Goal')
+            self.plot_2d_manipulators(joint_angles_batch=xt[:2, frame].reshape(1, 2))
+            plt.legend(loc='upper center', ncol=3)
+            self.ax.set_xlim([-4.5, 4.5])
+            self.ax.set_ylim([-4.5, 4.5])
+            self.ax.set_aspect('equal')
+
+        num_frames = terminal_time
+        ani = FuncAnimation(self.fig, update, frames=num_frames, interval=50)
+        plt.show()
+
     def render_ani_manipulator(self, cdf, obs_center, xt, num_obs, terminal_time):
         f_rob_start = \
             cdf.robot.forward_kinematics_all_joints(torch.from_numpy(xt[:2, 0]).to(device).unsqueeze(0))[
@@ -248,7 +280,7 @@ class Render_Animation:
         ani = FuncAnimation(self.fig, update, frames=num_frames, interval=50)
         plt.show()
 
-    def render_manipulator(self, cdf, xt, terminal_time):
+    def render_manipulator(self, cdf, xt, terminal_time, show_obs=False):
         plt.rcParams['axes.facecolor'] = '#eaeaf2'
         ax = plt.gca()
 
@@ -256,15 +288,17 @@ class Render_Animation:
         circle = plt.Circle((0, 0), 2, color='r', fill=True, linestyle='--', linewidth=1.0, alpha=0.1)
         ax.add_artist(circle)
 
-        for obj in cdf.obj_lists:
-            ax.add_patch(obj.create_patch())
+        if show_obs:
+            for obj in cdf.obj_lists:
+                ax.add_patch(obj.create_patch())
 
         xf_2d = self.robot_target_state[0:2]
         manipulator_angles = (xt[0:2, :terminal_time]).T
         self.plot_2d_manipulators(joint_angles_batch=manipulator_angles)
         f_rob_end = cdf.robot.forward_kinematics_all_joints(torch.from_numpy(xf_2d).to(device).unsqueeze(0))[
             0].detach().cpu().numpy()
-        plt.scatter(f_rob_end[0, -1], f_rob_end[1, -1], color='r', s=100, zorder=10, label='Goal')
+        # plt.scatter(f_rob_end[0, -1], f_rob_end[1, -1], color='r', s=100, zorder=10, label='Goal')
+        plt.scatter(self.robot_target_state[0], self.robot_target_state[1], color='r', s=100, zorder=10, label='Goal')
         ax.set_aspect('equal')
         plt.xlim(-4, 4)
         plt.ylim(-4, 4)

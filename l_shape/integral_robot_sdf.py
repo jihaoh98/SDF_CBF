@@ -87,7 +87,8 @@ class Integral_Robot_Sdf:
         self.obstacle_dynamics_symbolic = sp.Matrix([self.obstacle_state[2], self.obstacle_state[3], 0.0, 0.0])
         self.obstacle_dynamics = lambdify([self.obstacle_state], self.obstacle_dynamics_symbolic)
 
-        self.cir_obstacle_dynamics_symbolic = sp.Matrix([self.cir_obstacle_state[2], self.cir_obstacle_state[3], 0.0, 0.0, 0.0])
+        self.cir_obstacle_dynamics_symbolic = sp.Matrix(
+            [self.cir_obstacle_state[2], self.cir_obstacle_state[3], 0.0, 0.0, 0.0])
         self.cir_obstacle_dynamics = lambdify([self.cir_obstacle_state], self.cir_obstacle_dynamics_symbolic)
 
         self.init_clf()
@@ -97,12 +98,12 @@ class Integral_Robot_Sdf:
         """ define the system dynamics """
         f = sp.Matrix([0, 0, 0])
         g = sp.Matrix([
-            [1, 0], 
-            [0, 1], 
+            [1, 0],
+            [0, 1],
             [0, 0]])
-        
+
         return f, g
-    
+
     def init_clf(self):
         """ init the control lyapunov function for navigation """
         H = sp.Matrix([[1.0, 0.0],
@@ -117,7 +118,7 @@ class Integral_Robot_Sdf:
         self.lf_clf_symbolic, self.lg_clf_symbolic = self.define_clf_derivative(self.clf_symbolic)
         self.lf_clf = lambdify([self.robot_state, self.target_state], self.lf_clf_symbolic)
         self.lg_clf = lambdify([self.robot_state, self.target_state], self.lg_clf_symbolic)
-        
+
     def define_clf_derivative(self, clf_symbolic):
         """ return the symbolic expression of lf_clf and lg_clf"""
         dx_clf_symbolic = sp.Matrix([clf_symbolic]).jacobian(self.robot_state)
@@ -139,7 +140,7 @@ class Integral_Robot_Sdf:
         # get obs's position in the robot frame
         relative_position = sp.Matrix([[self.obstacle_state[0] - self.robot_state[0]],
                                        [self.obstacle_state[1] - self.robot_state[1]]])
-        
+
         # diatance with the first rectangle (L-shaped robot combined by two rectangles)
         # robot_params: [width and height]
         dx1 = sp.Abs(relative_position[0] - self.two_center[0]) - self.robot_param[0] / 2
@@ -160,11 +161,13 @@ class Integral_Robot_Sdf:
 
         # for point of obstacle, without minus obstacle_radius, add margin for collision aviodance
         self.cbf_symbolic = distance - self.margin
-        self.cbf = lambdify([self.robot_state, self.robot_param, self.two_center, self.obstacle_state], self.cbf_symbolic)
+        self.cbf = lambdify([self.robot_state, self.robot_param, self.two_center, self.obstacle_state],
+                            self.cbf_symbolic)
 
         # for circlular-shaped obstacle, minus radius
         self.cir_cbf_symbolic = distance - self.cir_obstacle_state[4] - self.margin
-        self.cir_cbf = lambdify([self.robot_state, self.robot_param, self.two_center, self.cir_obstacle_state], self.cir_cbf_symbolic)
+        self.cir_cbf = lambdify([self.robot_state, self.robot_param, self.two_center, self.cir_obstacle_state],
+                                self.cir_cbf_symbolic)
 
     def derive_cbf_gradient(self, robot_state, robot_params, two_center, obstacle_state, obs_shape=None):
         """ 
@@ -191,17 +194,17 @@ class Integral_Robot_Sdf:
         # lf_cbf, lg_cbf, dt_obs_cbf (dynamic obstacle)
         lf_cbf, lg_cbf, dt_obs_cbf = self.get_cbf_gradient(robot_state, obstacle_state, dh_dxb)
         return lf_cbf, lg_cbf, dt_obs_cbf
-    
+
     def get_dh_dxb(self, robot_state, robot_params, two_center, obstacle_state, obs_shape=None):
         """ calculate the sdf gradient based on numerical values """
         if obs_shape == 'circle':
             sdf = self.cir_cbf(robot_state, robot_params, two_center, obstacle_state)
         else:
             sdf = self.cbf(robot_state, robot_params, two_center, obstacle_state)
-        
-        sdf_gradient = np.zeros((obstacle_state[0:2].shape[0], ))
+
+        sdf_gradient = np.zeros((obstacle_state[0:2].shape[0],))
         for i in range(obstacle_state[0:2].shape[0]):
-            e = np.zeros((obstacle_state.shape[0], ))
+            e = np.zeros((obstacle_state.shape[0],))
             e[i] = self.e0
             if obs_shape == 'circle':
                 sdf_next = self.cir_cbf(robot_state, robot_params, two_center, obstacle_state + e)
@@ -234,7 +237,7 @@ class Integral_Robot_Sdf:
         dt_obs_cbf = (sdf_gradient @ self.obstacle_dynamics(obstacle_state[0:4])[0:2])[0]
 
         return lf_cbf, lg_cbf, dt_obs_cbf
-    
+
     def get_sampled_points_from_obstacle_vertexes(self, obstacle_vertexes, num_samples):
         """
         get the sample points from the obstacle vertexes
@@ -252,18 +255,21 @@ class Integral_Robot_Sdf:
         # sample points
         num_vertexes = obstacle_vertexes.shape[0]
         for i in range(num_vertexes):
-            dx, dy = np.subtract(obstacle_vertexes[(i + 1) % num_vertexes], obstacle_vertexes[i]) 
+            dx, dy = np.subtract(obstacle_vertexes[(i + 1) % num_vertexes], obstacle_vertexes[i])
             edge_points = [[obstacle_vertexes[i][0] + dx * tt, obstacle_vertexes[i][1] + dy * tt] for tt in t[:-1]]
             sample_points.extend(edge_points)
 
         return np.array(sample_points)
-        
+
     def next_state(self, current_state, u, dt):
         """ simple one step """
         next_state = current_state
-        next_state = next_state + dt * (self.f(current_state).T[0] + (self.g(current_state) @ np.array(u).reshape(self.control_dim, -1)).T[0])
+        next_state = next_state + dt * (
+                    self.f(current_state).T[0] + (self.g(current_state) @ np.array(u).reshape(self.control_dim, -1)).T[
+                0])
 
         return next_state
+
 
 if __name__ == '__main__':
     file_name = 'settings.yaml'
@@ -274,12 +280,13 @@ if __name__ == '__main__':
     test_target = Integral_Robot_Sdf(robot_params)
     robot_vertexes = [[1.0, 1.0], [2.0, 1.0], [2.0, 1.5], [1.5, 1.5], [1.5, 2.0], [1.0, 2.0]]
     test_robot = L_shaped_robot(0, robot_vertexes)
-    
+
     gradient = []
     for i in np.arange(1.98, 2.1, 0.001):
         obstacle_state = np.array([i, 1.7, 0.0, 0.0])
-        
-        _, b, _ = test_target.derive_cbf_gradient(test_robot.cur_state, [test_robot.width, test_robot.height], test_robot.cur_center_body_frame.reshape(-1, ), obstacle_state)
+
+        _, b, _ = test_target.derive_cbf_gradient(test_robot.cur_state, [test_robot.width, test_robot.height],
+                                                  test_robot.cur_center_body_frame.reshape(-1, ), obstacle_state)
         gradient.append([b[0, 0], b[0, 1]])
     gradient = np.array(gradient)
     t = np.arange(1.98, 2.1, 0.001)

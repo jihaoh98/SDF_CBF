@@ -6,6 +6,7 @@ import obs
 import statistics
 import os
 import torch
+import sympy as sp
 from cdf import CDF2D
 from primitives2D_torch import Circle
 from render_show import Render_Animation
@@ -31,6 +32,7 @@ class Collision_Avoidance:
         self.robot_target_state = np.array(robot_params['target_state'])
         self.destination_margin = robot_params['destination_margin']
         self.margin = robot_params['margin']
+        self.l = robot_params['l']
 
         "init obstacle, if no data, return None"
         cir_obs_params = config.get('cir_obstacle_list')
@@ -92,7 +94,7 @@ class Collision_Avoidance:
         self.terminal_time = self.time_steps
 
         # storage
-        self.xt = np.zeros((3, self.time_steps + 1))
+        self.xt = np.zeros((2, self.time_steps + 1))
         self.ut = np.zeros((2, self.time_steps))
         self.clft = np.zeros((1, self.time_steps))
         self.slackt = np.zeros((1, self.time_steps))
@@ -129,8 +131,13 @@ class Collision_Avoidance:
         t = 0
         process_time = []
         # approach the destination or exceed the maximum time
+        robot_p = np.array([self.l[0] * np.cos(self.robot_cur_state[0]) + self.l[1] * np.cos(
+            self.robot_cur_state[0] + self.robot_cur_state[1]),
+                            self.l[0] * np.sin(self.robot_cur_state[0]) + self.l[1] * np.sin(
+                                self.robot_cur_state[0] + self.robot_cur_state[1])])
+
         while (
-                np.linalg.norm(self.robot_cur_state[0:2] - self.robot_target_state[0:2])
+                np.linalg.norm(robot_p - self.robot_target_state[0:2])
                 >= self.destination_margin
                 and t - self.time_steps < 0.0
         ):
@@ -155,13 +162,18 @@ class Collision_Avoidance:
             self.robot_cur_state = self.cbf_qp.robot.next_state(self.robot_cur_state, optimal_result.u, self.step_time)
             t = t + 1
 
+            robot_p = np.array([self.l[0] * np.cos(self.robot_cur_state[0]) +
+                                self.l[1] * np.cos(self.robot_cur_state[0] + self.robot_cur_state[1]),
+                                self.l[0] * np.sin(self.robot_cur_state[0]) +
+                                self.l[1] * np.sin(self.robot_cur_state[0] + self.robot_cur_state[1])])
+
         self.terminal_time = t
         # storage the last state of robot
         self.xt[:, t] = np.copy(self.robot_cur_state)
         self.show_obs = False
 
         print('Total time: ', self.terminal_time)
-        if np.linalg.norm(self.robot_cur_state[0:2] - self.robot_target_state[0:2]) <= self.destination_margin:
+        if np.linalg.norm(robot_p - self.robot_target_state[0:2]) <= self.destination_margin:
             print('Robot has arrived its destination!')
         else:
             print('Robot has not arrived its destination!')
@@ -191,6 +203,7 @@ class Collision_Avoidance:
             start_time = time.time()
 
             if cdf is None:
+
                 optimal_result = self.cbf_qp.cbf_clf_qp(self.robot_cur_state, self.cir_obs_states_list, add_clf=add_clf)
             else:
                 if self.cdf_dyn_obs_num == 0:
@@ -354,6 +367,12 @@ class Collision_Avoidance:
     def render_sta_ani_manipulator(self, cdf, circle_center):
         self.ani.render_sta_ani_manipulator(cdf, circle_center, self.xt, self.cdf_sta_obs_num, self.terminal_time)
 
+    def render_sta_sdf_manipulator(self, sdf, terminal_time):
+        self.ani.render_sta_sdf_ani_manipulator(sdf, self.xt, self.terminal_time)
+
+    def render_dyn_sdf_manipulator(self):
+        pass
+
     def show_cbf(self, i):
         self.ani.show_cbf(i, self.cir_obs_cbf_t, self.terminal_time)
 
@@ -389,13 +408,16 @@ if __name__ == '__main__':
 
     if case == 1:
         "collision avoidance with circle cbf"
-        test_target.collision_avoidance()
-        test_target.render(0)
+        # test_target.collision_avoidance()
+        test_target.navigation_destination()
+        # test_target.render(0)
+        test_target.render_manipulator()
+        test_target.render_sta_sdf_manipulator(cdf, test_target.terminal_time)
         test_target.show_controls()
         test_target.show_clf()
         test_target.show_slack()
-        test_target.show_cbf(0)
-        test_target.show_dx_cbf(0)
+        # test_target.show_cbf(0)
+        # test_target.show_dx_cbf(0)
 
     elif case == 2:
         "collision avoidance with dynamic circle cbf"
