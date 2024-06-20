@@ -104,7 +104,7 @@ class Integral_Robot_Sdf:
         """ return the symbolic expression of lf_clf and lg_clf"""
         dx_clf_symbolic = sp.Matrix([clf_symbolic]).jacobian(self.robot_state)  # shape: 1 x 3
         lf_clf = (dx_clf_symbolic @ self.f_symbolic)[0, 0]  # shape: 1 x 1
-        lg_clf = dx_clf_symbolic @ self.g_symbolic  # shape: 1 x 2
+        lg_clf = (dx_clf_symbolic @ self.g_symbolic) # shape: 1 x 2
 
         return lf_clf, lg_clf
 
@@ -131,6 +131,13 @@ class Integral_Robot_Sdf:
         dt_obs_cbf = np.dot(dox_cbf_symbolic, obstacle_list.vel)
 
         return lf_cbf, lg_cbf, dt_obs_cbf
+
+    def derive_cdf_clf_derivative(self, robot_state, dist_input, grad_input):
+        dh_dxb = grad_input.flatten()
+        lf_clf = (dh_dxb @ self.f(robot_state))[0]
+        lg_clf = (dh_dxb @ self.g(robot_state)).reshape(1, 2)
+
+        return lf_clf, lg_clf
 
     def derive_cdf_cbf_derivative(self, robot_state, dist_input, grad_input):
         dh_dxb = grad_input.flatten()  # shape(3, )

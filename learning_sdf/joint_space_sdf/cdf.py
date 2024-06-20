@@ -131,7 +131,7 @@ class CDF2D:
         plt.contour(self.q0, self.q1, sdf.reshape(self.nbData, self.nbData), levels=[0], linewidths=4, colors='b',
                     alpha=1.0)
         ct = plt.contour(self.q0, self.q1, sdf.reshape(self.nbData, self.nbData), levels=10, linewidths=1)
-        plt.clabel(ct, inline=False, fontsize=10)
+        plt.clabel(ct, inline=True, fontsize=10)
         plt.xlabel('q0', size=15)
         plt.ylabel('q1', size=15)
 

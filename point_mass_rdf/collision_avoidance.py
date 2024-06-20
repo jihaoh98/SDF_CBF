@@ -6,7 +6,6 @@ import obs
 import statistics
 import os
 import torch
-import sympy as sp
 from cdf import CDF2D
 from primitives2D_torch import Circle
 from render_show import Render_Animation
@@ -211,12 +210,17 @@ class Collision_Avoidance:
         """ solve the collision avoidance between robot and obstacles based on sdf-cbf """
         t = 0
         process_time = []
-        distance_input = None
-        gradient_input = None
 
         # approach the destination or exceed the maximum time
+        rob_pos_task_space = np.array([self.l[0] * np.cos(self.robot_cur_state[0]) + self.l[1] * np.cos(
+            self.robot_cur_state[0] + self.robot_cur_state[1]),
+                                       self.l[0] * np.sin(self.robot_cur_state[0]) + self.l[1] * np.sin(
+                                           self.robot_cur_state[0] + self.robot_cur_state[1])])
+
+        gradient_wrt_robot_plot = []
+
         while (
-                np.linalg.norm(self.robot_cur_state[0:2] - self.robot_target_state[0:2])
+                np.linalg.norm(rob_pos_task_space - self.robot_target_state[0:2])
                 >= self.destination_margin
                 and t - self.time_steps < 0.0
         ):
@@ -229,35 +233,18 @@ class Collision_Avoidance:
                 optimal_result = self.cbf_qp.cbf_clf_qp(self.robot_cur_state, self.cir_obs_states_list, add_clf=add_clf)
             else:
                 if self.sdf_flag:
-                    # compute the distance between robot and obstacles
                     distance_input_list = []
                     gradient_input_list = []
                     for i in range(self.sdf_sta_obs_num):
                         sdf.obj_lists = [Circle(center=torch.from_numpy(self.sdf_sta_obs_list[i].state),
                                                 radius=self.sdf_sta_obs_list[i].radius, device=device)]
                         robot_states = torch.from_numpy(self.robot_cur_state[:2]).to(device).reshape(1, 2)
-                        dist_k, grad_k = sdf.inference_sdf_grad(robot_states)
-                        dist_k = dist_k.cpu().detach().numpy()
-                        grad_k = grad_k.cpu().detach().numpy()
-
-                        # end_effector = sdf.robot.forward_kinematics_all_joints(robot_states)[0].detach().cpu().numpy()
-                        # compute the distance between end-effector and obstacles
-                        # distance_input_x = end_effector[0, 2] - self.sdf_sta_obs_list[i].state[0] - self.sdf_sta_obs_list[i].radius
-                        # distance_input_y = end_effector[1, 2] - self.sdf_sta_obs_list[i].state[1] - self.sdf_sta_obs_list[i].radius
-                        # e = 0.01
-                        # compute the numerical gradient
-                        # robot_states_next = robot_states + e
-                        # end_effector_next = sdf.robot.forward_kinematics_all_joints(robot_states_next)[
-                        #     0].detach().cpu().numpy()
-                        # distance_input_next_x =end_effector_next[0, 2] - self.sdf_sta_obs_list[i].state[0] - self.sdf_sta_obs_list[i].radius
-                        # distance_input_next_y =end_effector_next[1, 2] - self.sdf_sta_obs_list[i].state[1] - self.sdf_sta_obs_list[i].radius
-
-                        # gradient_input_x = (distance_input_next_x - distance_input_x) / e
-                        # gradient_input_y = (distance_input_next_y - distance_input_y) / e
-                        # gradient_input = np.array([gradient_input_x, gradient_input_y])
-                        # distance_input = np.sqrt(distance_input_x ** 2 + distance_input_y ** 2) - self.margin
-                        distance_input_list.append(dist_k)
-                        gradient_input_list.append(grad_k)
+                        dist_infer, grad_infer = sdf.inference_sdf_grad(robot_states)
+                        dist_infer = dist_infer.cpu().detach().numpy()
+                        grad_infer = grad_infer.cpu().detach().numpy()
+                        distance_input_list.append(dist_infer)
+                        gradient_input_list.append(grad_infer)
+                        gradient_wrt_robot_plot.append(grad_infer)
                     optimal_result = self.cbf_qp.cbf_clf_sdf_qp(self.robot_cur_state, distance_input_list,
                                                                 gradient_input_list, add_clf=add_clf)
 
@@ -347,7 +334,10 @@ class Collision_Avoidance:
             # storage and update the state of robot and obstacle
             self.xt[:, t] = np.copy(self.robot_cur_state)
             self.robot_cur_state = self.cbf_qp.robot.next_state(self.robot_cur_state, optimal_result.u, self.step_time)
-
+            rob_pos_task_space = np.array([self.l[0] * np.cos(self.robot_cur_state[0]) + self.l[1] * np.cos(
+                self.robot_cur_state[0] + self.robot_cur_state[1]),
+                                           self.l[0] * np.sin(self.robot_cur_state[0]) + self.l[1] * np.sin(
+                                               self.robot_cur_state[0] + self.robot_cur_state[1])])
             if cdf is None:
                 if self.cir_obs_states_list is not None:
                     self.cir_obs_cbf_t[:, t] = optimal_result.cir_cbf_list
@@ -395,7 +385,7 @@ class Collision_Avoidance:
                     self.cir_obstacle_state_t[i][:, t] = np.copy(self.cir_obs_states_list[i])
 
         print('Total time: ', self.terminal_time)
-        if np.linalg.norm(self.robot_cur_state[0:2] - self.robot_target_state[0:2]) <= self.destination_margin:
+        if np.linalg.norm(rob_pos_task_space - self.robot_target_state[0:2]) <= self.destination_margin:
             print('Robot has arrived its destination!')
         else:
             print('Robot has not arrived its destination!')
@@ -409,6 +399,9 @@ class Collision_Avoidance:
     def render(self, i):
         self.ani.render(i, self.xt, self.cir_obstacle_state_t, self.terminal_time, self.show_obs, self.cir_obs_dx_cbf_t
                         , self.cir_obs_dot_cbf_t)
+
+    def render_sdf_static(self, cdf, xt, terminal_time):
+        self.ani.render_sdf_ani_static(cdf, xt, terminal_time)
 
     def render_cdf(self, cdf):
         self.ani.render_cdf(cdf, self.xt, self.cdf_sta_obs_list, self.terminal_time, self.show_obs,
@@ -428,8 +421,8 @@ class Collision_Avoidance:
     def render_sta_ani_manipulator(self, cdf, circle_center):
         self.ani.render_sta_ani_manipulator(cdf, circle_center, self.xt, self.cdf_sta_obs_num, self.terminal_time)
 
-    def render_sta_sdf_manipulator(self, sdf, circle_center, terminal_time):
-        self.ani.render_sta_sdf_ani_manipulator(sdf, self.xt, circle_center, terminal_time)
+    def render_sta_sdf_manipulator(self, sdf, circle_center, given_joint_angles, terminal_time):
+        self.ani.render_sta_sdf_ani_manipulator(sdf, self.xt, circle_center, given_joint_angles, terminal_time)
 
     def render_dyn_sdf_manipulator(self):
         pass
@@ -454,12 +447,18 @@ class Collision_Avoidance:
 
 
 if __name__ == '__main__':
-    file_names = {
-        1: 'static_setting.yaml',
-        2: 'dynamic_setting.yaml',
-        3: 'static_cdf_setting.yaml',
-        4: 'dynamic_cdf_setting.yaml'
+    """
+    sdf yaml files use the traditional way to compute the distance and gradient between robot and objects.
+    cdf yaml files use the NN to predict the distance and gradient in configuration space.
+    """
 
+    file_names = {
+        1: 'static_sdf_cbf_clf.yaml',
+        2: 'dynamic_sdf_cbf_clf.yaml',
+        3: 'static_cdf_clf.yaml',
+        4: 'static_cdf_clf_cbf.yamal',
+        5: 'dynamic_cdf_clf.yaml',
+        6: 'dynamic_cdf_clf.yaml',
     }
 
     case = 1
@@ -468,48 +467,71 @@ if __name__ == '__main__':
     test_target = Collision_Avoidance(file_name)
 
     if case == 1:
+        pass
+    elif case == 2:
+        pass
+    elif case == 3:
+        pass
+    elif case == 4:
+        pass
+    elif case == 5:
+        pass
+    elif case == 6:
+        pass
+
+    if case == 1:
         "collision avoidance with circle cbf"
+        # compute the target state in the task space according to the given joint angles
+        given_joint_angles = np.array([1.0, 2.0])
+        target_state = \
+            cdf.robot.forward_kinematics_all_joints(torch.from_numpy(given_joint_angles).to(device).unsqueeze(0))[
+                0].detach().cpu().numpy()[:, -1]
+        print('target_state:', target_state)
+
+        # close the file
         test_target.collision_avoidance(sdf=cdf)
         # test_target.navigation_destination()
-        # test_target.render(0)
         test_target.render_manipulator()
-        test_target.render_sta_sdf_manipulator(cdf, test_target.sdf_sta_obs_list, test_target.terminal_time)
+
+        test_target.render_sdf_static(cdf, test_target.xt, test_target.terminal_time)
+        test_target.render_sta_sdf_manipulator(cdf, test_target.sdf_sta_obs_list, given_joint_angles,
+                                               test_target.terminal_time)
         test_target.show_cbf(0)
         test_target.show_controls()
         test_target.show_clf()
         test_target.show_slack()
         # test_target.show_dx_cbf(0)
 
-    elif case == 2:
-        "collision avoidance with dynamic circle cbf"
-        test_target.collision_avoidance()
-        test_target.render(0)
-        test_target.show_controls()
-        test_target.show_clf()
-        test_target.show_slack()
-        test_target.show_cbf(0)
-        test_target.show_dx_cbf(0)
-
-    elif case == 3:
-        "collision avoidance with static cdf cbf"
-        test_target.collision_avoidance(cdf=cdf)
-        test_target.render_cdf(cdf)
-        test_target.render_manipulator()
-        test_target.render_sta_ani_manipulator(cdf, test_target.cdf_sta_obs_list)
-        test_target.show_clf()
-        test_target.show_cdf_cbf(0)
-        # test_target.show_cdf_cbf(1)  # show the cbf of the second obstacle
-        test_target.show_controls()
-        test_target.show_slack()
-
-    elif case == 4:
-        "collision avoidance with dynamic cdf cbf"
-        test_target.collision_avoidance(cdf=cdf)
-        test_target.render_dynamic_cdf(cdf, test_target.cdf_dyn_obs_center_list,
-                                       test_target.dyn_obstacle_gradient_filed)
-        test_target.render_ani_manipulator(cdf, test_target.cdf_dyn_obs_center_list)
-        test_target.show_clf()
-        test_target.show_cdf_cbf(0)
-        # test_target.show_cdf_cbf(1)  # show the cbf of the second obstacle
-        test_target.show_controls()
-        test_target.show_slack()
+    # elif case == 2:
+    #     "collision avoidance with dynamic circle cbf"
+    #     test_target.collision_avoidance()
+    #     test_target.render(0)
+    #     test_target.show_controls()
+    #     test_target.show_clf()
+    #     test_target.show_slack()
+    #     test_target.show_cbf(0)
+    #     test_target.show_dx_cbf(0)
+    #
+    # elif case == 3:
+    #     "collision avoidance with static cdf cbf"
+    #     test_target.collision_avoidance(cdf=cdf)
+    #     test_target.render_cdf(cdf)
+    #     test_target.render_manipulator()
+    #     test_target.render_sta_ani_manipulator(cdf, test_target.cdf_sta_obs_list)
+    #     test_target.show_clf()
+    #     test_target.show_cdf_cbf(0)
+    #     # test_target.show_cdf_cbf(1)  # show the cbf of the second obstacle
+    #     test_target.show_controls()
+    #     test_target.show_slack()
+    #
+    # elif case == 4:
+    #     "collision avoidance with dynamic cdf cbf"
+    #     test_target.collision_avoidance(cdf=cdf)
+    #     test_target.render_dynamic_cdf(cdf, test_target.cdf_dyn_obs_center_list,
+    #                                    test_target.dyn_obstacle_gradient_filed)
+    #     test_target.render_ani_manipulator(cdf, test_target.cdf_dyn_obs_center_list)
+    #     test_target.show_clf()
+    #     test_target.show_cdf_cbf(0)
+    #     # test_target.show_cdf_cbf(1)  # show the cbf of the second obstacle
+    #     test_target.show_controls()
+    #     test_target.show_slack()

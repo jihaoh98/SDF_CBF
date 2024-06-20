@@ -11,17 +11,19 @@ robot:
   u_max: [1.5, 1.5]
   u_min: [-1.5, -1.5]
   target_state: [ 2.5, -0.9, 0.0 ]
-  initial_state: [ -2.5, 0.75, 0.0 ]
+#  initial_state: [ -2.5, 0.75, 0.0 ]
+  initial_state: [ 1.5, 2.75, 0.0 ]
   radius: 0.1
-  destination_margin: 0.0
+  destination_margin: 0.001
   sensor_range: 6.0
-  margin: 0.1
+  margin: 0.01
 
 cdf_sta_obstacle_list:
   obs_states: [
 #    [2.0, 2.0],
 #    [0.0, 2.4]
-    [-1.0, -2.7]
+#    [-1.0, -2.7]
+     [2.5, -1.0]
   ]
 #  obs_radii: [0.3, 0.3]
   obs_radii: [0.3]

@@ -217,13 +217,13 @@ class Render_Animation:
         ani = FuncAnimation(self.fig, update, frames=num_frames, interval=50)
         plt.show()
 
-    def render_sta_sdf_ani_manipulator(self, cdf, xt, obs_center, terminal_time):
+    def render_sta_sdf_ani_manipulator(self, cdf, xt, obs_center, given_angles, terminal_time):
         f_rob_start = \
             cdf.robot.forward_kinematics_all_joints(torch.from_numpy(xt[:2, 0]).to(device).unsqueeze(0))[
                 0].detach().cpu().numpy()
         f_rob_end = \
             cdf.robot.forward_kinematics_all_joints(
-                torch.from_numpy(self.robot_target_state[0:2]).to(device).unsqueeze(0))[
+                torch.from_numpy(given_angles).to(device).unsqueeze(0))[
                 0].detach().cpu().numpy()
 
         self.fig, self.ax = plt.subplots()
@@ -236,8 +236,10 @@ class Render_Animation:
             self.ax.add_artist(circle_plot)
 
             plt.plot(f_rob_start[0, :], f_rob_start[1, :], linestyle='-', color='r', linewidth=2.0, label='Start')
+            plt.plot(f_rob_end[0, :], f_rob_end[1, :], linestyle='-', color='r', linewidth=2.0)
+
             plt.scatter(self.robot_target_state[0], self.robot_target_state[1], color='b', linewidth=2.0,
-                     label='Goal')
+                        label='Goal')
             self.plot_2d_manipulators(joint_angles_batch=xt[:2, frame].reshape(1, 2))
             plt.legend(loc='upper center', ncol=3)
             self.ax.set_xlim([-4.5, 4.5])
@@ -463,6 +465,21 @@ class Render_Animation:
         num_frames = terminal_time
         ani = FuncAnimation(self.fig, lambda frame: update_distance_field(frame, obstacle_elements, self.ax, line),
                             frames=num_frames, interval=50)
+        plt.show()
+
+    def render_sdf_ani_static(self, cdf, xt, terminal_time):
+        # plot the distance field in configuration space
+        cdf.plot_sdf()
+        # plot the start and goal point of the robot in configuration space
+        plt.scatter(self.robot_init_state[0], self.robot_init_state[1], color='g', s=100, zorder=10, label='Start')
+        target_state_config = \
+            cdf.robot.forward_kinematics_all_joints(
+                torch.from_numpy(self.robot_target_state[0:2]).to(device).unsqueeze(0))[
+                0].detach().cpu().numpy()
+        # plt.scatter(goal_in_cspace[0], goal_in_cspace[1], color='k', s=100, zorder=10, label='Goal')
+
+        # plot the trajectory of the robot in configuration space
+        plt.plot(xt[0, :terminal_time], xt[1, :terminal_time], color='r', linestyle='--', linewidth=2.0, label='Trajectory')
         plt.show()
 
     def render(self, i, xt, cir_obs_list_t, terminal_time, show_obs, dxcbft, docbft, save_gif=False):

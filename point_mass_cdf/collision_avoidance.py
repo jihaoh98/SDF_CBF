@@ -124,21 +124,39 @@ class Collision_Avoidance:
         )
         self.show_obs = True
 
-    def navigation_destination(self, add_slack=False):
+    def navigation_destination(self, cdf, add_slack=False):
         """ navigate the robot to its destination """
         t = 0
         process_time = []
         # approach the destination or exceed the maximum time
+        cdf.obj_lists = [Circle(center=torch.from_numpy(self.cdf_sta_obs_list[0].state),
+                                radius=self.cdf_sta_obs_list[0].radius, device=device)]
+        robot_states = torch.from_numpy(self.robot_cur_state[:2]).to(device).reshape(1, 2)
+        distance_input, gradient_input = cdf.inference_c_space_sdf_using_data(robot_states)
+        distance_input = distance_input.cpu().detach().numpy()
+
+        distance_input_list = []
+        gradient_input_list = []
         while (
-                np.linalg.norm(self.robot_cur_state[0:2] - self.robot_target_state[0:2])
-                >= self.destination_margin
+                distance_input >= self.destination_margin
                 and t - self.time_steps < 0.0
         ):
             if t % 100 == 0:
                 print(f't = {t}')
 
             start_time = time.time()
-            optimal_result = self.cbf_qp.clf_qp(self.robot_cur_state, add_slack=add_slack)
+            # optimal_result = self.cbf_qp.clf_qp(self.robot_cur_state, add_slack=add_slack)
+            robot_states = torch.from_numpy(self.robot_cur_state[:2]).to(device).reshape(1, 2)
+            distance_input, gradient_input = cdf.inference_c_space_sdf_using_data(robot_states)
+            distance_input = distance_input.cpu().detach().numpy()
+            gradient_input = gradient_input.cpu().detach().numpy()
+            gradient_input = np.array([gradient_input[0][0], gradient_input[0][1], 0.0]).reshape(1, 3)
+            distance_input = distance_input - self.margin
+
+            # optimal_result = self.cbf_qp.clf_qp(self.robot_cur_state, add_slack=add_slack)
+            optimal_result = self.cbf_qp.cdf_clf_qp(self.robot_cur_state, distance_input, gradient_input,
+                                                    add_slack=add_slack)
+
             process_time.append(time.time() - start_time)
 
             if not optimal_result.feas:
@@ -161,7 +179,7 @@ class Collision_Avoidance:
         self.show_obs = False
 
         print('Total time: ', self.terminal_time)
-        if np.linalg.norm(self.robot_cur_state[0:2] - self.robot_target_state[0:2]) <= self.destination_margin:
+        if distance_input <= self.destination_margin:
             print('Robot has arrived its destination!')
         else:
             print('Robot has not arrived its destination!')
@@ -379,11 +397,11 @@ if __name__ == '__main__':
         1: 'static_setting.yaml',
         2: 'dynamic_setting.yaml',
         3: 'static_cdf_setting.yaml',
-        4: 'dynamic_cdf_setting.yaml'
-
+        4: 'dynamic_cdf_setting.yaml',
+        5: 'static_cdf_setting.yaml'
     }
 
-    case = 4
+    case = 5
     file_name = os.path.join(CURRENT_DIR, file_names[case])
     cdf = CDF2D(device)
     test_target = Collision_Avoidance(file_name)
@@ -431,3 +449,9 @@ if __name__ == '__main__':
         # test_target.show_cdf_cbf(1)  # show the cbf of the second obstacle
         test_target.show_controls()
         test_target.show_slack()
+
+    elif case == 5:
+        "navigation to destination using cdf"
+        test_target.navigation_destination(cdf=cdf, add_slack=True)
+        test_target.render_manipulator()
+        test_target.show_clf()

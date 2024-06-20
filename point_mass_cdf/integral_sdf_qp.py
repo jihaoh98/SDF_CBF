@@ -78,17 +78,21 @@ class Integral_Sdf_Cbf_Clf:
 
     def set_optimal_function(self, u_ref, add_slack=True):
         """ set the optimal function """
+        # self.obj = (self.u - u_ref).T @ self.H @ (self.u - u_ref)
         self.obj = (self.u - u_ref).T @ self.H @ (self.u - u_ref)
         if add_slack:
             self.obj = self.obj + self.weight_slack * self.slack ** 2
         self.opti.minimize(self.obj)
         self.opti.subject_to()
 
-    def add_clf_cons(self, robot_cur_state, add_slack=True):
+    def add_clf_cons(self, robot_cur_state, dist, grad, add_slack=True):
         """ add clf cons """
-        clf = self.clf(robot_cur_state, self.target_state)
-        lf_clf = self.lf_clf(robot_cur_state, self.target_state)
-        lg_clf = self.lg_clf(robot_cur_state, self.target_state)
+        # clf = self.clf(robot_cur_state, self.target_state)
+        clf = dist
+        # lf_clf = self.lf_clf(robot_cur_state, self.target_state)
+        # lg_clf = self.lg_clf(robot_cur_state, self.target_state)
+
+        lf_clf, lg_clf = self.robot.derive_cdf_clf_derivative(robot_cur_state, dist, grad)
 
         if add_slack:
             self.opti.subject_to(lf_clf + (lg_clf @ self.u)[0, 0] + self.clf_lambda * clf <= self.slack)
@@ -135,6 +139,44 @@ class Integral_Sdf_Cbf_Clf:
 
         self.opti.subject_to(lf_cbf + (lg_cbf @ self.u)[0, 0] + dt_cbf + self.cbf_gamma * cbf >= 0)
         return cbf, dx_cbf, do_cbf
+
+    def cdf_clf_qp(self, robot_cur_state, dist, grad, add_slack=False, u_ref=None):
+        """
+        calculate the optimal control which navigating the robot to its destination
+        Args:
+            robot_cur_state: [x, y, theta] np.array(3, )
+            u_ref: None or np.array(2, )
+        Returns:
+            optimal control u
+        """
+        if u_ref is None:
+            u_ref = np.zeros(self.control_dim)
+
+        self.set_optimal_function(u_ref, add_slack)
+        clf = self.add_clf_cons(robot_cur_state, dist, grad, add_slack)
+        self.add_controls_physical_cons()
+
+        # result
+        result = lambda: None
+        result.clf = clf
+
+        # optimize the qp problem
+        try:
+            start_time = time.time()
+            sol = self.opti.solve()
+            end_time = time.time()
+            optimal_control = sol.value(self.u)
+
+            result.u = optimal_control
+            result.time = end_time - start_time
+            result.feas = True
+        except:
+            print(self.opti.return_status() + ' clf qp')
+            result.u = None
+            result.time = None
+            result.feas = False
+
+        return result
 
     def clf_qp(self, robot_cur_state, add_slack=False, u_ref=None):
         """ 
@@ -238,8 +280,8 @@ class Integral_Sdf_Cbf_Clf:
         self.set_optimal_function(u_ref, add_slack=add_clf)
 
         clf = None
-        if add_clf:
-            clf = self.add_clf_cons(robot_cur_state, add_slack=add_clf)
+        # if add_clf:
+            # clf = self.add_clf_cons(robot_cur_state, add_slack=add_clf)
         # add cbf constraints for each cdf obstacles
         cdf_cbf_list = None
         cdf_dx_cbf_list = None

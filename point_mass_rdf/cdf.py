@@ -163,8 +163,10 @@ class CDF2D:
         sdf = sdf.detach().cpu().numpy()
         cmap = plt.cm.get_cmap('coolwarm')
         ct = plt.contourf(self.q0, self.q1, sdf.reshape(self.nbData, self.nbData),
-                          cmap=cmap, levels=[-0.5, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5], linewidths=1)
-        plt.clabel(ct, [], inline=False, fontsize=10, colors='black')
+                          cmap=cmap, levels=[0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5], linewidths=1)
+        # plt.clabel(ct, [], inline=False, fontsize=10, colors='black')
+        plt.clabel(ct, inline=False, fontsize=10, colors='black')
+
         ct_zero = plt.contour(self.q0, self.q1, sdf.reshape(self.nbData, self.nbData), levels=[0], linewidths=2,
                               colors='k',
                               alpha=1.0)
@@ -355,9 +357,10 @@ if __name__ == "__main__":
 
     elif case == 2:
         "observe the sdf in the configuration space"
-        sample_joint_angles = torch.tensor([[1., 1]]).to(device)
+        sample_joint_angles = torch.tensor([[np.pi/2, np.pi/2]]).to(device)
         sdf, grad = cdf.inference_sdf_grad(sample_joint_angles)
-        print("distance: ", sdf)
+        print("grad: ", grad)
+        cdf.obj_lists = [Circle(center=torch.tensor([2.5, -2.5]), radius=0.3, device=device)]
 
         sdf_obj, grad_obj, q_obj = cdf.inference_t_sdf_grad(sample_joint_angles)
         print("distance: ", sdf_obj)
