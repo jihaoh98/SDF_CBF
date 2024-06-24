@@ -281,31 +281,67 @@ class Render_Animation:
         ani = FuncAnimation(self.fig, update, frames=num_frames, interval=50)
         plt.show()
 
-    def render_manipulator(self, cdf, xt, terminal_time, show_obs=False):
+    def render_c_space(self, cdf, xt, terminal_time, case_flag=None):
+        if case_flag == 5:
+            cdf.plot_sdf()
+            # plot the start and goal point of the robot in configuration space
+            plt.scatter(self.robot_init_state[0], self.robot_init_state[1], color='g', s=100, zorder=10, label='Start')
+            target_state_config = \
+                cdf.robot.forward_kinematics_all_joints(
+                    torch.from_numpy(self.robot_target_state[0:2]).to(device).unsqueeze(0))[
+                    0].detach().cpu().numpy()
+            # plt.scatter(goal_in_cspace[0], goal_in_cspace[1], color='k', s=100, zorder=10, label='Goal')
+
+            # plot the trajectory of the robot in configuration space
+            plt.plot(xt[0, :terminal_time], xt[1, :terminal_time], color='r', linestyle='--', linewidth=2.0,
+                     label='Trajectory')
+        plt.show()
+
+    def render_manipulator(self, cdf, xt, terminal_time, case_flag=None):
+        xf_2d = self.robot_target_state[0:2]
         plt.rcParams['axes.facecolor'] = '#eaeaf2'
         ax = plt.gca()
 
-        # plot a circle with radius 2
-        circle = plt.Circle((0, 0), 2, color='r', fill=True, linestyle='--', linewidth=1.0, alpha=0.1)
+        f_rob_start = \
+            cdf.robot.forward_kinematics_all_joints(torch.from_numpy(xt[:2, 0]).to(device).unsqueeze(0))[
+                0].detach().cpu().numpy()
+        f_rob_end = \
+            cdf.robot.forward_kinematics_all_joints(torch.from_numpy(xt[:2, terminal_time]).to(device).unsqueeze(0))[
+                0].detach().cpu().numpy()
+
+        "Plot the base of the 2D manipulator"
+        circle = plt.Circle((0, 0), 2, color='r', fill=True, linestyle='--', linewidth=1.0, zorder=10, alpha=0.1)
         ax.add_artist(circle)
-
-        if show_obs:
-            for obj in cdf.obj_lists:
-                ax.add_patch(obj.create_patch())
-
-        xf_2d = self.robot_target_state[0:2]
+        plt.plot(0, 0, marker='o', markersize=15, zorder=10, markerfacecolor='#DDA15E', markeredgecolor='k')
+        "Plot the initial state"
+        plt.plot(f_rob_start[0, :], f_rob_start[1, :], linestyle='-', color='r', zorder=5, linewidth=2.0, label='Start')
+        "Plot the final state"
+        plt.plot(f_rob_end[0, :], f_rob_end[1, :], linestyle='-', color='b', zorder=5, linewidth=2.0, label='End')
+        "Plot the manipulator trajectory"
         manipulator_angles = (xt[0:2, :terminal_time]).T
         self.plot_2d_manipulators(joint_angles_batch=manipulator_angles)
-        f_rob_end = cdf.robot.forward_kinematics_all_joints(torch.from_numpy(xf_2d).to(device).unsqueeze(0))[
-            0].detach().cpu().numpy()
-        # plt.scatter(f_rob_end[0, -1], f_rob_end[1, -1], color='r', s=100, zorder=10, label='Goal')
-        plt.scatter(self.robot_target_state[0], self.robot_target_state[1], color='r', s=100, zorder=10, label='Goal')
+        if case_flag == 1:
+            pass
+        elif case_flag == 2:
+            pass
+        elif case_flag == 3:
+            print("The current case is 3")
+            "Plot the target(goal) position in task space"
+            plt.scatter(self.robot_target_state[0], self.robot_target_state[1], color='k', s=50, zorder=5,
+                        label='Goal')
+            plt.legend(loc='upper left', ncol=3)
+        elif case_flag == 5:
+            print("The current case is 5")
+            "It's a whole body manipulation task, we need to visualize the object"
+            cdf.obj_lists[0].label = 'Goal'
+            self.ax.add_patch(cdf.obj_lists[0].create_patch())
+            plt.legend(loc='upper left', ncol=3)
+
         ax.set_aspect('equal')
         plt.xlim(-4, 4)
         plt.ylim(-4, 4)
         plt.xlabel('x (m)')
         plt.ylabel('y (m)')
-        plt.legend(loc='upper left')
         plt.show()
 
     def plot_2d_manipulators(self, link1_length=2.0, link2_length=2.0, joint_angles_batch=None):
@@ -479,7 +515,8 @@ class Render_Animation:
         # plt.scatter(goal_in_cspace[0], goal_in_cspace[1], color='k', s=100, zorder=10, label='Goal')
 
         # plot the trajectory of the robot in configuration space
-        plt.plot(xt[0, :terminal_time], xt[1, :terminal_time], color='r', linestyle='--', linewidth=2.0, label='Trajectory')
+        plt.plot(xt[0, :terminal_time], xt[1, :terminal_time], color='r', linestyle='--', linewidth=2.0,
+                 label='Trajectory')
         plt.show()
 
     def render(self, i, xt, cir_obs_list_t, terminal_time, show_obs, dxcbft, docbft, save_gif=False):

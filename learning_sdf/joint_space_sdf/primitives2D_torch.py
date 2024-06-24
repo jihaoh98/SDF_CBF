@@ -27,10 +27,13 @@ class Circle:
         x = torch.cat([torch.cos(theta).to(self.device),torch.sin(theta).to(self.device)],dim=-1)
         return x * self.radius + self.center.unsqueeze(0).expand(N,-1)
 
-    def create_patch(self,color='red'):
+    def create_patch(self, color='red', label=None):
         center = self.center.cpu().numpy()
         radius = self.radius
-        circle = patches.Circle(center, radius, linewidth=1, edgecolor=color, facecolor='none')
+        if label is not None:
+            circle = patches.Circle(center, radius, linewidth=1, edgecolor=color, facecolor='none', label=label)
+        else:
+            circle = patches.Circle(center, radius, linewidth=1, edgecolor=color, facecolor='none')
         return circle
 
 class Box:

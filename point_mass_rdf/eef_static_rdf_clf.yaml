@@ -1,0 +1,32 @@
+controller:
+  Tmax: 20
+  step_time: 0.1
+  weight_input: [ 1.0, 1.0 ]
+  smooth_input: [ 1.0, 1.0 ]
+  weight_slack: 100
+  clf_lambda: 1.0
+  cbf_gamma: 1.0
+
+robot:
+  u_max: [ 2.7, 2.7 ]
+  u_min: [ -2.7, -2.7 ]
+  initial_state: [ 2.5, -0.9]  # in configuration space
+  target_state: [2.5, -2.]  # in task space
+  radius: 0.1
+  destination_margin: 0.01
+  sensor_range: 6.0
+  margin: 0.1
+  l: [ 2.0, 2.0 ]
+
+eef_static_rdf_clf_list:
+  obs_states: [
+    [ 1.2, 2.8 ],
+  ]
+  obs_radii: [ 0.3 ]
+  obs_vel: [
+    [ 0.0, 0.0 ],
+  ]
+  modes: [
+    'static',
+  ]
+

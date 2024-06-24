@@ -86,6 +86,10 @@ class Integral_Robot_Sdf:
 
         return f, g
 
+    ##############################################################################################################
+    ##############################################################################################################
+    """ CLF: Control Lyapunov Function based on analytical SDF """
+
     def init_clf(self):
         """ init the control lyapunov function for navigation """
         H = sp.Matrix([[1.0, 0.0],
@@ -116,6 +120,18 @@ class Integral_Robot_Sdf:
 
         return lf_clf, lg_clf
 
+    ##############################################################################################################
+    ##############################################################################################################
+    "CLF: compute the derivative of the CLF based on the rdf model"
+    def derive_rdf_clf_derivative(self, robot_state, dist_input, grad_input):
+        dh_dxb = grad_input.flatten()
+        lf_clf = (dh_dxb @ self.f(robot_state))[0]
+        lg_clf = (dh_dxb @ self.g(robot_state)).reshape(1, 2)
+
+        return lf_clf, lg_clf
+
+    ##############################################################################################################
+    ##############################################################################################################
     def derive_dyn_cdf_cbf_derivative(self, robot_state, dist_input, grad_input, ob_grad_input, obstacle_state,
                                       obstacle_list):
         dh_dxb = grad_input.flatten()  # shape(3, )

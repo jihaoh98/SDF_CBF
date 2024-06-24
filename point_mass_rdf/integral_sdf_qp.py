@@ -76,6 +76,10 @@ class Integral_Sdf_Cbf_Clf:
         self.H = np.diag(self.weight_input)
         self.R = np.diag(self.smooth_input)
 
+    ##############################################################################################
+    ##############################################################################################
+    "The original and common version of CLF based using analytical SDF to design"
+
     def set_optimal_function(self, u_ref, add_slack=True):
         """ set the optimal function """
         self.obj = (self.u - u_ref).T @ self.H @ (self.u - u_ref)
@@ -101,6 +105,22 @@ class Integral_Sdf_Cbf_Clf:
     def add_controls_physical_cons(self):
         """ add physical constraint of controls """
         self.opti.subject_to(self.opti.bounded(self.u_min, self.u, self.u_max))
+
+    ##############################################################################################
+    ##############################################################################################
+    def add_rdf_clf_cons(self, robot_cur_state, dist, grad, add_slack=True):
+        """ add clf cons """
+        clf = dist
+
+        lf_clf, lg_clf = self.robot.derive_rdf_clf_derivative(robot_cur_state, dist, grad)
+
+        if add_slack:
+            self.opti.subject_to(lf_clf + (lg_clf @ self.u)[0, 0] + self.clf_lambda * clf <= self.slack)
+            self.opti.subject_to(self.opti.bounded(-np.inf, self.slack, np.inf))
+        else:
+            self.opti.subject_to(lf_clf + (lg_clf @ self.u)[0, 0] + self.clf_lambda * clf <= 0)
+
+        return clf
 
     def add_dyn_cdf_cbf_cons(self, robot_state, dist_input, grad_input, ob_gradient_input, ob_state, obstacle_list):
         """ add cons w.r.t cdf obstacles """
@@ -136,7 +156,7 @@ class Integral_Sdf_Cbf_Clf:
         self.opti.subject_to(lf_cbf + (lg_cbf @ self.u)[0, 0] + dt_cbf + self.cbf_gamma * cbf >= 0)
         return cbf, dx_cbf, do_cbf
 
-    def clf_qp(self, robot_cur_state, add_slack=False, u_ref=None):
+    def clf_qp(self, robot_cur_state, add_slack=False, case_flag=None, u_ref=None, dist=None, grad=None):
         """ 
         calculate the optimal control which navigating the robot to its destination
         Args: 
@@ -148,15 +168,23 @@ class Integral_Sdf_Cbf_Clf:
         if u_ref is None:
             u_ref = np.zeros(self.control_dim)
 
-        self.set_optimal_function(u_ref, add_slack)
-        clf = self.add_clf_cons(robot_cur_state, add_slack)
-        self.add_controls_physical_cons()
+        clf = None
+        if case_flag == 3:
+            self.set_optimal_function(u_ref, add_slack)
+            clf = self.add_clf_cons(robot_cur_state, add_slack)
+            self.add_controls_physical_cons()
+        elif case_flag == 4:
+            pass
+        elif case_flag == 5:
+            self.set_optimal_function(u_ref, add_slack)
+            clf = self.add_rdf_clf_cons(robot_cur_state, dist, grad, add_slack)
+            self.add_controls_physical_cons()
 
         # result
         result = lambda: None
         result.clf = clf
 
-        # optimize the qp problem
+        "optimize the qp problem"
         try:
             start_time = time.time()
             sol = self.opti.solve()

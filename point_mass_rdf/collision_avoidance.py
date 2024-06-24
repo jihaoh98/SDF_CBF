@@ -16,7 +16,7 @@ print("CURRENT_DIR:", CURRENT_DIR)
 
 
 class Collision_Avoidance:
-    def __init__(self, file_name) -> None:
+    def __init__(self, file_name, case_flag) -> None:
         """ collision avoidance with obstacles """
         with open(file_name) as file:
             config = yaml.safe_load(file)
@@ -24,9 +24,6 @@ class Collision_Avoidance:
         robot_params = config['robot']
         controller_params = config['controller']
         self.cbf_qp = Integral_Sdf_Cbf_Clf(file_name)
-
-        # sdf parameters
-        self.sdf_flag = controller_params['sdf_flag']
 
         # init robot state
         self.robot_init_state = np.array(robot_params['initial_state'])
@@ -37,70 +34,81 @@ class Collision_Avoidance:
         self.l = robot_params['l']
 
         "init obstacle, if no data, return None"
+        obs_params = None
+        if case_flag == 1:
+            pass
+        elif case_flag == 2:
+            pass
+        elif case_flag == 3:
+            obs_params = config.get('eef_static_rdf_clf_list')
+        elif case_flag == 4:
+            pass
+        elif case_flag == 5:
+            obs_params = config.get('static_rdf_clf_list')
+
         cir_obs_params = config.get('cir_obstacle_list')
         cdf_sta_obs_params = config.get('cdf_sta_obstacle_list')
         cdf_dyn_obs_params = config.get('cdf_dyn_obstacle_list')
-        sdf_sta_obs_params = config.get('sdf_sta_obstacle_list')
 
         self.cir_obs_states_list = None
         self.cdf_dyn_obs_states_list = None
         self.cdf_dyn_obs_num = 0
         self.cdf_dyn_obs_center_list = []
 
-        if cir_obs_params is not None:
-            self.cir_obs_num = len(cir_obs_params['obs_states'])
-            self.cir_obs_list = [None for i in range(self.cir_obs_num)]
-            for i in range(self.cir_obs_num):
-                self.cir_obs_list[i] = obs.Circle_Obs(
-                    index=i,
-                    radius=cir_obs_params['obs_radii'][i],
-                    center=cir_obs_params['obs_states'][i],
-                    vel=cir_obs_params['obs_vel'][i],
-                    mode=cir_obs_params['modes'][i],
-                )
+        # if cir_obs_params is not None:
+        #     self.cir_obs_num = len(cir_obs_params['obs_states'])
+        #     self.cir_obs_list = [None for i in range(self.cir_obs_num)]
+        #     for i in range(self.cir_obs_num):
+        #         self.cir_obs_list[i] = obs.Circle_Obs(
+        #             index=i,
+        #             radius=cir_obs_params['obs_radii'][i],
+        #             center=cir_obs_params['obs_states'][i],
+        #             vel=cir_obs_params['obs_vel'][i],
+        #             mode=cir_obs_params['modes'][i],
+        #         )
+        #
+        #     # get cir_obstacles' center position and velocity as well as radius
+        #     self.cir_obs_init_states_list = [
+        #         self.cir_obs_list[i].get_current_state()
+        #         for i in range(self.cir_obs_num)
+        #     ]
+        #     self.cir_obs_states_list = np.copy(self.cir_obs_init_states_list)
 
-            # get cir_obstacles' center position and velocity as well as radius
-            self.cir_obs_init_states_list = [
-                self.cir_obs_list[i].get_current_state()
-                for i in range(self.cir_obs_num)
-            ]
-            self.cir_obs_states_list = np.copy(self.cir_obs_init_states_list)
+        # if cdf_sta_obs_params is not None:
+        #     self.cdf_sta_obs_num = len(cdf_sta_obs_params['obs_states'])
+        #     self.cdf_sta_obs_list = [None for i in range(self.cdf_sta_obs_num)]
+        #     for i in range(self.cdf_sta_obs_num):
+        #         self.cdf_sta_obs_list[i] = obs.Cdf_Obs(
+        #             index=i,
+        #             radius=cdf_sta_obs_params['obs_radii'][i],
+        #             center=cdf_sta_obs_params['obs_states'][i],
+        #             vel=cdf_sta_obs_params['obs_vel'][i],
+        #             mode=cdf_sta_obs_params['modes'][i],
+        #         )
 
-        if cdf_sta_obs_params is not None:
-            self.cdf_sta_obs_num = len(cdf_sta_obs_params['obs_states'])
-            self.cdf_sta_obs_list = [None for i in range(self.cdf_sta_obs_num)]
-            for i in range(self.cdf_sta_obs_num):
-                self.cdf_sta_obs_list[i] = obs.Cdf_Obs(
-                    index=i,
-                    radius=cdf_sta_obs_params['obs_radii'][i],
-                    center=cdf_sta_obs_params['obs_states'][i],
-                    vel=cdf_sta_obs_params['obs_vel'][i],
-                    mode=cdf_sta_obs_params['modes'][i],
-                )
+        # if cdf_dyn_obs_params is not None:
+        #     self.dyn_obstacle_gradient_filed = []
+        #     self.cdf_dyn_obs_num = len(cdf_dyn_obs_params['obs_states'])
+        #     self.cdf_dyn_obs_list = [None for i in range(self.cdf_dyn_obs_num)]
+        #     for i in range(self.cdf_dyn_obs_num):
+        #         self.cdf_dyn_obs_list[i] = obs.Cdf_Obs(
+        #             index=i,
+        #             radius=cdf_dyn_obs_params['obs_radii'][i],
+        #             center=cdf_dyn_obs_params['obs_states'][i],
+        #             vel=cdf_dyn_obs_params['obs_vel'][i],
+        #             mode=cdf_dyn_obs_params['modes'][i],
+        #         )
 
-        if cdf_dyn_obs_params is not None:
-            self.dyn_obstacle_gradient_filed = []
-            self.cdf_dyn_obs_num = len(cdf_dyn_obs_params['obs_states'])
-            self.cdf_dyn_obs_list = [None for i in range(self.cdf_dyn_obs_num)]
-            for i in range(self.cdf_dyn_obs_num):
-                self.cdf_dyn_obs_list[i] = obs.Cdf_Obs(
-                    index=i,
-                    radius=cdf_dyn_obs_params['obs_radii'][i],
-                    center=cdf_dyn_obs_params['obs_states'][i],
-                    vel=cdf_dyn_obs_params['obs_vel'][i],
-                    mode=cdf_dyn_obs_params['modes'][i],
-                )
-
-        if self.sdf_flag:
-            self.sdf_sta_obs_num = len(sdf_sta_obs_params['obs_states'])
+        if obs_params is not None:
+            self.sdf_sta_obs_num = len(obs_params['obs_states'])
             self.sdf_sta_obs_list = [None for i in range(self.sdf_sta_obs_num)]
             for i in range(self.sdf_sta_obs_num):
                 self.sdf_sta_obs_list[i] = obs.Sdf_Obs(
                     index=i,
-                    radius=sdf_sta_obs_params['obs_radii'][i],
-                    center=sdf_sta_obs_params['obs_states'][i],
-                    vel=sdf_sta_obs_params['obs_vel'][i],
-                    mode=sdf_sta_obs_params['modes'][i],
+                    radius=obs_params['obs_radii'][i],
+                    center=obs_params['obs_states'][i],
+                    vel=obs_params['obs_vel'][i],
+                    mode=obs_params['modes'][i],
                 )
 
         # controller
@@ -136,7 +144,7 @@ class Collision_Avoidance:
             self.cdf_obs_dx_cbf_t = np.zeros((self.cdf_dyn_obs_num, 3, self.time_steps))
 
         "storage for static sdf obstacles"
-        if self.sdf_flag:
+        if obs_params is not None:
             self.sdf_obs_cbf_t = np.zeros((self.sdf_sta_obs_num, 1, self.time_steps))
             self.sdf_obs_dx_cbf_t = np.zeros((self.sdf_sta_obs_num, 2, self.time_steps))
 
@@ -148,26 +156,37 @@ class Collision_Avoidance:
         )
         self.show_obs = True
 
-    def navigation_destination(self, add_slack=False):
+    def navigation_destination(self, sdf=None, case_flag=None, add_slack=False):
         """ navigate the robot to its destination """
         t = 0
         process_time = []
         # approach the destination or exceed the maximum time
-        robot_p = np.array([self.l[0] * np.cos(self.robot_cur_state[0]) + self.l[1] * np.cos(
-            self.robot_cur_state[0] + self.robot_cur_state[1]),
-                            self.l[0] * np.sin(self.robot_cur_state[0]) + self.l[1] * np.sin(
-                                self.robot_cur_state[0] + self.robot_cur_state[1])])
+        dist_to_goal = np.inf
 
-        while (
-                np.linalg.norm(robot_p - self.robot_target_state[0:2])
-                >= self.destination_margin
-                and t - self.time_steps < 0.0
-        ):
+        while dist_to_goal >= self.destination_margin and t - self.time_steps < 0.0:
             if t % 100 == 0:
                 print(f't = {t}')
 
             start_time = time.time()
-            optimal_result = self.cbf_qp.clf_qp(self.robot_cur_state, add_slack=add_slack)
+            if case_flag == 3:
+                eef_pos_task = np.array([self.l[0] * np.cos(self.robot_cur_state[0]) +
+                                         self.l[1] * np.cos(self.robot_cur_state[0] + self.robot_cur_state[1]),
+                                         self.l[0] * np.sin(self.robot_cur_state[0]) +
+                                         self.l[1] * np.sin(self.robot_cur_state[0] + self.robot_cur_state[1])])
+                dist_to_goal = np.linalg.norm(eef_pos_task - self.robot_target_state[0:2])
+                optimal_result = self.cbf_qp.clf_qp(self.robot_cur_state, add_slack=add_slack, case_flag=case_flag)
+
+            elif case_flag == 5:
+                cdf.obj_lists = [Circle(center=torch.from_numpy(self.sdf_sta_obs_list[0].state),
+                                        radius=self.sdf_sta_obs_list[0].radius, device=device)]
+                robot_states = torch.from_numpy(self.robot_cur_state[:2]).to(device).reshape(1, 2)
+                distance_input, gradient_input = cdf.inference_c_space_sdf_using_data(robot_states)
+                distance_input = distance_input.cpu().detach().numpy()
+                gradient_input = gradient_input.cpu().detach().numpy()
+                dist_to_goal = distance_input - self.destination_margin
+                optimal_result = self.cbf_qp.clf_qp(self.robot_cur_state, add_slack=add_slack, case_flag=case_flag,
+                                                    dist=dist_to_goal, grad=gradient_input)
+
             process_time.append(time.time() - start_time)
 
             if not optimal_result.feas:
@@ -184,18 +203,13 @@ class Collision_Avoidance:
             self.robot_cur_state = self.cbf_qp.robot.next_state(self.robot_cur_state, optimal_result.u, self.step_time)
             t = t + 1
 
-            robot_p = np.array([self.l[0] * np.cos(self.robot_cur_state[0]) +
-                                self.l[1] * np.cos(self.robot_cur_state[0] + self.robot_cur_state[1]),
-                                self.l[0] * np.sin(self.robot_cur_state[0]) +
-                                self.l[1] * np.sin(self.robot_cur_state[0] + self.robot_cur_state[1])])
-
         self.terminal_time = t
         # storage the last state of robot
         self.xt[:, t] = np.copy(self.robot_cur_state)
         self.show_obs = False
 
         print('Total time: ', self.terminal_time)
-        if np.linalg.norm(robot_p - self.robot_target_state[0:2]) <= self.destination_margin:
+        if dist_to_goal <= self.destination_margin:
             print('Robot has arrived its destination!')
         else:
             print('Robot has not arrived its destination!')
@@ -206,7 +220,7 @@ class Collision_Avoidance:
         print('Median_time:', statistics.median(process_time))
         print('Average_time:', statistics.mean(process_time))
 
-    def collision_avoidance(self, cdf=None, add_clf=True, sdf=None):
+    def collision_avoidance(self, rdf=None, case_flag=None, add_clf=True):
         """ solve the collision avoidance between robot and obstacles based on sdf-cbf """
         t = 0
         process_time = []
@@ -412,8 +426,11 @@ class Collision_Avoidance:
                                     self.show_obs, self.cdf_obs_dx_cbf_t, self.cdf_dyn_obs_num, show_arrow=True,
                                     show_ob_arrow=True)
 
-    def render_manipulator(self):
-        self.ani.render_manipulator(cdf, self.xt, self.terminal_time, show_obs=True)
+    def render_manipulator(self, case_flag):
+        self.ani.render_manipulator(cdf, self.xt, self.terminal_time, case_flag)
+
+    def render_c_space(self, case_flag):
+        self.ani.render_c_space(cdf, self.xt, self.terminal_time, case_flag)
 
     def render_ani_manipulator(self, cdf, log_circle_center):
         self.ani.render_ani_manipulator(cdf, log_circle_center, self.xt, self.cdf_dyn_obs_num, self.terminal_time)
@@ -450,57 +467,72 @@ if __name__ == '__main__':
     """
     sdf yaml files use the traditional way to compute the distance and gradient between robot and objects.
     cdf yaml files use the NN to predict the distance and gradient in configuration space.
+    rdf yaml files use the NN to predict the distance and gradient in task space.
     """
 
     file_names = {
         1: 'static_sdf_cbf_clf.yaml',
         2: 'dynamic_sdf_cbf_clf.yaml',
-        3: 'static_cdf_clf.yaml',
-        4: 'static_cdf_clf_cbf.yamal',
-        5: 'dynamic_cdf_clf.yaml',
-        6: 'dynamic_cdf_clf.yaml',
+        3: './eef_static_rdf_clf.yaml',
+        4: 'eef_dynamic_rdf_clf.yaml',
+        5: './yaml_files/static_rdf_clf.yaml',
+        6: 'dynamic_rdf_clf.yaml',
+        7: 'static_rdf_clf_cbf.yaml',
+        8: 'dynamic_rdf_clf_cbf.yaml',
     }
 
-    case = 1
+    case = 5
     file_name = os.path.join(CURRENT_DIR, file_names[case])
     cdf = CDF2D(device)
-    test_target = Collision_Avoidance(file_name)
+    test_target = Collision_Avoidance(file_name, case)
+
+    distance_fields = {
+        1: 'sdf',
+        2: 'rdf',
+    }
 
     if case == 1:
         pass
     elif case == 2:
         pass
     elif case == 3:
-        pass
+        test_target.navigation_destination(case_flag=3)
+        test_target.render_manipulator(case_flag=3)
+
     elif case == 4:
         pass
     elif case == 5:
-        pass
-    elif case == 6:
-        pass
-
-    if case == 1:
-        "collision avoidance with circle cbf"
-        # compute the target state in the task space according to the given joint angles
-        given_joint_angles = np.array([1.0, 2.0])
-        target_state = \
-            cdf.robot.forward_kinematics_all_joints(torch.from_numpy(given_joint_angles).to(device).unsqueeze(0))[
-                0].detach().cpu().numpy()[:, -1]
-        print('target_state:', target_state)
-
-        # close the file
-        test_target.collision_avoidance(sdf=cdf)
-        # test_target.navigation_destination()
-        test_target.render_manipulator()
-
-        test_target.render_sdf_static(cdf, test_target.xt, test_target.terminal_time)
-        test_target.render_sta_sdf_manipulator(cdf, test_target.sdf_sta_obs_list, given_joint_angles,
-                                               test_target.terminal_time)
-        test_target.show_cbf(0)
+        test_target.navigation_destination(sdf=cdf, case_flag=5, add_slack=True)
+        test_target.render_manipulator(case_flag=5)
+        test_target.render_c_space(case_flag=5)
         test_target.show_controls()
         test_target.show_clf()
         test_target.show_slack()
-        # test_target.show_dx_cbf(0)
+    elif case == 6:
+        pass
+    elif case == 7:
+        test_target.collision_avoidance(rdf=cdf)
+
+    # if case == 1:
+    #     "collision avoidance with circle cbf"
+    #     # compute the target state in the task space according to the given joint angles
+    #     # given_joint_angles = np.array([1.0, 2.0])
+    #     # target_state = \
+    #     #     cdf.robot.forward_kinematics_all_joints(torch.from_numpy(given_joint_angles).to(device).unsqueeze(0))[
+    #     #         0].detach().cpu().numpy()[:, -1]
+    #     # print('target_state:', target_state)
+    #
+    #     # close the file
+    #     test_target.render_manipulator()
+    #
+    #     test_target.render_sdf_static(cdf, test_target.xt, test_target.terminal_time)
+    #     test_target.render_sta_sdf_manipulator(cdf, test_target.sdf_sta_obs_list, given_joint_angles,
+    #                                            test_target.terminal_time)
+    #     test_target.show_cbf(0)
+    #     test_target.show_controls()
+    #     test_target.show_clf()
+    #     test_target.show_slack()
+    # test_target.show_dx_cbf(0)
 
     # elif case == 2:
     #     "collision avoidance with dynamic circle cbf"
