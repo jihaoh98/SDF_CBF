@@ -11,7 +11,8 @@ controller:
 robot:
   u_max: [ 2.7, 2.7 ]
   u_min: [ -2.7, -2.7 ]
-  initial_state: [ 2.5, -0.9]  # in configuration space
+#  initial_state: [ 2.5, -0.9]  # in configuration space
+  initial_state: [ 3.0, -0.9]  # in configuration space
   target_state: [2.5, -2.]  # in task space
   radius: 0.1
   destination_margin: 0.01
@@ -21,7 +22,7 @@ robot:
 
 static_rdf_clf_list:
   obs_states: [
-    [ 0.5, 1.9 ],
+    [ -1.6, -0.6 ],
   ]
   obs_radii: [ 0.3 ]
   obs_vel: [

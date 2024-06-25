@@ -101,7 +101,7 @@ class CDF2D:
         obj_points = self.obj_lists[0].center.requires_grad_(True)
         dist_robot_obj = torch.norm(points_on_robot - obj_points, dim=1)
         grad = torch.autograd.grad(dist_robot_obj, obj_points, torch.ones_like(sdf), create_graph=True)[0]
-        return dist_robot_obj, grad, obj_points
+        return dist_robot_obj, grad, obj_points, points_on_robot
 
     def c_space_distance(self, q):
         # x : (Nx,3)

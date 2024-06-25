@@ -156,12 +156,14 @@ class Collision_Avoidance:
         )
         self.show_obs = True
 
-    def navigation_destination(self, sdf=None, case_flag=None, add_slack=False):
+    def navigation_destination(self, distance_field=None, cdf=None, case_flag=None, add_slack=False):
         """ navigate the robot to its destination """
         t = 0
         process_time = []
         # approach the destination or exceed the maximum time
         dist_to_goal = np.inf
+        distance_input = None
+        gradient_input = None
 
         while dist_to_goal >= self.destination_margin and t - self.time_steps < 0.0:
             if t % 100 == 0:
@@ -180,7 +182,11 @@ class Collision_Avoidance:
                 cdf.obj_lists = [Circle(center=torch.from_numpy(self.sdf_sta_obs_list[0].state),
                                         radius=self.sdf_sta_obs_list[0].radius, device=device)]
                 robot_states = torch.from_numpy(self.robot_cur_state[:2]).to(device).reshape(1, 2)
-                distance_input, gradient_input = cdf.inference_c_space_sdf_using_data(robot_states)
+                if distance_field == 'sdf':
+                    distance_input, gradient_input = cdf.inference_sdf_grad(robot_states)
+                elif distance_field == 'cdf':
+                    distance_input, gradient_input = cdf.inference_c_space_sdf_using_data(robot_states)
+
                 distance_input = distance_input.cpu().detach().numpy()
                 gradient_input = gradient_input.cpu().detach().numpy()
                 dist_to_goal = distance_input - self.destination_margin
@@ -429,20 +435,20 @@ class Collision_Avoidance:
     def render_manipulator(self, case_flag):
         self.ani.render_manipulator(cdf, self.xt, self.terminal_time, case_flag)
 
-    def render_c_space(self, case_flag):
-        self.ani.render_c_space(cdf, self.xt, self.terminal_time, case_flag)
+    def render_c_space(self, distance_field, case_flag):
+        self.ani.render_c_space(distance_field, cdf, self.xt, self.terminal_time, case_flag)
 
-    def render_ani_manipulator(self, cdf, log_circle_center):
-        self.ani.render_ani_manipulator(cdf, log_circle_center, self.xt, self.cdf_dyn_obs_num, self.terminal_time)
+    def render_ani_t_space_manipulator(self, cdf, case_flag):
+        self.ani.render_ani_t_space_manipulator(cdf, self.xt, self.terminal_time, case_flag)
 
-    def render_sta_ani_manipulator(self, cdf, circle_center):
-        self.ani.render_sta_ani_manipulator(cdf, circle_center, self.xt, self.cdf_sta_obs_num, self.terminal_time)
+    def render_ani_c_space(self, cdf, case_flag):
+        self.ani.render_ani_c_space(cdf, self.xt, self.terminal_time, case_flag)
 
-    def render_sta_sdf_manipulator(self, sdf, circle_center, given_joint_angles, terminal_time):
-        self.ani.render_sta_sdf_ani_manipulator(sdf, self.xt, circle_center, given_joint_angles, terminal_time)
+    # def render_ani_manipulator(self, cdf, log_circle_center):
+    #     self.ani.render_ani_manipulator(cdf, log_circle_center, self.xt, self.cdf_dyn_obs_num, self.terminal_time)
 
-    def render_dyn_sdf_manipulator(self):
-        pass
+    # def render_sta_sdf_manipulator(self, sdf, circle_center, given_joint_angles, terminal_time):
+    #     self.ani.render_sta_sdf_ani_manipulator(sdf, self.xt, circle_center, given_joint_angles, terminal_time)
 
     def show_cbf(self, i):
         self.ani.show_cbf(i, self.sdf_obs_cbf_t, self.terminal_time)
@@ -471,25 +477,27 @@ if __name__ == '__main__':
     """
 
     file_names = {
-        1: 'static_sdf_cbf_clf.yaml',
-        2: 'dynamic_sdf_cbf_clf.yaml',
-        3: './eef_static_rdf_clf.yaml',
-        4: 'eef_dynamic_rdf_clf.yaml',
-        5: './yaml_files/static_rdf_clf.yaml',
-        6: 'dynamic_rdf_clf.yaml',
-        7: 'static_rdf_clf_cbf.yaml',
-        8: 'dynamic_rdf_clf_cbf.yaml',
+        1: '01_static_sdf_cbf_clf.yaml',
+        2: '02_dynamic_sdf_cbf_clf.yaml',
+        3: '03_eef_static_rdf_clf.yaml',
+        4: '04_eef_dynamic_rdf_clf.yaml',
+        5: '05_static_rdf_clf.yaml',
+        6: '06_dynamic_rdf_clf.yaml',
+        7: '07_static_rdf_clf_cbf.yaml',
+        8: '08_dynamic_rdf_clf_cbf.yaml',
     }
 
     case = 5
-    file_name = os.path.join(CURRENT_DIR, file_names[case])
+    file_name = os.path.join(CURRENT_DIR, './yaml_files/', file_names[case])
     cdf = CDF2D(device)
     test_target = Collision_Avoidance(file_name, case)
 
     distance_fields = {
         1: 'sdf',
-        2: 'rdf',
+        2: 'cdf',
     }
+
+    DF = distance_fields[2]
 
     if case == 1:
         pass
@@ -502,16 +510,18 @@ if __name__ == '__main__':
     elif case == 4:
         pass
     elif case == 5:
-        test_target.navigation_destination(sdf=cdf, case_flag=5, add_slack=True)
+        test_target.navigation_destination(distance_field=DF, cdf=cdf, case_flag=5)
         test_target.render_manipulator(case_flag=5)
-        test_target.render_c_space(case_flag=5)
+        test_target.render_c_space(distance_field=DF, case_flag=5)
+        test_target.render_ani_t_space_manipulator(cdf, case_flag=5)
+        test_target.render_ani_c_space(cdf, case_flag=5)
         test_target.show_controls()
         test_target.show_clf()
         test_target.show_slack()
     elif case == 6:
         pass
-    elif case == 7:
-        test_target.collision_avoidance(rdf=cdf)
+    # elif case == 7:
+    #     test_target.collision_avoidance(rdf=cdf)
 
     # if case == 1:
     #     "collision avoidance with circle cbf"
