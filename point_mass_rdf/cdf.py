@@ -212,7 +212,7 @@ class CDF2D:
         sdf = sdf.detach().cpu().numpy()
 
         # Make sure to use the axes object (ax) for plotting
-        contour = ax.contour(self.q0, self.q1, sdf.reshape(self.nbData, self.nbData), levels=[0], linewidths=2,
+        contour = ax.contour(self.q0, self.q1, sdf.reshape(self.nbData, self.nbData), levels=[0], linewidths=3,
                              colors='k', alpha=1.0)
         cmap = plt.cm.get_cmap('coolwarm')
         contourf = ax.contourf(self.q0, self.q1, d.reshape(self.nbData, self.nbData),
@@ -220,8 +220,8 @@ class CDF2D:
         ax.clabel(contourf, [], inline=False, fontsize=10)
 
         ct_zero = ax.contour(self.q0, self.q1, sdf.reshape(self.nbData, self.nbData), levels=[0], colors='k')
-        for c in ct_zero.collections:
-            c.set_hatch('///')
+        # for c in ct_zero.collections:
+        #     c.set_hatch('///')
 
         hatch_handle = mpatches.Patch(facecolor='none', edgecolor='k', hatch='///', label='Obstacle')
 
@@ -243,8 +243,8 @@ class CDF2D:
         ax.clabel(contourf, [], inline=False, fontsize=10)
 
         ct_zero = ax.contour(self.q0, self.q1, sdf.reshape(self.nbData, self.nbData), levels=[0], colors='k')
-        for c in ct_zero.collections:
-            c.set_hatch('///')
+        # for c in ct_zero.collections:
+        #     c.set_hatch('///')
 
         ax.set_xlabel('$q_0$', size=15)
         ax.set_ylabel('$q_1$', size=15)

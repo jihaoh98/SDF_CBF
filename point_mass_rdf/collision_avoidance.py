@@ -40,11 +40,11 @@ class Collision_Avoidance:
         elif case_flag == 2:
             pass
         elif case_flag == 3:
-            obs_params = config.get('eef_static_rdf_clf_list')
+            obs_params = config.get('eef_static_sdf_clf_list')
         elif case_flag == 4:
             pass
         elif case_flag == 5:
-            obs_params = config.get('static_rdf_clf_list')
+            obs_params = config.get('static_obj_list')
 
         cir_obs_params = config.get('cir_obstacle_list')
         cdf_sta_obs_params = config.get('cdf_sta_obstacle_list')
@@ -441,8 +441,9 @@ class Collision_Avoidance:
     def render_ani_t_space_manipulator(self, distance_field, cdf, case_flag):
         self.ani.render_ani_t_space_manipulator(distance_field, cdf, self.xt, self.terminal_time, case_flag)
 
-    def render_ani_c_space(self, cdf, case_flag):
-        self.ani.render_ani_c_space(cdf, self.xt, self.terminal_time, case_flag)
+    def render_ani_c_space(self, distance_field, cdf, case_flag, mode='clf', obs_info=None, save_gif=False):
+        self.ani.render_ani_c_space(distance_field, cdf, self.xt, self.terminal_time, case_flag, mode="clf",
+                                    obs_info=None, save_gif=save_gif)
 
     # def render_ani_manipulator(self, cdf, log_circle_center):
     #     self.ani.render_ani_manipulator(cdf, log_circle_center, self.xt, self.cdf_dyn_obs_num, self.terminal_time)
@@ -477,14 +478,14 @@ if __name__ == '__main__':
     """
 
     file_names = {
-        1: '01_static_sdf_cbf_clf.yaml',
-        2: '02_dynamic_sdf_cbf_clf.yaml',
-        3: '03_eef_static_rdf_clf.yaml',
-        4: '04_eef_dynamic_rdf_clf.yaml',
-        5: '05_static_rdf_clf.yaml',
-        6: '06_dynamic_rdf_clf.yaml',
-        7: '07_static_rdf_clf_cbf.yaml',
-        8: '08_dynamic_rdf_clf_cbf.yaml',
+        1: '01_static_sdf_cbf_clf.yaml',  # point mass robot
+        2: '02_dynamic_sdf_cbf_clf.yaml',  # point mass robot
+        3: '03_eef_static_sdf_clf.yaml',  # manipulator and its end-effector
+        4: '04_eef_dynamic_sdf_clf.yaml',  # manipulator and its end-effector
+        5: '05_static_clf.yaml',  # manipulator and whole body
+        6: '06_dynamic_clf.yaml',  # todo: need to implement other cases first, then implement this case
+        7: '07_static_clf_cbf.yaml',
+        8: '08_dynamic_clf_cbf.yaml',
     }
 
     case = 5
@@ -513,12 +514,15 @@ if __name__ == '__main__':
         test_target.navigation_destination(distance_field=DF, cdf=cdf, case_flag=5)
         test_target.render_manipulator(case_flag=5)
         test_target.render_c_space(distance_field=DF, case_flag=5)
-        test_target.render_ani_t_space_manipulator(DF, cdf, case_flag=5)
-        test_target.render_ani_c_space(cdf, case_flag=5)
+        test_target.render_ani_t_space_manipulator(DF, cdf, case_flag=5)  # todo: add mode
+        test_target.render_ani_c_space(DF, cdf, case_flag=5, mode='clf', save_gif=False)
         test_target.show_controls()
         test_target.show_clf()
         test_target.show_slack()
     elif case == 6:
+        pass
+    elif case == 7:
+        test_target.collision_avoidance(distance_fields, cdf, case_flag=7)
         pass
     # elif case == 7:
     #     test_target.collision_avoidance(rdf=cdf)

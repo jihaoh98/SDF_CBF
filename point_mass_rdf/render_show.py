@@ -186,21 +186,85 @@ class Render_Animation:
             # plot a bigger base center at (0, 0), which is a cirlce with golden color
             plt.plot(0, 0, marker='o', markersize=15, markerfacecolor='#DDA15E', markeredgecolor='k')
 
-    def render_ani_c_space(self, cdf, xt, terminal_time, case_flag=None):
-        if case_flag == 5:
-            cdf.plot_sdf()
-            # plot the start and goal point of the robot in configuration space
-            plt.scatter(self.robot_init_state[0], self.robot_init_state[1], color='g', s=100, zorder=10, label='Start')
-            target_state_config = \
-                cdf.robot.forward_kinematics_all_joints(
-                    torch.from_numpy(self.robot_target_state[0:2]).to(device).unsqueeze(0))[
-                    0].detach().cpu().numpy()
-            # plt.scatter(goal_in_cspace[0], goal_in_cspace[1], color='k', s=100, zorder=10, label='Goal')
+    def render_ani_c_space(self, distance_field, cdf, xt, terminal_time, case_flag=None, mode=None, obs_info=None,
+                           save_gif=False):
+        # line is used to update the trajectory
+        self.fig, self.ax = plt.subplots()
+        line, = self.ax.plot([], [], color='yellow', linestyle='-', linewidth=2)
+        num_frames = terminal_time
+        self.xt = xt
 
-            # plot the trajectory of the robot in configuration space
-            plt.plot(xt[0, :terminal_time], xt[1, :terminal_time], color='r', linestyle='--', linewidth=2.0,
-                     label='Trajectory')
+        if mode == "clf":
+            # plot the start point, `l1` is the handle for creating a legend
+            l1, = self.ax.plot(xt[0, 0], xt[1, 0], 'g*', label='start', markersize=10)
+            num_obs = 0
+            if distance_field == "sdf":
+                cdf.plot_sdf()
+            elif distance_field == "cdf":
+                d_grad, grad_plot = cdf.inference_c_space_sdf_using_data(cdf.Q_sets)
+                contour, contourf, ct_zero, hatch_handle = cdf.plot_cdf_ax(d_grad.detach().cpu().numpy(), self.ax)
+        elif mode == "clf_cbf":
+            l1, = self.ax.plot(xt[0, 0], xt[1, 0], 'g*', label='start', markersize=10)
+
+            pass
+
+        def update_distance_field(frame, obstacle_elements, ax, line):
+
+            if mode == "clf":
+                pass
+
+            if mode == "clf_cbf":
+                pass
+            # re-update the obstacle
+            # if num_obs == 1:
+            #     for element in obstacle_elements:
+            #         for coll in element.collections:
+            #             coll.remove()
+
+            # obstacle_elements.clear()  # Clear the list outside the loop
+            # object_center = log_circle_center[frame]
+            # cdf.obj_lists = [
+            #     Circle(center=torch.from_numpy(log_circle_center[frame][0]), radius=0.3, device=device)]
+            # cdf.obj_lists = [Circle(center=torch.from_numpy(object_center), radius=0.3, device=device)]
+            # plot the distance field
+            # Add new elements to the list
+            # obstacle_elements.extend([contour, contourf, ct_zero])
+            line.set_data(xt[0, :frame + 1], xt[1, :frame + 1])
+
+            return obstacle_elements
+
+        obstacle_elements = []
+        # update_distance_field(0, obstacle_elements, self.ax, line)
+        # self.ax.legend(handles=[hatch_handle], loc='upper center', ncol=2)
+        # self.ax.legend([l1, l2], ['Start', 'goal'])
+        # handles_all = [l1, l2, hatch_handle]
+        # labels_all = [l.get_label() for l in handles_all]
+        # self.ax.legend(handles=handles_all, labels=labels_all, loc='upper center', ncol=3)
+
+        ani = FuncAnimation(self.fig, lambda frame: update_distance_field(frame, obstacle_elements, self.ax, line),
+                            frames=num_frames, interval=50)
+        if save_gif:
+            writer = animation.PillowWriter(fps=15, metadata=dict(artist='Me'), bitrate=1800)
+            # file name is based on distance field
+            filename = distance_field + '.gif'
+            file_path = os.path.join(CUR_PATH, filename)
+            ani.save(file_path, writer=writer)
         plt.show()
+
+        # if case_flag == 5:
+        #     cdf.plot_sdf()
+        #     # plot the start and goal point of the robot in configuration space
+        #     plt.scatter(self.robot_init_state[0], self.robot_init_state[1], color='g', s=100, zorder=10, label='Start')
+        #     target_state_config = \
+        #         cdf.robot.forward_kinematics_all_joints(
+        #             torch.from_numpy(self.robot_target_state[0:2]).to(device).unsqueeze(0))[
+        #             0].detach().cpu().numpy()
+        #     # plt.scatter(goal_in_cspace[0], goal_in_cspace[1], color='k', s=100, zorder=10, label='Goal')
+        #
+        #     # plot the trajectory of the robot in configuration space
+        #     plt.plot(xt[0, :terminal_time], xt[1, :terminal_time], color='r', linestyle='--', linewidth=2.0,
+        #              label='Trajectory')
+        # plt.show()
 
     def render_ani_t_space_manipulator(self, distance_field, cdf, xt, terminal_time, case_flag=None):
         f_rob_start = \
@@ -268,7 +332,7 @@ class Render_Animation:
         save_gif = False
         if save_gif:
             writer = animation.PillowWriter(fps=15, metadata=dict(artist='Me'), bitrate=1800)
-            file_path = os.path.join(CUR_PATH, 'demo_sdf.gif')
+            file_path = os.path.join(CUR_PATH, 'result/demo_sdf.gif')
             ani.save(file_path, writer=writer)
         plt.show()
 
