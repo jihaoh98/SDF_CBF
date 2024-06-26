@@ -163,15 +163,15 @@ class CDF2D:
         sdf = sdf.detach().cpu().numpy()
         cmap = plt.cm.get_cmap('coolwarm')
         ct = plt.contourf(self.q0, self.q1, sdf.reshape(self.nbData, self.nbData),
-                          cmap=cmap, levels=[0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5], linewidths=1)
-        # plt.clabel(ct, [], inline=False, fontsize=10, colors='black')
-        plt.clabel(ct, inline=False, fontsize=10, colors='black')
+                          cmap=cmap, levels=[-0.5, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0], linewidths=1)
+        plt.clabel(ct, [], inline=False, fontsize=10, colors='black')
+        # plt.clabel(ct, inline=False, fontsize=10, colors='black')
 
-        ct_zero = plt.contour(self.q0, self.q1, sdf.reshape(self.nbData, self.nbData), levels=[0], linewidths=2,
+        ct_zero = plt.contour(self.q0, self.q1, sdf.reshape(self.nbData, self.nbData), levels=[0], linewidths=3,
                               colors='k',
                               alpha=1.0)
-        for c in ct_zero.collections:
-            c.set_hatch('///')  # Apply the hatch pattern
+        # for c in ct_zero.collections:
+        #     c.set_hatch('///')  # Apply the hatch pattern
         plt.xlabel('$q_0$', size=15)
         plt.ylabel('$q_1$', size=15)
 
@@ -182,11 +182,11 @@ class CDF2D:
         ct = plt.contourf(self.q0, self.q1, d.reshape(self.nbData, self.nbData),
                           cmap=cmap, levels=[-0.5, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0], linewidths=1)
         plt.clabel(ct, [], inline=False, fontsize=10, colors='black')
-        ct_zero = plt.contour(self.q0, self.q1, sdf.reshape(self.nbData, self.nbData), levels=[0], linewidths=2,
+        ct_zero = plt.contour(self.q0, self.q1, sdf.reshape(self.nbData, self.nbData), levels=[0], linewidths=3,
                               colors=color,
                               alpha=1.0)
-        for c in ct_zero.collections:
-            c.set_hatch('///')  # Apply the hatch patter
+        # for c in ct_zero.collections:
+        #     c.set_hatch('///')  # Apply the hatch patter
 
         plt.xlabel('$q_0$', size=15)
         plt.ylabel('$q_1$', size=15)

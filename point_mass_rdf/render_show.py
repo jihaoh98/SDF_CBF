@@ -202,7 +202,7 @@ class Render_Animation:
                      label='Trajectory')
         plt.show()
 
-    def render_ani_t_space_manipulator(self, cdf, xt, terminal_time, case_flag=None):
+    def render_ani_t_space_manipulator(self, distance_field, cdf, xt, terminal_time, case_flag=None):
         f_rob_start = \
             cdf.robot.forward_kinematics_all_joints(torch.from_numpy(xt[:2, 0]).to(device).unsqueeze(0))[
                 0].detach().cpu().numpy()
@@ -216,16 +216,21 @@ class Render_Animation:
             log_point_grad = []
             log_point_dist = []
             log_point_robot = []
+            sdf_obj, grad_obj, q_obj, q_robot = None, None, None, None
             for i in range(terminal_time):
-                sdf_obj, grad_obj, q_obj, q_robot = cdf.inference_t_sdf_grad(
-                    torch.from_numpy(xt[:2, i]).to(device).unsqueeze(0))
+                if distance_field == "sdf":
+                    sdf_obj, grad_obj, q_obj, q_robot = cdf.inference_t_sdf_grad(
+                        torch.from_numpy(xt[:2, i]).to(device).unsqueeze(0))
+                    log_point_robot.append(q_robot.detach().cpu().numpy().flatten())
+                elif distance_field == "cdf":
+                    sdf_obj, grad_obj, q_obj = cdf.inference_t_space_sdf_using_data(
+                        torch.from_numpy(xt[:2, i]).to(device).unsqueeze(0))
                 sdf_obj.detach().cpu().numpy()
                 grad_obj.detach().cpu().numpy()
                 q_obj.detach().cpu().numpy()
-                log_point_pos.append(q_obj.detach().cpu().numpy())
-                log_point_grad.append(grad_obj.detach().cpu().numpy())
+                log_point_pos.append(q_obj.detach().cpu().numpy().flatten())
+                log_point_grad.append(grad_obj.detach().cpu().numpy().flatten())
                 log_point_dist.append(sdf_obj.detach().cpu().numpy())
-                log_point_robot.append(q_robot.detach().cpu().numpy().flatten())
 
         num_obs = len(cdf.obj_lists)
         self.fig, self.ax = plt.subplots()
@@ -234,11 +239,15 @@ class Render_Animation:
             self.ax.clear()
             # plot the log_point_pos
             if case_flag == 5:
-                plt.plot(log_point_pos[frame][0], log_point_pos[frame][1], 'r*')
-                plt.quiver(log_point_pos[frame][0], log_point_pos[frame][1], log_point_grad[frame][0],
-                           log_point_grad[frame][1], color='b', scale=10)
-                plt.plot(log_point_robot[frame][0], log_point_robot[frame][1], 'g*', markersize=8)
-
+                if distance_field == "sdf":
+                    plt.plot(log_point_robot[frame][0], log_point_robot[frame][1], 'g*', markersize=8)
+                    plt.plot(log_point_pos[frame][0], log_point_pos[frame][1], 'r*')
+                    plt.quiver(log_point_pos[frame][0], log_point_pos[frame][1], log_point_grad[frame][0],
+                               log_point_grad[frame][1], color='b', scale=10)
+                elif distance_field == "cdf":
+                    f_rob_traj = cdf.robot.forward_kinematics_all_joints(
+                        torch.from_numpy(log_point_pos[frame]).to(device).unsqueeze(0))[0].detach().cpu().numpy()
+                    plt.plot(f_rob_traj[0, :], f_rob_traj[1, :], linestyle='-', color='b', linewidth=2.0)
             "plot the start and end points"
             for i in range(num_obs):
                 circle_plot = plt.Circle(cdf.obj_lists[0].center.detach().cpu().numpy(), 0.3, color='k', hatch='///',
@@ -256,6 +265,11 @@ class Render_Animation:
 
         num_frames = terminal_time
         ani = FuncAnimation(self.fig, update, frames=num_frames, interval=50)
+        save_gif = False
+        if save_gif:
+            writer = animation.PillowWriter(fps=15, metadata=dict(artist='Me'), bitrate=1800)
+            file_path = os.path.join(CUR_PATH, 'demo_sdf.gif')
+            ani.save(file_path, writer=writer)
         plt.show()
 
     def render_sta_sdf_ani_manipulator(self, cdf, xt, obs_center, given_angles, terminal_time):
@@ -332,15 +346,17 @@ class Render_Animation:
                 d_plot, grad_plot = cdf.inference_c_space_sdf_using_data(cdf.Q_sets)
                 cdf.plot_cdf(d_plot.detach().cpu().numpy(), grad_plot.detach().cpu().numpy())
 
-            # plot the start and goal point of the robot in configuration space
-            plt.scatter(self.robot_init_state[0], self.robot_init_state[1], color='g', s=100, zorder=10, label='Start')
+            "plot the start and goal point of the robot in configuration space"
+            plt.scatter(self.robot_init_state[0], self.robot_init_state[1], color='g', s=25, zorder=10, label='Start')
             target_state_config = \
                 cdf.robot.forward_kinematics_all_joints(
                     torch.from_numpy(self.robot_target_state[0:2]).to(device).unsqueeze(0))[
                     0].detach().cpu().numpy()
-            # plot the trajectory of the robot in configuration space
-            plt.plot(xt[0, :terminal_time], xt[1, :terminal_time], color='r', linestyle='--', linewidth=2.0,
-                     label='Trajectory')
+
+            "plot the trajectory of the robot in configuration space"
+            xt = xt[:, :terminal_time]
+            plt.plot(xt[0, :], xt[1, :], color='r', linestyle='--', linewidth=2.0, label='Trajectory')
+            plt.legend(loc='upper center', ncol=3)
 
         plt.show()
 
@@ -376,13 +392,13 @@ class Render_Animation:
             "Plot the target(goal) position in task space"
             plt.scatter(self.robot_target_state[0], self.robot_target_state[1], color='k', s=50, zorder=5,
                         label='Goal')
-            plt.legend(loc='upper left', ncol=3)
+            plt.legend(loc='lower left', ncol=3)
         elif case_flag == 5:
             print("The current case is 5")
             "It's a whole body manipulation task, we need to visualize the object"
             cdf.obj_lists[0].label = 'Goal'
             self.ax.add_patch(cdf.obj_lists[0].create_patch())
-            plt.legend(loc='upper left', ncol=3)
+            plt.legend(loc='lower left', ncol=3)
 
         ax.set_aspect('equal')
         plt.xlim(-4, 4)

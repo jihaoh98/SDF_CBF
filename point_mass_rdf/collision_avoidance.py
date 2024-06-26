@@ -226,7 +226,7 @@ class Collision_Avoidance:
         print('Median_time:', statistics.median(process_time))
         print('Average_time:', statistics.mean(process_time))
 
-    def collision_avoidance(self, rdf=None, case_flag=None, add_clf=True):
+    def collision_avoidance(self, sdf=None, case_flag=None, add_clf=True):
         """ solve the collision avoidance between robot and obstacles based on sdf-cbf """
         t = 0
         process_time = []
@@ -438,8 +438,8 @@ class Collision_Avoidance:
     def render_c_space(self, distance_field, case_flag):
         self.ani.render_c_space(distance_field, cdf, self.xt, self.terminal_time, case_flag)
 
-    def render_ani_t_space_manipulator(self, cdf, case_flag):
-        self.ani.render_ani_t_space_manipulator(cdf, self.xt, self.terminal_time, case_flag)
+    def render_ani_t_space_manipulator(self, distance_field, cdf, case_flag):
+        self.ani.render_ani_t_space_manipulator(distance_field, cdf, self.xt, self.terminal_time, case_flag)
 
     def render_ani_c_space(self, cdf, case_flag):
         self.ani.render_ani_c_space(cdf, self.xt, self.terminal_time, case_flag)
@@ -513,7 +513,7 @@ if __name__ == '__main__':
         test_target.navigation_destination(distance_field=DF, cdf=cdf, case_flag=5)
         test_target.render_manipulator(case_flag=5)
         test_target.render_c_space(distance_field=DF, case_flag=5)
-        test_target.render_ani_t_space_manipulator(cdf, case_flag=5)
+        test_target.render_ani_t_space_manipulator(DF, cdf, case_flag=5)
         test_target.render_ani_c_space(cdf, case_flag=5)
         test_target.show_controls()
         test_target.show_clf()
