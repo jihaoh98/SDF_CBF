@@ -54,7 +54,7 @@ class Render_Animation:
         self.show_ob_arrow = False
         self.sample_num = 40
 
-        self.color_palette = ['k', 'purple', 'y']
+        self.color_palette = ['red', 'black', 'yellow']
 
         # settings of Times New Roman
         # set the text in Times New Roman
@@ -187,14 +187,15 @@ class Render_Animation:
             plt.plot(0, 0, marker='o', markersize=15, markerfacecolor='#DDA15E', markeredgecolor='k')
 
     def render_ani_c_space(self, distance_field, cdf, xt, terminal_time, case_flag=None, mode=None, obs_info=None,
-                           save_gif=False):
+                           obs_list=None, obs_grad_field=None, robo_grad_field=None, save_gif=False):
         # line is used to update the trajectory
         self.fig, self.ax = plt.subplots()
         line, = self.ax.plot([], [], color='yellow', linestyle='-', linewidth=2)
         num_frames = terminal_time
         self.xt = xt
 
-        num_obs = obs_info[0].shape[0]
+        num_obs = len(obs_list)
+        show_arrow = True
 
         if mode == "clf":
             # plot the start point, `l1` is the handle for creating a legend
@@ -220,6 +221,32 @@ class Render_Animation:
                 if case_flag == 8:
                     l2, = self.ax.plot(self.robot_target_state[0], self.robot_target_state[1], 'r*', label='goal',
                                        markersize=10)
+                    if show_arrow:
+                        gradientField = np.zeros((num_obs, 2, terminal_time))
+                        for i in range(num_obs):
+                            gradientField[i] = robo_grad_field[i, :, :terminal_time]
+                            self.gradientField.append(gradientField[i])
+                            norm = np.linalg.norm(gradientField[i][:, 0])
+                            self.robot_arrow = mpatches.FancyArrow(
+                                self.robot_init_state[0],
+                                self.robot_init_state[1],
+                                gradientField[i][0, 0] * 0.1 * norm,
+                                gradientField[i][1, 0] * 0.1 * norm,
+                                width=0.05,
+                                color=self.color_palette[i],
+                            )
+                            self.ax.add_patch(self.robot_arrow)
+
+                        for i in range(num_obs):
+                            self.docbf_arrow = mpatches.FancyArrow(
+                                obs_grad_field[0][i][0][0],
+                                obs_grad_field[0][i][0][1],
+                                obs_grad_field[0][i][1][0] * 0.1,
+                                obs_grad_field[0][i][1][1] * 0.1,
+                                width=0.05,
+                                color=self.color_palette[i],
+                            )
+                            self.ax.add_patch(self.docbf_arrow)
 
         def update_distance_field(frame, obstacle_elements, ax, line):
 
@@ -228,42 +255,48 @@ class Render_Animation:
 
             if mode == "clf_cbf":
                 pass
-            # re-update the obstacle
-            # if num_obs == 1:
-            for element in obstacle_elements:
-                for coll in element.collections:
-                    coll.remove()
 
-            obstacle_elements.clear()  # Clear the list outside the loop
-            cdf.obj_lists = []
-            for i in range(num_obs):
-                cdf.obj_lists.append(
-                    Circle(center=torch.from_numpy(obs_info[frame][i]), radius=0.3, device=device))
+            if case_flag == 8:
+                for element in obstacle_elements:
+                    for coll in element.collections:
+                        coll.remove()
 
-            # cdf.obj_lists = [
-            #     Circle(center=torch.from_numpy(obs_info[frame][0]), radius=0.3, device=device)]
+                obstacle_elements.clear()  # Clear the list outside the loop
+                cdf.obj_lists = []
+                for i in range(num_obs):
+                    cdf.obj_lists.append(
+                        Circle(center=torch.from_numpy(obs_info[frame][i]), radius=0.3, device=device))
+                d_grad, grad_plot = cdf.inference_c_space_sdf_using_data(cdf.Q_sets)
+                contour, contourf, ct_zero, hatch_handle = cdf.plot_cdf_ax(d_grad.detach().cpu().numpy(), ax)
+                obstacle_elements.extend([contour, contourf, ct_zero])
 
-            # cdf.obj_lists = [Circle(center=torch.from_numpy(object_center), radius=0.3, device=device)]
-            d_grad, grad_plot = cdf.inference_c_space_sdf_using_data(cdf.Q_sets)
-            contour, contourf, ct_zero, hatch_handle = cdf.plot_cdf_ax(d_grad.detach().cpu().numpy(), ax)
-            # Add new elements to the list
-            obstacle_elements.extend([contour, contourf, ct_zero])
+                if show_arrow:
+                    for i in range(len(self.gradientField)):
+                        norm = np.linalg.norm(self.gradientField[i][:, frame])
+                        self.robot_arrow = mpatches.FancyArrow(
+                            self.xt[0][frame],
+                            self.xt[1][frame],
+                            self.gradientField[i][0, frame] * 0.1 * norm,
+                            self.gradientField[i][1, frame] * 0.1 * norm,
+                            width=0.05,
+                            color=self.color_palette[i],
+                        )
+                        self.ax.add_patch(self.robot_arrow)
 
-            # elif num_obs == 2:
-            #     for element in obstacle_elements:
-            #         for coll in element.collections:
-            #             coll.remove()
-            #
-            #     obstacle_elements.clear()
-            #     cdf.obj_lists = [
-            #         Circle(center=torch.from_numpy(obs_info[frame][0]), radius=0.3, device=device),
-            #         Circle(center=torch.from_numpy(obs_info[frame][1]), radius=0.3, device=device)]
-            #     d_grad, grad_plot = cdf.inference_c_space_sdf_using_data(cdf.Q_sets, self.sample_num)
-            #     contour, contourf, ct_zero, hatch_handle = cdf.plot_cdf_ax(d_grad.detach().cpu().numpy(), ax)
-            #     # Add new elements to the list
-            #     obstacle_elements.extend([contour, contourf, ct_zero])
+                    for i in range(num_obs):
+                        self.docbf_arrow = mpatches.FancyArrow(
+                            obs_grad_field[frame][i][0][0],
+                            obs_grad_field[frame][i][0][1],
+                            obs_grad_field[frame][i][1][0] * 0.1,
+                            obs_grad_field[frame][i][1][1] * 0.1,
+                            width=0.05,
+                            color=self.color_palette[i],
+                        )
+                        self.ax.add_patch(self.docbf_arrow)
 
             line.set_data(xt[0, :frame + 1], xt[1, :frame + 1])
+            self.ax.set_xlim([-3.14, 3.14])
+            self.ax.set_ylim([-3.14, 3.14])
 
             return obstacle_elements
 
@@ -279,7 +312,6 @@ class Render_Animation:
                             frames=num_frames, interval=50)
         if save_gif:
             writer = animation.PillowWriter(fps=15, metadata=dict(artist='Me'), bitrate=1800)
-            # file name is based on distance field
             filename = distance_field + '.gif'
             file_path = os.path.join(CUR_PATH, filename)
             ani.save(file_path, writer=writer)
@@ -357,7 +389,7 @@ class Render_Animation:
                 log_point_grad.append(grad_obj.detach().cpu().numpy().flatten())
                 log_point_dist.append(sdf_obj.detach().cpu().numpy())
 
-        num_obs = obs_info[0].shape[0]
+        num_obs = len(obs_list)
         self.fig, self.ax = plt.subplots()
 
         def update(frame):
@@ -377,6 +409,10 @@ class Render_Animation:
             if case_flag == 7:
                 if reach_Mode == "point_to_point":
                     plt.plot(f_rob_end[0, :], f_rob_end[1, :], linestyle='-', color='b', linewidth=2.0, label='Goal')
+                    for i in range(num_obs):
+                        circle_plot = plt.Circle(cdf.obj_lists[0].center.detach().cpu().numpy(), obs_list[i].radius,
+                                                 color='k', hatch='///', fill=False, label='Goal')
+                        self.ax.add_artist(circle_plot)
 
             if case_flag == 8:
                 if reach_Mode == "point_to_point":
@@ -395,7 +431,7 @@ class Render_Animation:
 
         num_frames = terminal_time
         ani = FuncAnimation(self.fig, update, frames=num_frames, interval=50)
-        save_gif = False
+
         if save_gif:
             writer = animation.PillowWriter(fps=15, metadata=dict(artist='Me'), bitrate=1800)
             file_path = os.path.join(CUR_PATH, 'result/demo_sdf.gif')
@@ -1024,16 +1060,21 @@ class Render_Animation:
         # plt.savefig('cdfcbf.png', format='png', dpi=300)
         plt.show()
 
-    def show_cbf(self, i, cbft, terminal_time):
+    def show_cbf(self, cbft, terminal_time):
         """ show changes in cbf """
         t = np.arange(0, terminal_time * self.dt, self.dt)[0:terminal_time]
 
+        num_obs = cbft.shape[0]
         # add dpi
         figure = plt.figure()
         figure.set_dpi(150)
+        for i in range(num_obs):
+            plt.plot(t, cbft[i, 0, 0:terminal_time].reshape(terminal_time, ), linewidth=3,
+                     label='obstacle {}'.format(i))
+        # plot the zero value line w.r.t. time
+        plt.plot(t, np.zeros(t.shape[0]), color='k', linestyle='-', linewidth=2.0, label='zero level')
 
-        plt.plot(t, cbft[i, 0, 0:terminal_time].reshape(terminal_time, ), linewidth=3, color='blue')
-        plt.title('CBF with respect to {}th obstacle'.format(i), self.label_font)
+        plt.title('CBF with respect to {} obstacles'.format(num_obs), self.label_font)
         plt.ylabel('cbf (m)', self.label_font)
         plt.xlabel('Time (s)', self.label_font)
 
@@ -1043,6 +1084,7 @@ class Render_Animation:
         [label.set_fontname('Times New Roman') for label in labels]
 
         plt.grid()
+        plt.legend(ncol=num_obs + 1, prop=self.legend_font)
         # plt.savefig('cbf.png', format='png', dpi=300)
         plt.show()
 

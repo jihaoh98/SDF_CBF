@@ -5,20 +5,14 @@ controller:
   smooth_input: [1.0, 1.0]
   weight_slack: 100
   clf_lambda: 1.0
-  cbf_gamma: 1.0  # 1.0 for one obstacle case
+  cbf_gamma: 1.0
 
 robot:
   u_max: [2.5, 2.5]
   u_min: [-2.5, -2.5]
-  # case 1: one obstacle case
-  initial_state: [2.5, 0.5]  # one obstacle case, y \in [-2.0, 2.1]
+  initial_state: [2.5, 0.5]
   target_state: [-2.7, 0.5]
-  # case 2: one obstacle case
-#  initial_state: [2.0,-0.5, 0.0]  # one obstacle case, y \in [-2.5, 2.5]
-#  target_state: [-2.0, 1.0, 0.0]
-  # case 3
-#  initial_state: [2.5, 0.8, 0.0]
-#  target_state: [-2.0, 0.4, 0.0]
+
   radius: 0.1
   destination_margin: 0.1
   sensor_range: 6.0
@@ -32,7 +26,6 @@ obs_list:
     [-2.0, -2.2]
   ]
   obs_radii: [0.3, 0.3, 0.3]
-#  obs_radii: [0.3]
   obs_vel: [
     [0.0, 0.5],
     [-0.4, 0.0],

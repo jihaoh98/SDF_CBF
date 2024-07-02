@@ -10,8 +10,8 @@ controller:
 robot:
   u_max: [ 1.5, 1.5 ]
   u_min: [ -1.5, -1.5 ]
-  initial_state : [ 2.5, 1.0]
-  target_state: [ -1.5, 0.5]
+  initial_state : [ 2.5, 0.3]
+  target_state: [ -0.5, 0.5]
   radius: 0.1
   destination_margin: 0.1
   sensor_range: 6.0
@@ -20,7 +20,8 @@ robot:
 
 obs_list:
   obs_states: [
-    [ 2.5, 1.7 ]
+#    [ 2.5, 1.7 ],
+    [ 0.0, 2.7 ]
   ]
   obs_radii: [ 0.3 ]
   obs_vel: [
