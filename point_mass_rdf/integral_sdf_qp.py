@@ -133,13 +133,11 @@ class Integral_Sdf_Cbf_Clf:
 
         return cbf, grad_input
 
-    def add_cdf_cbf_cons(self, robot_state, dist_input, grad_input):
+    def add_cbf_cons(self, caseFlag, robot_state, dist_input, grad_input, obs_grad_input=None, obs_pos=None, obs=None):
         """ add cons w.r.t cdf obstacles """
         cbf = dist_input
-
-        lf_cbf, lg_cbf, dt_cbf = self.robot.derive_cdf_cbf_derivative(robot_state, dist_input, grad_input)
-
-        dt_cbf = 0
+        lf_cbf, lg_cbf, dt_cbf = self.robot.derive_cbf_derivative(caseFlag, robot_state, dist_input, grad_input,
+                                                                  obs_grad_input, obs_pos, obs)
         self.opti.subject_to(lf_cbf + (lg_cbf @ self.u)[0, 0] + dt_cbf + self.cbf_gamma * cbf >= 0)
 
         return cbf, grad_input
@@ -313,7 +311,9 @@ class Integral_Sdf_Cbf_Clf:
 
         return result
 
-    def cbf_clf_cdf_qp(self, robot_cur_state, dist_input, grad_input, add_clf=True, u_ref=None):
+    def cbf_clf_qp(self, robot_cur_state, dist_list, grad_list, caseFlag, obs_grad_list=None, obs_pos_list=None,
+                   obs_list=None, add_clf=True, u_ref=None):
+        """Add CLF constraints and objective function"""
         if u_ref is None:
             u_ref = np.zeros(self.control_dim)
         self.set_optimal_function(u_ref, add_slack=add_clf)
@@ -321,25 +321,33 @@ class Integral_Sdf_Cbf_Clf:
         clf = None
         if add_clf:
             clf = self.add_clf_cons(robot_cur_state, add_slack=add_clf)
-        # add cbf constraints for each cdf obstacles
-        cdf_cbf_list = None
-        cdf_dx_cbf_list = None
-        # robot_state_cbf = np.hstack((robot_cur_state, np.array([self.robot_radius])))
-        if dist_input is not None and grad_input is not None:
-            cdf_cbf_list = []
-            cdf_dx_cbf_list = []
-            for i in range(len(dist_input)):
-                cbf, dx_cbf = self.add_cdf_cbf_cons(robot_cur_state, dist_input[i], grad_input[i])
-                cdf_cbf_list.append(cbf)
-                cdf_dx_cbf_list.append(dx_cbf)
+
+        df_cbf_list = None
+        df_dx_cbf_list = None
+        if caseFlag == 7:
+            df_cbf_list = []
+            df_dx_cbf_list = []
+            for i in range(len(dist_list)):
+                cbf, dx_cbf = self.add_cbf_cons(caseFlag, robot_cur_state, dist_list[i], grad_list[i])
+                df_cbf_list.append(cbf)
+                df_dx_cbf_list.append(dx_cbf)
+        elif caseFlag == 8:
+            df_cbf_list = []
+            df_dx_cbf_list = []
+            df_dt_cbf_list = [obs_grad_list]
+            for i in range(len(dist_list)):
+                cbf, dx_cbf = self.add_cbf_cons(caseFlag, robot_cur_state, dist_list[i], grad_list[i],
+                                                obs_grad_list[i], obs_pos_list[i], obs_list[i])
+                df_cbf_list.append(cbf)
+                df_dx_cbf_list.append(dx_cbf)
 
         self.add_controls_physical_cons()
 
         # result
         result = lambda: None
         result.clf = clf
-        result.cdf_cbf_list = cdf_cbf_list
-        result.cdf_dx_cbf_list = cdf_dx_cbf_list
+        result.sdf_cbf_list = df_cbf_list
+        result.sdf_dx_cbf_list = df_dx_cbf_list
 
         # optimize the qp problem
         try:
@@ -366,69 +374,69 @@ class Integral_Sdf_Cbf_Clf:
 
         return result
 
-    def cbf_clf_qp(self, robot_cur_state, cir_obs_states=None, add_clf=True, u_ref=None):
-        """
-        This is a function to calculate the optimal control for the robot w.r.t circular-shaped obstacles
-        Args:
-            robot_cur_state: [x, y, theta] np.array(3, )
-            cir_obs_state: [ox, oy, ovx, ovy, o_radius] list for circle obstacle state
-            robot_state_cbf: [x, y, theta, radius] np.array(4, )
-        Returns:
-            optimal control u
-        """
-        if u_ref is None:
-            u_ref = np.zeros(self.control_dim)
-        self.set_optimal_function(u_ref, add_slack=add_clf)
-
-        clf = None
-        if add_clf:
-            clf = self.add_clf_cons(robot_cur_state, add_slack=add_clf)
-
-        # add cbf constraints for each circular-shaped obstacles
-        cir_cbf_list = None
-        cir_dx_cbf_list = None
-        cir_do_cbf_list = None
-        robot_state_cbf = np.hstack((robot_cur_state, np.array([self.robot_radius])))
-        if cir_obs_states is not None:
-            cir_cbf_list = []
-            cir_dx_cbf_list = []
-            cir_do_cbf_list = []
-            for cir_obs_state in cir_obs_states:
-                cbf, dx_cbf, do_cbf = self.add_cir_cbf_cons(robot_state_cbf, cir_obs_state)
-                cir_cbf_list.append(cbf)
-                cir_dx_cbf_list.append(dx_cbf)
-                cir_do_cbf_list.append(do_cbf)
-
-        self.add_controls_physical_cons()
-
-        # result
-        result = lambda: None
-        result.clf = clf
-        result.cir_cbf_list = cir_cbf_list
-        result.cir_dx_cbf_list = cir_dx_cbf_list
-        result.cir_do_cbf_list = cir_do_cbf_list
-
-        # optimize the qp problem
-        try:
-            start_time = time.time()
-            sol = self.opti.solve()
-            end_time = time.time()
-            optimal_control = sol.value(self.u)
-
-            result.u = optimal_control
-            result.time = end_time - start_time
-            result.feas = True
-
-            if add_clf:
-                slack = sol.value(self.slack)
-                result.slack = slack
-            else:
-                result.slack = None
-        except:
-            print(self.opti.return_status() + ' sdf-cbf with clf')
-            result.u = None
-            result.time = None
-            result.feas = False
-            result.slack = None
-
-        return result
+    # def cbf_clf_qp(self, robot_cur_state, dist_input, grad_input,cir_obs_states=None, add_clf=True, u_ref=None):
+    #     """
+    #     This is a function to calculate the optimal control for the robot w.r.t circular-shaped obstacles
+    #     Args:
+    #         robot_cur_state: [x, y, theta] np.array(3, )
+    #         cir_obs_state: [ox, oy, ovx, ovy, o_radius] list for circle obstacle state
+    #         robot_state_cbf: [x, y, theta, radius] np.array(4, )
+    #     Returns:
+    #         optimal control u
+    #     """
+    #     if u_ref is None:
+    #         u_ref = np.zeros(self.control_dim)
+    #     self.set_optimal_function(u_ref, add_slack=add_clf)
+    #
+    #     clf = None
+    #     if add_clf:
+    #         clf = self.add_clf_cons(robot_cur_state, add_slack=add_clf)
+    #
+    #     # add cbf constraints for each circular-shaped obstacles
+    #     cir_cbf_list = None
+    #     cir_dx_cbf_list = None
+    #     cir_do_cbf_list = None
+    #     robot_state_cbf = np.hstack((robot_cur_state, np.array([self.robot_radius])))
+    #     if cir_obs_states is not None:
+    #         cir_cbf_list = []
+    #         cir_dx_cbf_list = []
+    #         cir_do_cbf_list = []
+    #         for cir_obs_state in cir_obs_states:
+    #             cbf, dx_cbf, do_cbf = self.add_cir_cbf_cons(robot_state_cbf, cir_obs_state)
+    #             cir_cbf_list.append(cbf)
+    #             cir_dx_cbf_list.append(dx_cbf)
+    #             cir_do_cbf_list.append(do_cbf)
+    #
+    #     self.add_controls_physical_cons()
+    #
+    #     # result
+    #     result = lambda: None
+    #     result.clf = clf
+    #     result.cir_cbf_list = cir_cbf_list
+    #     result.cir_dx_cbf_list = cir_dx_cbf_list
+    #     result.cir_do_cbf_list = cir_do_cbf_list
+    #
+    #     # optimize the qp problem
+    #     try:
+    #         start_time = time.time()
+    #         sol = self.opti.solve()
+    #         end_time = time.time()
+    #         optimal_control = sol.value(self.u)
+    #
+    #         result.u = optimal_control
+    #         result.time = end_time - start_time
+    #         result.feas = True
+    #
+    #         if add_clf:
+    #             slack = sol.value(self.slack)
+    #             result.slack = slack
+    #         else:
+    #             result.slack = None
+    #     except:
+    #         print(self.opti.return_status() + ' sdf-cbf with clf')
+    #         result.u = None
+    #         result.time = None
+    #         result.feas = False
+    #         result.slack = None
+    #
+    #     return result

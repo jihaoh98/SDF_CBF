@@ -446,8 +446,8 @@ def wall(size, center, rot):
 
 if __name__ == '__main__':
     file_names = {
-        1: 'static_cdf_setting.yaml',
-        2: 'dynamic_cdf_setting.yaml'
+        1: '07_static_clf_cbf.yaml',
+        2: '08_dynamic_clf_cbf.yaml'
 
     }
     PI = 3.14

@@ -377,8 +377,8 @@ if __name__ == '__main__':
     file_names = {
         1: 'static_setting.yaml',
         2: 'dynamic_setting.yaml',
-        3: 'static_cdf_setting.yaml',
-        4: 'dynamic_cdf_setting.yaml'
+        3: '07_static_clf_cbf.yaml',
+        4: '08_dynamic_clf_cbf.yaml'
 
     }
 

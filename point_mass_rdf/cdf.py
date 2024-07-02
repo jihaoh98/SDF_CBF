@@ -146,7 +146,7 @@ class CDF2D:
         grad_obj = torch.autograd.grad(d_obj, q_obj, torch.ones_like(d), retain_graph=True)[0]
         return d_obj, grad_obj, q_obj
 
-    def inference_c_space_sdf_using_data(self, q, sample_size=70):
+    def inference_c_space_sdf_using_data(self, q, sample_size=45):
         # q : (N,2)
         q.requires_grad = True
         obj_points = torch.cat([obj.sample_surface(sample_size) for obj in self.obj_lists])

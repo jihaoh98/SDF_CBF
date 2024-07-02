@@ -13,7 +13,7 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 class Render_Animation:
-    def __init__(self, robot_params, cir_obs_params, dt) -> None:
+    def __init__(self, robot_params, dt) -> None:
         """ init the render animation """
         self.dt = dt
 
@@ -24,17 +24,17 @@ class Render_Animation:
         self.umax = robot_params['u_max']
         self.umin = robot_params['u_min']
 
-        # obstacle
-        if cir_obs_params is not None:
-            self.cir_obs_num = len(cir_obs_params['obs_states'])
-            self.cir_obs = [None for i in range(self.cir_obs_num)]
+        # # obstacle
+        # if cir_obs_params is not None:
+        #     self.cir_obs_num = len(cir_obs_params['obs_states'])
+        #     self.cir_obs = [None for i in range(self.cir_obs_num)]
 
         # storage the past states of robots and different shaped obs
         self.xt = None
         self.cir_obs_list_t = None
 
         # plot
-        self.fig, self.ax = plt.subplots()
+        # self.fig, self.ax = plt.subplots()
 
         # start and end state of robot
         self.start_body = None
@@ -194,6 +194,8 @@ class Render_Animation:
         num_frames = terminal_time
         self.xt = xt
 
+        num_obs = obs_info[0].shape[0]
+
         if mode == "clf":
             # plot the start point, `l1` is the handle for creating a legend
             l1, = self.ax.plot(xt[0, 0], xt[1, 0], 'g*', label='start', markersize=10)
@@ -205,8 +207,19 @@ class Render_Animation:
                 contour, contourf, ct_zero, hatch_handle = cdf.plot_cdf_ax(d_grad.detach().cpu().numpy(), self.ax)
         elif mode == "clf_cbf":
             l1, = self.ax.plot(xt[0, 0], xt[1, 0], 'g*', label='start', markersize=10)
-
-            pass
+            if distance_field == "sdf":
+                cdf.plot_sdf()
+            elif distance_field == "cdf":
+                if case_flag == 7:
+                    d_grad, grad_plot = cdf.inference_c_space_sdf_using_data(cdf.Q_sets)
+                    contour, contourf, ct_zero, hatch_handle = cdf.plot_cdf_ax(d_grad.detach().cpu().numpy(), self.ax)
+                    # plot the goal point
+                    l2, = self.ax.plot(self.robot_target_state[0], self.robot_target_state[1], 'r*', label='goal',
+                                       markersize=10)
+                    self.ax.legend(handles=[l1, l2], loc='upper center', ncol=2)
+                if case_flag == 8:
+                    l2, = self.ax.plot(self.robot_target_state[0], self.robot_target_state[1], 'r*', label='goal',
+                                       markersize=10)
 
         def update_distance_field(frame, obstacle_elements, ax, line):
 
@@ -217,18 +230,39 @@ class Render_Animation:
                 pass
             # re-update the obstacle
             # if num_obs == 1:
+            for element in obstacle_elements:
+                for coll in element.collections:
+                    coll.remove()
+
+            obstacle_elements.clear()  # Clear the list outside the loop
+            cdf.obj_lists = []
+            for i in range(num_obs):
+                cdf.obj_lists.append(
+                    Circle(center=torch.from_numpy(obs_info[frame][i]), radius=0.3, device=device))
+
+            # cdf.obj_lists = [
+            #     Circle(center=torch.from_numpy(obs_info[frame][0]), radius=0.3, device=device)]
+
+            # cdf.obj_lists = [Circle(center=torch.from_numpy(object_center), radius=0.3, device=device)]
+            d_grad, grad_plot = cdf.inference_c_space_sdf_using_data(cdf.Q_sets)
+            contour, contourf, ct_zero, hatch_handle = cdf.plot_cdf_ax(d_grad.detach().cpu().numpy(), ax)
+            # Add new elements to the list
+            obstacle_elements.extend([contour, contourf, ct_zero])
+
+            # elif num_obs == 2:
             #     for element in obstacle_elements:
             #         for coll in element.collections:
             #             coll.remove()
+            #
+            #     obstacle_elements.clear()
+            #     cdf.obj_lists = [
+            #         Circle(center=torch.from_numpy(obs_info[frame][0]), radius=0.3, device=device),
+            #         Circle(center=torch.from_numpy(obs_info[frame][1]), radius=0.3, device=device)]
+            #     d_grad, grad_plot = cdf.inference_c_space_sdf_using_data(cdf.Q_sets, self.sample_num)
+            #     contour, contourf, ct_zero, hatch_handle = cdf.plot_cdf_ax(d_grad.detach().cpu().numpy(), ax)
+            #     # Add new elements to the list
+            #     obstacle_elements.extend([contour, contourf, ct_zero])
 
-            # obstacle_elements.clear()  # Clear the list outside the loop
-            # object_center = log_circle_center[frame]
-            # cdf.obj_lists = [
-            #     Circle(center=torch.from_numpy(log_circle_center[frame][0]), radius=0.3, device=device)]
-            # cdf.obj_lists = [Circle(center=torch.from_numpy(object_center), radius=0.3, device=device)]
-            # plot the distance field
-            # Add new elements to the list
-            # obstacle_elements.extend([contour, contourf, ct_zero])
             line.set_data(xt[0, :frame + 1], xt[1, :frame + 1])
 
             return obstacle_elements
@@ -266,7 +300,8 @@ class Render_Animation:
         #              label='Trajectory')
         # plt.show()
 
-    def render_ani_t_space_manipulator(self, distance_field, cdf, xt, terminal_time, case_flag=None):
+    def render_ani_t_space_manipulator(self, distance_field, cdf, xt, terminal_time, reach_Mode=None, case_flag=None,
+                                       obs_info=None, obs_list=None, save_gif=False):
         f_rob_start = \
             cdf.robot.forward_kinematics_all_joints(torch.from_numpy(xt[:2, 0]).to(device).unsqueeze(0))[
                 0].detach().cpu().numpy()
@@ -276,6 +311,11 @@ class Render_Animation:
                 0].detach().cpu().numpy()
 
         if case_flag == 5:
+            # for i in range(num_obs):
+            #     circle_plot = plt.Circle(cdf.obj_lists[0].center.detach().cpu().numpy(), 0.3, color='k', hatch='///',
+            #                              fill=False,
+            #                              label='Goal')
+            #     self.ax.add_artist(circle_plot)
             log_point_pos = []
             log_point_grad = []
             log_point_dist = []
@@ -296,7 +336,28 @@ class Render_Animation:
                 log_point_grad.append(grad_obj.detach().cpu().numpy().flatten())
                 log_point_dist.append(sdf_obj.detach().cpu().numpy())
 
-        num_obs = len(cdf.obj_lists)
+        if case_flag == 7:
+            log_point_pos = []
+            log_point_grad = []
+            log_point_dist = []
+            log_point_robot = []
+            sdf_obj, grad_obj, q_obj, q_robot = None, None, None, None
+            for i in range(terminal_time):
+                if distance_field == "sdf":
+                    sdf_obj, grad_obj, q_obj, q_robot = cdf.inference_t_sdf_grad(
+                        torch.from_numpy(xt[:2, i]).to(device).unsqueeze(0))
+                    log_point_robot.append(q_robot.detach().cpu().numpy().flatten())
+                elif distance_field == "cdf":
+                    sdf_obj, grad_obj, q_obj = cdf.inference_t_space_sdf_using_data(
+                        torch.from_numpy(xt[:2, i]).to(device).unsqueeze(0))
+                sdf_obj.detach().cpu().numpy()
+                grad_obj.detach().cpu().numpy()
+                q_obj.detach().cpu().numpy()
+                log_point_pos.append(q_obj.detach().cpu().numpy().flatten())
+                log_point_grad.append(grad_obj.detach().cpu().numpy().flatten())
+                log_point_dist.append(sdf_obj.detach().cpu().numpy())
+
+        num_obs = obs_info[0].shape[0]
         self.fig, self.ax = plt.subplots()
 
         def update(frame):
@@ -312,15 +373,20 @@ class Render_Animation:
                     f_rob_traj = cdf.robot.forward_kinematics_all_joints(
                         torch.from_numpy(log_point_pos[frame]).to(device).unsqueeze(0))[0].detach().cpu().numpy()
                     plt.plot(f_rob_traj[0, :], f_rob_traj[1, :], linestyle='-', color='b', linewidth=2.0)
-            "plot the start and end points"
-            for i in range(num_obs):
-                circle_plot = plt.Circle(cdf.obj_lists[0].center.detach().cpu().numpy(), 0.3, color='k', hatch='///',
-                                         fill=False,
-                                         label='Goal')
-                self.ax.add_artist(circle_plot)
 
+            if case_flag == 7:
+                if reach_Mode == "point_to_point":
+                    plt.plot(f_rob_end[0, :], f_rob_end[1, :], linestyle='-', color='b', linewidth=2.0, label='Goal')
+
+            if case_flag == 8:
+                if reach_Mode == "point_to_point":
+                    plt.plot(f_rob_end[0, :], f_rob_end[1, :], linestyle='-', color='b', linewidth=2.0, label='Goal')
+                for i in range(num_obs):
+                    circle_plot = plt.Circle(obs_info[frame][i], obs_list[i].radius, color='k', hatch='///', fill=False)
+                    self.ax.add_artist(circle_plot)
+
+            "plot the start and end points"
             plt.plot(f_rob_start[0, :], f_rob_start[1, :], linestyle='-', color='r', linewidth=2.0, label='Start')
-            # plt.plot(f_rob_end[0, :], f_rob_end[1, :], linestyle='-', color='b', linewidth=2.0, label='Goal')
             self.plot_2d_manipulators(joint_angles_batch=xt[:2, frame].reshape(1, 2))
             plt.legend(loc='upper center', ncol=3)
             self.ax.set_xlim([-4.5, 4.5])
@@ -401,6 +467,26 @@ class Render_Animation:
         plt.show()
 
     def render_c_space(self, distance_field, cdf, xt, terminal_time, case_flag=None):
+
+        if case_flag == 7:
+            if distance_field == 'sdf':
+                print("Start to visualize the c space of SDF")
+                cdf.plot_sdf()
+            elif distance_field == 'cdf':
+                print("Start to visualize the c space of CDF")
+                d_plot, grad_plot = cdf.inference_c_space_sdf_using_data(cdf.Q_sets)
+                cdf.plot_cdf(d_plot.detach().cpu().numpy(), grad_plot.detach().cpu().numpy())
+
+            "plot the start and goal point of the robot in configuration space"
+            plt.scatter(self.robot_init_state[0], self.robot_init_state[1], color='g', s=25, zorder=10, label='Start')
+            plt.scatter(self.robot_target_state[0], self.robot_target_state[1], color='r', s=25, zorder=10,
+                        label='Goal')
+
+            "plot the trajectory of the robot in configuration space"
+            xt = xt[:, :terminal_time]
+            plt.plot(xt[0, :], xt[1, :], color='yellow', linestyle='-', linewidth=2.0, label='Trajectory')
+            plt.legend(loc='upper center', ncol=3)
+
         if case_flag == 5:
             if distance_field == 'sdf':
                 print("Start to visualize the c space of SDF")
@@ -419,12 +505,13 @@ class Render_Animation:
 
             "plot the trajectory of the robot in configuration space"
             xt = xt[:, :terminal_time]
-            plt.plot(xt[0, :], xt[1, :], color='r', linestyle='--', linewidth=2.0, label='Trajectory')
+            plt.plot(xt[0, :], xt[1, :], color='y', linestyle='-', linewidth=2.0, label='Trajectory')
             plt.legend(loc='upper center', ncol=3)
 
         plt.show()
 
     def render_manipulator(self, cdf, xt, terminal_time, case_flag=None):
+        self.fig, self.ax = plt.subplots()
         xf_2d = self.robot_target_state[0:2]
         plt.rcParams['axes.facecolor'] = '#eaeaf2'
         ax = plt.gca()
@@ -461,6 +548,13 @@ class Render_Animation:
             print("The current case is 5")
             "It's a whole body manipulation task, we need to visualize the object"
             cdf.obj_lists[0].label = 'Goal'
+            self.ax.add_patch(cdf.obj_lists[0].create_patch())
+            plt.legend(loc='lower left', ncol=3)
+        elif case_flag == 6:
+            pass
+        elif case_flag == 7:
+            print("The current case is 7")
+            cdf.obj_lists[0].label = 'Obstacle'
             self.ax.add_patch(cdf.obj_lists[0].create_patch())
             plt.legend(loc='lower left', ncol=3)
 
@@ -938,7 +1032,7 @@ class Render_Animation:
         figure = plt.figure()
         figure.set_dpi(150)
 
-        plt.plot(t, cbft[i, 0:terminal_time].reshape(terminal_time, ), linewidth=3, color='blue')
+        plt.plot(t, cbft[i, 0, 0:terminal_time].reshape(terminal_time, ), linewidth=3, color='blue')
         plt.title('CBF with respect to {}th obstacle'.format(i), self.label_font)
         plt.ylabel('cbf (m)', self.label_font)
         plt.xlabel('Time (s)', self.label_font)

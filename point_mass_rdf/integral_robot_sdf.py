@@ -95,15 +95,17 @@ class Integral_Robot_Sdf:
         H = sp.Matrix([[1.0, 0.0],
                        [0.0, 1.0]])
 
-        relative_x = self.l[0] * sp.cos(self.robot_state[0]) + self.l[1] * sp.cos(
-            self.robot_state[0] + self.robot_state[1]) - self.target_state[0]
-        relative_y = self.l[0] * sp.sin(self.robot_state[0]) + self.l[1] * sp.sin(
-            self.robot_state[0] + self.robot_state[1]) - self.target_state[1]
-        relative_state = sp.Matrix([relative_x, relative_y])
+        # todo: there are two modes here, fix the codes later
 
-        # relative_x = self.robot_state[0] - self.target_state[0]
-        # relative_y = self.robot_state[1] - self.target_state[1]
+        # relative_x = self.l[0] * sp.cos(self.robot_state[0]) + self.l[1] * sp.cos(
+        #     self.robot_state[0] + self.robot_state[1]) - self.target_state[0]
+        # relative_y = self.l[0] * sp.sin(self.robot_state[0]) + self.l[1] * sp.sin(
+        #     self.robot_state[0] + self.robot_state[1]) - self.target_state[1]
         # relative_state = sp.Matrix([relative_x, relative_y])
+
+        relative_x = self.robot_state[0] - self.target_state[0]
+        relative_y = self.robot_state[1] - self.target_state[1]
+        relative_state = sp.Matrix([relative_x, relative_y])
 
         clf_symbolic = (relative_state.T @ H @ relative_state)[0, 0]
         self.clf = lambdify([self.robot_state, self.target_state], clf_symbolic)
@@ -123,6 +125,7 @@ class Integral_Robot_Sdf:
     ##############################################################################################################
     ##############################################################################################################
     "CLF: compute the derivative of the CLF based on the rdf model"
+
     def derive_rdf_clf_derivative(self, robot_state, dist_input, grad_input):
         dh_dxb = grad_input.flatten()
         lf_clf = (dh_dxb @ self.f(robot_state))[0]
@@ -156,24 +159,25 @@ class Integral_Robot_Sdf:
 
         return lf_cbf, lg_cbf, dt_obs_cbf
 
-    def derive_cdf_cbf_derivative(self, robot_state, dist_input, grad_input):
-        dh_dxb = grad_input.flatten()  # shape(3, )
-
-        # lf_cbf, lg_cbf, dt_obs_cbf (dynamic obstacle)
-        lf_cbf, lg_cbf, dt_obs_cbf = self.get_cdf_cbf_gradient(robot_state, dist_input, dh_dxb)
+    def derive_cbf_derivative(self, caseFlag, robot_state, dist_input, grad_input, obs_grad_input, obs_pos, obs):
+        dh_dxb = grad_input.flatten()  # shape(3, ) or shape(2, )
+        lf_cbf, lg_cbf, dt_obs_cbf = self.get_cbf_gradient(caseFlag, robot_state, dh_dxb, obs_grad_input, obs_pos, obs)
 
         return lf_cbf, lg_cbf, dt_obs_cbf
 
-    def get_cdf_cbf_gradient(self, robot_state, obs_state, cdf_gradient):
+    def get_cbf_gradient(self, caseFlag, robot_state, cdf_gradient, obs_cdf_gradient, obs_pos, obstacle_list):
         dx_dp = cdf_gradient
         # dh_dx = np.array([dh_dp[0], dh_dp[1], 0])
 
         lf_cbf = (dx_dp @ self.f(robot_state))[0]
         lg_cbf = (dx_dp @ self.g(robot_state)).reshape(1, 2)
 
-        # TODO: need to fix when considering the dynamic obstacle
-        # dt_obs_cbf = (cdf_gradient @ self.cdf_obstacle_dynamics(obstacle_state)[0:2])[0]
         dt_obs_cbf = 0
+        if caseFlag == 7:
+            dt_obs_cbf = 0
+        elif caseFlag == 8:
+            dox_cbf_symbolic = obs_cdf_gradient
+            dt_obs_cbf = np.dot(dox_cbf_symbolic, obstacle_list.vel)
 
         return lf_cbf, lg_cbf, dt_obs_cbf
 
