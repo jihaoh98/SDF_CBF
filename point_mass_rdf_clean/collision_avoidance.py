@@ -196,7 +196,7 @@ class Collision_Avoidance:
             dist_to_goal = np.linalg.norm(self.robot_cur_state - self.robot_target_state)
 
         gradient_wrt_robot_plot = []
-
+        u_last = 0.0
         while dist_to_goal >= self.destination_margin and (t - self.time_steps) < 0.0:
             if t % 100 == 0:
                 print(f't = {t}')
@@ -257,9 +257,11 @@ class Collision_Avoidance:
                     gradient_input_list.append(gradient_input)
 
                 self.obs_gradient_filed.append(np.hstack((obs_state_list, obs_gradient_input_list)))
+
                 optimal_result = self.cbf_qp.cbf_clf_qp(self.robot_cur_state, distance_input_list, gradient_input_list,
                                                         case_flag, obs_grad_list=obs_gradient_input_list,
-                                                        obs_pos_list=obs_state_list, obs_list=self.obs_list)
+                                                        obs_pos_list=obs_state_list, obs_list=self.obs_list,
+                                                        u_last=u_last)
 
             process_time.append(time.time() - start_time)
 
@@ -272,6 +274,7 @@ class Collision_Avoidance:
             self.ut[:, t] = optimal_result.u
             self.clft[0, t] = optimal_result.clf
             self.slackt[0, t] = optimal_result.slack
+            u_last = np.copy(optimal_result.u)
 
             # storage and update the state of robot and obstacle
             self.xt[:, t] = np.copy(self.robot_cur_state)
@@ -306,29 +309,6 @@ class Collision_Avoidance:
         print('Median_time:', statistics.median(process_time))
         print('Average_time:', statistics.mean(process_time))
 
-    # def render(self, i):
-    #     self.ani.render(i, self.xt, self.cir_obstacle_state_t, self.terminal_time, self.show_obs, self.cir_obs_dx_cbf_t
-    #                     , self.cir_obs_dot_cbf_t)
-
-    # def render_sdf_static(self, cdf, xt, terminal_time):
-    #     self.ani.render_sdf_ani_static(cdf, xt, terminal_time)
-
-    # def render_cdf(self, cdf):
-    #     self.ani.render_cdf(cdf, self.xt, self.cdf_sta_obs_list, self.terminal_time, self.show_obs,
-    #                         self.cdf_obs_dx_cbf_t, show_arrow=True)
-
-    # def render_dynamic_cdf(self, cdf, log_circle_center, log_gradient_field):
-    #     self.ani.render_dynamic_cdf(cdf, log_circle_center, log_gradient_field, self.xt, self.terminal_time,
-    #                                 self.show_obs, self.cdf_obs_dx_cbf_t, self.cdf_dyn_obs_num, show_arrow=True,
-    #                                 show_ob_arrow=True)
-    # def render_ani_manipulator(self, cdf, log_circle_center):
-    #     self.ani.render_ani_manipulator(cdf, log_circle_center, self.xt, self.cdf_dyn_obs_num, self.terminal_time)
-
-    # def render_sta_sdf_manipulator(self, sdf, circle_center, given_joint_angles, terminal_time):
-    #     self.ani.render_sta_sdf_ani_manipulator(sdf, self.xt, circle_center, given_joint_angles, terminal_time)
-    # def show_cdf_cbf(self, i):
-    #     self.ani.show_cdf_cbf(i, self.cdf_obs_cbf_t, self.terminal_time)
-
     def render_manipulator(self, case_flag):
         self.ani.render_manipulator(cdf, self.xt, self.terminal_time, case_flag)
 
@@ -336,30 +316,37 @@ class Collision_Avoidance:
         self.ani.render_c_space(distance_field, cdf, self.xt, self.terminal_time, case_flag)
 
     def render_ani_t_space_manipulator(self, distance_field, reach_mode, case_flag, obs_info=None, obs_list=None,
-                                       save_gif=False):
+                                       save_gif=False, save_path=None):
         self.ani.render_ani_t_space_manipulator(distance_field, cdf, self.xt, self.terminal_time, reach_mode, case_flag,
-                                                obs_info=obs_info, obs_list=obs_list, save_gif=save_gif)
+                                                obs_info=obs_info, obs_list=obs_list, save_gif=save_gif,
+                                                save_path=save_path)
 
     def render_ani_c_space(self, distance_field, case_flag, mode='clf', obs_info=None, obs_list=None,
-                           obs_grad_field=None, robo_grad_field=None, save_gif=False):
+                           obs_grad_field=None, robo_grad_field=None, save_gif=False, save_path=None):
         self.ani.render_ani_c_space(distance_field, cdf, self.xt, self.terminal_time, case_flag, mode,
                                     obs_info=obs_info, obs_list=obs_list, obs_grad_field=obs_grad_field,
-                                    robo_grad_field=robo_grad_field, save_gif=save_gif)
+                                    robo_grad_field=robo_grad_field, save_gif=save_gif,
+                                    save_path=save_path)
 
-    def show_cbf(self):
-        self.ani.show_cbf(self.sdf_obs_cbf_t, self.terminal_time)
+    def show_cbf(self, save_result=False, save_path=None):
+        self.ani.show_cbf(self.sdf_obs_cbf_t, self.terminal_time, save_result=save_result,
+                          save_path=save_path)
 
-    def show_controls(self):
-        self.ani.show_integral_controls(self.ut, self.terminal_time)
+    def show_controls(self, save_result=False, save_path=None):
+        self.ani.show_integral_controls(self.ut, self.terminal_time, save_result=save_result,
+                                        save_path=save_path)
 
-    def show_clf(self):
-        self.ani.show_clf(self.clft[0], self.terminal_time)
+    def show_clf(self, save_result=False, save_path=None):
+        self.ani.show_clf(self.clft[0], self.terminal_time, save_result=save_result,
+                          save_path=save_path)
 
-    def show_slack(self):
-        self.ani.show_slack(self.slackt[0], self.terminal_time)
+    def show_slack(self, save_result=False, save_path=None):
+        self.ani.show_slack(self.slackt[0], self.terminal_time, save_result=save_result,
+                            save_path=save_path)
 
-    def show_dx_cbf(self, i):
-        self.ani.show_dx_cbf(i, self.cir_obs_dx_cbf_t, self.terminal_time)
+    def show_dx_cbf(self, i, save_result=False, save_path=None):
+        self.ani.show_dx_cbf(i, self.cir_obs_dx_cbf_t, self.terminal_time, save_result=save_result,
+                             save_path=save_path)
 
 
 if __name__ == '__main__':
@@ -438,15 +425,24 @@ if __name__ == '__main__':
             3: "point_to_point",  # specify the goal in joint space
         }
         reachMode = reachModeList[3]
+        save_files = False
+        result_dir = None
+        if save_files:
+            date = time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
+            result_dir = os.path.join(CURRENT_DIR, f'./results/{case}/{date}')
+            if not os.path.exists(result_dir):
+                os.makedirs(result_dir)
+
         test_target.collision_avoidance(DF, cdf, reach_mode=reachMode, case_flag=case)
         test_target.render_ani_c_space(DF, case_flag=case, mode='clf_cbf', obs_info=test_target.dyn_obs_center_list,
                                        obs_list=test_target.obs_list, obs_grad_field=test_target.obs_gradient_filed,
-                                       robo_grad_field=test_target.sdf_obs_dx_cbf_t, save_gif=False)
+                                       robo_grad_field=test_target.sdf_obs_dx_cbf_t, save_gif=save_files,
+                                       save_path=result_dir)
         test_target.render_ani_t_space_manipulator(DF, reachMode, case_flag=case,
                                                    obs_info=test_target.dyn_obs_center_list,
                                                    obs_list=test_target.obs_list,
-                                                   save_gif=False)
-        test_target.show_cbf()
-        test_target.show_clf()
-        test_target.show_controls()
-        test_target.show_slack()
+                                                   save_gif=save_files, save_path=result_dir)
+        test_target.show_cbf(save_result=save_files, save_path=result_dir)
+        test_target.show_clf(save_result=save_files, save_path=result_dir)
+        test_target.show_controls(save_result=save_files, save_path=result_dir)
+        test_target.show_slack(save_result=save_files, save_path=result_dir)

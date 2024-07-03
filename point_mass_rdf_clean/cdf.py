@@ -27,7 +27,7 @@ class CDF2D:
 
         # self.obj_lists = []
         # one obstacle case
-        self.obj_lists = [Circle(center=torch.tensor([2.3, 1.0]), radius=0.3, device=device)]
+        self.obj_lists = [Circle(center=torch.tensor([2.1, 1.0]), radius=0.3, device=device)]
 
         # # # two obstacles case
         # self.obj_lists = [Circle(center=torch.tensor([2.3, -2.3]), radius=0.3, device=device),
@@ -308,7 +308,7 @@ if __name__ == "__main__":
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     cdf = CDF2D(device)
-    cdf.q_template = torch.load(os.path.join(CUR_PATH, 'data2D_100.pt'))
+    # cdf.q_template = torch.load(os.path.join(CUR_PATH, 'data2D.pt'))
 
     case = 1
 

@@ -80,9 +80,11 @@ class Integral_Sdf_Cbf_Clf:
     ##############################################################################################
     "The original and common version of CLF based using analytical SDF to design"
 
-    def set_optimal_function(self, u_ref, add_slack=True):
+    def set_optimal_function(self, u_ref, add_slack=True, u_last=None):
         """ set the optimal function """
         self.obj = (self.u - u_ref).T @ self.H @ (self.u - u_ref)
+        self.obj += (self.u - u_last).T @ self.R @ (self.u - u_last) if u_last is not None else 0
+
         if add_slack:
             self.obj = self.obj + self.weight_slack * self.slack ** 2
         self.opti.minimize(self.obj)
@@ -312,11 +314,15 @@ class Integral_Sdf_Cbf_Clf:
         return result
 
     def cbf_clf_qp(self, robot_cur_state, dist_list, grad_list, caseFlag, obs_grad_list=None, obs_pos_list=None,
-                   obs_list=None, add_clf=True, u_ref=None):
+                   obs_list=None, add_clf=True, u_ref=None, u_last=None):
         """Add CLF constraints and objective function"""
         if u_ref is None:
             u_ref = np.zeros(self.control_dim)
-        self.set_optimal_function(u_ref, add_slack=add_clf)
+
+        if caseFlag == 8:
+            self.set_optimal_function(u_ref, add_slack=add_clf, u_last=u_last)
+        else:
+            self.set_optimal_function(u_ref, add_slack=add_clf)
 
         clf = None
         if add_clf:
