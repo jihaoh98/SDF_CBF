@@ -2,7 +2,7 @@ controller:
   Tmax: 20
   step_time: 0.1
   weight_input: [1.2, 1.0]
-  smooth_input: [0.0, 100.0]
+  smooth_input: [1.0, 1.0]
   weight_slack: 10
   clf_lambda: 1.0
   cbf_gamma: 1.0  # 1.0 for one obstacle case
@@ -13,6 +13,8 @@ robot:
   # case 1: one obstacle case
   initial_state: [2.5, 0.5]  # one obstacle case, y \in [-2.0, 2.1]
   target_state: [-2.7, 0.5]
+#  target_state: [ 2.5, 0.5 ]  # one obstacle case, y \in [-2.0, 2.1]
+#  initial_state: [ -2.7, 0.5 ]
   # case 2: one obstacle case
 #  initial_state: [2.0,-0.5, 0.0]  # one obstacle case, y \in [-2.5, 2.5]
 #  target_state: [-2.0, 1.0, 0.0]

@@ -409,11 +409,18 @@ if __name__ == '__main__':
             3: "point_to_point",  # specify the goal in joint space
         }
         reachMode = reachModeList[3]
+        save_files = False
+        result_dir = None
+        if save_files:
+            date = time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
+            result_dir = os.path.join(CURRENT_DIR, f'./results/{case}/{date}')
+            if not os.path.exists(result_dir):
+                os.makedirs(result_dir)
         test_target.collision_avoidance(DF, cdf, reach_mode=reachMode, case_flag=case)
         test_target.render_manipulator(case_flag=7)
         test_target.render_c_space(distance_field=DF, case_flag=7)
         test_target.render_ani_t_space_manipulator(DF, reachMode, case_flag=case, obs_list=test_target.obs_list)
-        test_target.render_ani_c_space(DF, case_flag=7, mode='clf_cbf', obs_list=test_target.obs_list, save_gif=True)
+        test_target.render_ani_c_space(DF, case_flag=7, mode='clf_cbf', obs_list=test_target.obs_list, save_gif=False)
         test_target.show_cbf()
         test_target.show_clf()
         test_target.show_controls()
@@ -425,7 +432,7 @@ if __name__ == '__main__':
             3: "point_to_point",  # specify the goal in joint space
         }
         reachMode = reachModeList[3]
-        save_files = False
+        save_files = True
         result_dir = None
         if save_files:
             date = time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())

@@ -27,8 +27,8 @@ class CDF2D:
 
         # self.obj_lists = []
         # one obstacle case
-        # self.obj_lists = [Circle(center=torch.tensor([2.1, 1.0]), radius=0.3, device=device)]
-        self.obj_lists = [Circle(center=torch.tensor([2.3, 1.0]), radius=0.3, device=device)]
+        self.obj_lists = [Circle(center=torch.tensor([2.2, 1.0]), radius=0.3, device=device)]
+        # self.obj_lists = [Circle(center=torch.tensor([3.5, -3.5]), radius=0.3, device=device)]
         # # # two obstacles case
         # self.obj_lists = [Circle(center=torch.tensor([2.3, -2.3]), radius=0.3, device=device),
         #                   Circle(center=torch.tensor([0.0, 2.4]), radius=0.3, device=device, label='obstacle')]
@@ -88,6 +88,8 @@ class CDF2D:
         # using the closest point from robot surface
         sdf = torch.min(dist, dim=-1)[0]
         sdf = sdf.min(dim=-1)[0]
+        #####
+
         grad = torch.autograd.grad(sdf, q, torch.ones_like(sdf), create_graph=True)[0]
         return sdf, grad
 
@@ -160,11 +162,25 @@ class CDF2D:
 
     def plot_sdf(self):
         sdf, grad = self.inference_sdf_grad(self.Q_sets.requires_grad_(True))
-        sdf = sdf.detach().cpu().numpy()
-        cmap = plt.cm.get_cmap('coolwarm')
-        ct = plt.contourf(self.q0, self.q1, sdf.reshape(self.nbData, self.nbData),
-                          cmap=cmap, levels=[-0.5, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0], linewidths=1)
+        sdf = sdf.detach().cpu().numpy()  # signed distance value
+
+        "Choose the colormap to differentiate the signed distance field"
+        cmap = plt.colormaps.get_cmap('coolwarm')  # positive cmap
+        cmap2 = plt.colormaps.get_cmap('viridis')  # negative cmap
+
+        # mask = (sdf < 0)
+        # min_sdf = sdf[mask].min()
+        # max_sdf = sdf[mask].max()
+        # linear_levels = np.linspace(min_sdf, max_sdf, 10)
+
+        # ct = plt.contourf(self.q0, self.q1, sdf.reshape(self.nbData, self.nbData),
+        #                   cmap=cmap, levels=[-0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0])
+        ct = plt.contourf(self.q0, self.q1, sdf.reshape(self.nbData, self.nbData), cmap=cmap)
+        # ct2 = plt.contourf(self.q0, self.q1, sdf.reshape(self.nbData, self.nbData), cmap=cmap2,
+        #                    levels=linear_levels, alpha=0.5)
         plt.clabel(ct, [], inline=False, fontsize=10, colors='black')
+        # plt.clabel(ct2, [], inline=True, fontsize=10, colors='black')
+
         # plt.clabel(ct, inline=False, fontsize=10, colors='black')
 
         ct_zero = plt.contour(self.q0, self.q1, sdf.reshape(self.nbData, self.nbData), levels=[0], linewidths=3,
@@ -175,21 +191,67 @@ class CDF2D:
         plt.xlabel('$q_0$', size=15)
         plt.ylabel('$q_1$', size=15)
 
-    def plot_cdf(self, d, g, color='k'):
+    def plot_cdf_grad(self, d, color='k', mode='arrow'):
         sdf, grad = self.inference_sdf_grad(self.Q_sets.requires_grad_(True))
         sdf = sdf.detach().cpu().numpy()
-        cmap = plt.cm.get_cmap('coolwarm')
-        ct = plt.contourf(self.q0, self.q1, d.reshape(self.nbData, self.nbData),
-                          cmap=cmap, levels=[-0.5, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0], linewidths=1)
-        plt.clabel(ct, [], inline=False, fontsize=10, colors='black')
-        ct_zero = plt.contour(self.q0, self.q1, sdf.reshape(self.nbData, self.nbData), levels=[0], linewidths=3,
-                              colors=color,
-                              alpha=1.0)
-        # for c in ct_zero.collections:
-        #     c.set_hatch('///')  # Apply the hatch patter
+        negativeIndex = np.where(sdf < 0)[0]
+        g = grad.detach().cpu().numpy()
+        g_negative = g[negativeIndex]
+        sdf_negative = sdf[negativeIndex]
+        sdf_negative_min = sdf_negative.min()
+        sdf_negative_max = sdf_negative.max()
+        levels_sdf_negative = np.linspace(sdf_negative_min, sdf_negative_max, 4)
+        "define colormap"
+        cmap = plt.colormaps.get_cmap('coolwarm')
+        cmap2 = plt.colormaps.get_cmap('viridis')
+        plt.contourf(self.q0, self.q1, d.reshape(self.nbData, self.nbData), cmap=cmap)
+        if mode != 'arrow':
+            plt.contourf(self.q0, self.q1, sdf.reshape(self.nbData, self.nbData), cmap=cmap2,
+                         levels=levels_sdf_negative)
+            plt.colorbar()
+        plt.contour(self.q0, self.q1, sdf.reshape(self.nbData, self.nbData), levels=[0], colors=color, alpha=1.0)
+        "plot the gradient field using streamplot"
+        # Flatten q0 and q1 to match the shape of flattened gradients
+        q0_flat = self.q0.ravel()
+        q1_flat = self.q1.ravel()
+        # Extract the corresponding grid points for negative gradients
+        q0_negative = q0_flat[negativeIndex]
+        q1_negative = q1_flat[negativeIndex]
+        if mode == 'arrow':
+            plt.quiver(q0_negative, q1_negative, g_negative[:, 0], g_negative[:, 1],
+                       color='black', scale=60, width=0.0025, headwidth=4, headlength=4,
+                       headaxislength=2.5, minshaft=1, minlength=1, pivot='tail', angles='uv')
 
-        plt.xlabel('$q_0$', size=15)
-        plt.ylabel('$q_1$', size=15)
+        plt.gcf().set_dpi(200)
+
+    def plot_cdf(self, d, g, color='k', mode='arrow'):
+        sdf, grad_rdf = self.inference_sdf_grad(self.Q_sets.requires_grad_(True))
+        sdf = sdf.detach().cpu().numpy()
+        negativeIndex = np.where(sdf < 0)[0]
+        d[negativeIndex] = -d[negativeIndex]
+        g_negative = g[negativeIndex]
+        d_negative = d[negativeIndex]
+        d_negative_min = d_negative.min()
+        d_negative_max = d_negative.max()
+        levels_d_negative = np.linspace(d_negative_min, d_negative_max, 10)
+        cmap = plt.colormaps.get_cmap('coolwarm')
+        cmap2 = plt.colormaps.get_cmap('viridis')
+        plt.contourf(self.q0, self.q1, d.reshape(self.nbData, self.nbData), cmap=cmap)
+        if mode != 'arrow':
+            plt.contourf(self.q0, self.q1, d.reshape(self.nbData, self.nbData), cmap=cmap2,
+                         levels=levels_d_negative)
+            plt.colorbar()
+        plt.contour(self.q0, self.q1, sdf.reshape(self.nbData, self.nbData), levels=[0], colors=color, alpha=1.0)
+        "plot the gradient field using streamplot"
+        q0_flat = self.q0.ravel()
+        q1_flat = self.q1.ravel()
+        q0_negative = q0_flat[negativeIndex]
+        q1_negative = q1_flat[negativeIndex]
+        if mode == 'arrow':
+            plt.quiver(q0_negative, q1_negative, g_negative[:, 0], g_negative[:, 1],
+                       color='black', scale=60, width=0.0025, headwidth=4, headlength=4,
+                       headaxislength=2.5, minshaft=1, minlength=1, pivot='tail', angles='uv')
+        plt.gcf().set_dpi(200)
 
     def plot_non_zero_cdf(self, d, g):
         sdf, grad = self.inference_sdf_grad(self.Q_sets.requires_grad_(True))
@@ -272,8 +334,8 @@ def plot_2d_manipulators(link1_length=2, link2_length=2, joint_angles_batch=None
     num_sets = joint_angles_batch.shape[0]
 
     # Create a figure
-    cmap = cm.get_cmap('Greens', num_sets)  # You can choose other colormaps like 'Greens', 'Reds', etc.
-    cmap2 = cm.get_cmap('Reds', num_sets)  # You can choose other colormaps like 'Greens', 'Reds', etc.
+    cmap = plt.colormaps.get_cmap('Greens')  # You can choose other colormaps like 'Greens', 'Reds', etc.
+    cmap2 = plt.colormaps.get_cmap('Reds')  # You can choose other colormaps like 'Greens', 'Reds', etc.
     # the color will
     for i in range(num_sets):
         # Extract joint angles for the current set
@@ -310,16 +372,29 @@ if __name__ == "__main__":
     cdf = CDF2D(device)
     # cdf.q_template = torch.load(os.path.join(CUR_PATH, 'data2D.pt'))
 
-    case = 2
+    case = 1
 
     if case == 1:
         "observe the cdf in the configuration space"
         sample_joint_angles = torch.tensor([[2., 2.]]).to(device)
         d_test, grad_obj, point_obj = cdf.inference_t_space_sdf_using_data(sample_joint_angles)
-        d, grad = cdf.inference_c_space_sdf_using_data(cdf.Q_sets)
         print("distance: ", d_test)
         print("gradient: ", grad_obj)
-        cdf.plot_cdf(d.detach().cpu().numpy(), grad.detach().cpu().numpy())
+
+        "get the dist and gradient from the CDF"
+        d, grad = cdf.inference_c_space_sdf_using_data(cdf.Q_sets)
+        "observe the cdf distance field"
+        cdf.plot_cdf(d.detach().cpu().numpy(), grad.detach().cpu().numpy(), mode='flow')
+        plt.show()
+        cdf.plot_cdf(d.detach().cpu().numpy(), grad.detach().cpu().numpy(), mode='arrow')
+        plt.show()
+        "observe the rdf gradient field"  # compared to the rdf gradient field
+        cdf.plot_cdf_grad(d.detach().cpu().numpy(), mode='flow')
+        plt.show()
+        cdf.plot_cdf_grad(d.detach().cpu().numpy(), mode='arrow')
+        plt.show()
+
+        cdf.plot_cdf(d.detach().cpu().numpy(), grad.detach().cpu().numpy(), mode='flow')
         plt.scatter(sample_joint_angles[:, 0].detach().cpu().numpy(), sample_joint_angles[:, 1].detach().cpu().numpy(),
                     color='red')
         plt.scatter(point_obj[:, 0].detach().cpu().numpy(), point_obj[:, 1].detach().cpu().numpy(), color='red')
@@ -331,7 +406,7 @@ if __name__ == "__main__":
                                     color='red')
         ax = plt.gca()
         ax.add_patch(arrow)
-        plt.show()
+
         "observe the cdf in the task space"
         plt.figure()
         plt.rcParams['axes.facecolor'] = '#eaeaf2'
@@ -357,26 +432,26 @@ if __name__ == "__main__":
 
     elif case == 2:
         "observe the sdf in the configuration space"
-        sample_joint_angles = torch.tensor([[np.pi/2, np.pi/2]]).to(device)
+        sample_joint_angles = torch.tensor([[np.pi / 2, np.pi / 2]]).to(device)
         sdf, grad = cdf.inference_sdf_grad(sample_joint_angles)
         print("grad: ", grad)
-        cdf.obj_lists = [Circle(center=torch.tensor([2.5, -2.5]), radius=0.3, device=device)]
+        cdf.obj_lists = [Circle(center=torch.tensor([3.5, -3.5]), radius=0.7, device=device)]
 
         sdf_obj, grad_obj, q_obj, _ = cdf.inference_t_sdf_grad(sample_joint_angles)
         print("distance: ", sdf_obj)
 
         cdf.plot_sdf()
         plt.scatter(sample_joint_angles[:, 0].detach().cpu().numpy(), sample_joint_angles[:, 1].detach().cpu().numpy(),
-                    color='red')
+                    color='blue')
         arrow = mpatches.FancyArrow(sample_joint_angles[0, 0].detach().cpu().numpy(),
                                     sample_joint_angles[0, 1].detach().cpu().numpy(),
                                     grad[0, 0].detach().cpu().numpy(),
                                     grad[0, 1].detach().cpu().numpy(),
                                     width=0.05,
-                                    color='red')
+                                    color='blue')
         plt.gca().add_patch(arrow)
 
-        plt.show()
+        # plt.show()
 
         "observe the sdf in the task space"
         plt.figure()
@@ -389,14 +464,14 @@ if __name__ == "__main__":
 
         plot_2d_manipulators(joint_angles_batch=xf_2d)
 
-        plt.scatter(q_obj[0].detach().cpu().numpy(), q_obj[1].detach().cpu().numpy(), color='red')
-
+        plt.scatter(q_obj[0].detach().cpu().numpy(), q_obj[1].detach().cpu().numpy(), color='blue')
+        "Plot the arrow in task space"
         arrow = mpatches.FancyArrow(q_obj[0].detach().cpu().numpy(),
                                     q_obj[1].detach().cpu().numpy(),
-                                    grad_obj[0].detach().cpu().numpy()*1,
-                                    grad_obj[1].detach().cpu().numpy()*1,
-                                    width=0.05,
-                                    color='red')
+                                    grad_obj[0].detach().cpu().numpy() * 1,
+                                    grad_obj[1].detach().cpu().numpy() * 1,
+                                    width=0.01,
+                                    color='blue')
         ax.add_patch(arrow)
         ax.set_aspect('equal')
         plt.xlim(-4, 4)

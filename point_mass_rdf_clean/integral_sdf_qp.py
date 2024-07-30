@@ -67,6 +67,8 @@ class Integral_Sdf_Cbf_Clf:
             'print_time': 0
         }
         self.opti.solver('qpoases', opts_setting)
+        # self.opti.solver('osqp')
+        # self.opti.solver('qrqp')
 
         self.u = self.opti.variable(self.control_dim)
         self.slack = self.opti.variable()
@@ -379,70 +381,3 @@ class Integral_Sdf_Cbf_Clf:
             result.slack = None
 
         return result
-
-    # def cbf_clf_qp(self, robot_cur_state, dist_input, grad_input,cir_obs_states=None, add_clf=True, u_ref=None):
-    #     """
-    #     This is a function to calculate the optimal control for the robot w.r.t circular-shaped obstacles
-    #     Args:
-    #         robot_cur_state: [x, y, theta] np.array(3, )
-    #         cir_obs_state: [ox, oy, ovx, ovy, o_radius] list for circle obstacle state
-    #         robot_state_cbf: [x, y, theta, radius] np.array(4, )
-    #     Returns:
-    #         optimal control u
-    #     """
-    #     if u_ref is None:
-    #         u_ref = np.zeros(self.control_dim)
-    #     self.set_optimal_function(u_ref, add_slack=add_clf)
-    #
-    #     clf = None
-    #     if add_clf:
-    #         clf = self.add_clf_cons(robot_cur_state, add_slack=add_clf)
-    #
-    #     # add cbf constraints for each circular-shaped obstacles
-    #     cir_cbf_list = None
-    #     cir_dx_cbf_list = None
-    #     cir_do_cbf_list = None
-    #     robot_state_cbf = np.hstack((robot_cur_state, np.array([self.robot_radius])))
-    #     if cir_obs_states is not None:
-    #         cir_cbf_list = []
-    #         cir_dx_cbf_list = []
-    #         cir_do_cbf_list = []
-    #         for cir_obs_state in cir_obs_states:
-    #             cbf, dx_cbf, do_cbf = self.add_cir_cbf_cons(robot_state_cbf, cir_obs_state)
-    #             cir_cbf_list.append(cbf)
-    #             cir_dx_cbf_list.append(dx_cbf)
-    #             cir_do_cbf_list.append(do_cbf)
-    #
-    #     self.add_controls_physical_cons()
-    #
-    #     # result
-    #     result = lambda: None
-    #     result.clf = clf
-    #     result.cir_cbf_list = cir_cbf_list
-    #     result.cir_dx_cbf_list = cir_dx_cbf_list
-    #     result.cir_do_cbf_list = cir_do_cbf_list
-    #
-    #     # optimize the qp problem
-    #     try:
-    #         start_time = time.time()
-    #         sol = self.opti.solve()
-    #         end_time = time.time()
-    #         optimal_control = sol.value(self.u)
-    #
-    #         result.u = optimal_control
-    #         result.time = end_time - start_time
-    #         result.feas = True
-    #
-    #         if add_clf:
-    #             slack = sol.value(self.slack)
-    #             result.slack = slack
-    #         else:
-    #             result.slack = None
-    #     except:
-    #         print(self.opti.return_status() + ' sdf-cbf with clf')
-    #         result.u = None
-    #         result.time = None
-    #         result.feas = False
-    #         result.slack = None
-    #
-    #     return result

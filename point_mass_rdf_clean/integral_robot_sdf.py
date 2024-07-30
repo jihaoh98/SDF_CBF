@@ -178,6 +178,7 @@ class Integral_Robot_Sdf:
         elif caseFlag == 8:
             dox_cbf_symbolic = obs_cdf_gradient
             dt_obs_cbf = np.dot(dox_cbf_symbolic, obstacle_list.vel)
+            # dt_obs_cbf = 0
 
         return lf_cbf, lg_cbf, dt_obs_cbf
 
