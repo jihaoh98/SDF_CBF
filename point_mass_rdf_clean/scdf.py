@@ -191,7 +191,7 @@ class CDF2D:
         plt.xlabel('$q_0$', size=15)
         plt.ylabel('$q_1$', size=15)
 
-    def plot_cdf_grad(self, d, color='k', mode='arrow'):
+    def plot_rdf(self, d, color='k', mode='arrow'):
         sdf, grad = self.inference_sdf_grad(self.Q_sets.requires_grad_(True))
         sdf = sdf.detach().cpu().numpy()
         negativeIndex = np.where(sdf < 0)[0]
@@ -204,12 +204,13 @@ class CDF2D:
         "define colormap"
         cmap = plt.colormaps.get_cmap('coolwarm')
         cmap2 = plt.colormaps.get_cmap('viridis')
-        plt.contourf(self.q0, self.q1, d.reshape(self.nbData, self.nbData), cmap=cmap)
+        plt.contourf(self.q0, self.q1, d.reshape(self.nbData, self.nbData), levels=20, cmap=cmap)
         if mode != 'arrow':
             plt.contourf(self.q0, self.q1, sdf.reshape(self.nbData, self.nbData), cmap=cmap2,
                          levels=levels_sdf_negative)
             plt.colorbar()
-        plt.contour(self.q0, self.q1, sdf.reshape(self.nbData, self.nbData), levels=[0], colors=color, alpha=1.0)
+        plt.contour(self.q0, self.q1, sdf.reshape(self.nbData, self.nbData), levels=[0], colors=color, alpha=1.0,
+                    linewidths=2)
         "plot the gradient field using streamplot"
         # Flatten q0 and q1 to match the shape of flattened gradients
         q0_flat = self.q0.ravel()
@@ -219,7 +220,7 @@ class CDF2D:
         q1_negative = q1_flat[negativeIndex]
         if mode == 'arrow':
             plt.quiver(q0_negative, q1_negative, g_negative[:, 0], g_negative[:, 1],
-                       color='black', scale=60, width=0.0025, headwidth=4, headlength=4,
+                       color='yellow', scale=60, width=0.0025, headwidth=4, headlength=4,
                        headaxislength=2.5, minshaft=1, minlength=1, pivot='tail', angles='uv')
 
         plt.gcf().set_dpi(200)
@@ -236,12 +237,13 @@ class CDF2D:
         levels_d_negative = np.linspace(d_negative_min, d_negative_max, 10)
         cmap = plt.colormaps.get_cmap('coolwarm')
         cmap2 = plt.colormaps.get_cmap('viridis')
-        plt.contourf(self.q0, self.q1, d.reshape(self.nbData, self.nbData), cmap=cmap)
+        plt.contourf(self.q0, self.q1, d.reshape(self.nbData, self.nbData), levels=20, cmap=cmap)
         if mode != 'arrow':
             plt.contourf(self.q0, self.q1, d.reshape(self.nbData, self.nbData), cmap=cmap2,
                          levels=levels_d_negative)
             plt.colorbar()
-        plt.contour(self.q0, self.q1, sdf.reshape(self.nbData, self.nbData), levels=[0], colors=color, alpha=1.0)
+        plt.contour(self.q0, self.q1, sdf.reshape(self.nbData, self.nbData), levels=[0], colors=color, alpha=1.0,
+                    linewidths=2)
         "plot the gradient field using streamplot"
         q0_flat = self.q0.ravel()
         q1_flat = self.q1.ravel()
@@ -249,7 +251,7 @@ class CDF2D:
         q1_negative = q1_flat[negativeIndex]
         if mode == 'arrow':
             plt.quiver(q0_negative, q1_negative, g_negative[:, 0], g_negative[:, 1],
-                       color='black', scale=60, width=0.0025, headwidth=4, headlength=4,
+                       color='yellow', scale=60, width=0.0025, headwidth=4, headlength=4,
                        headaxislength=2.5, minshaft=1, minlength=1, pivot='tail', angles='uv')
         plt.gcf().set_dpi(200)
 
@@ -389,9 +391,9 @@ if __name__ == "__main__":
         cdf.plot_cdf(d.detach().cpu().numpy(), grad.detach().cpu().numpy(), mode='arrow')
         plt.show()
         "observe the rdf gradient field"  # compared to the rdf gradient field
-        cdf.plot_cdf_grad(d.detach().cpu().numpy(), mode='flow')
+        cdf.plot_rdf(d.detach().cpu().numpy(), mode='flow')
         plt.show()
-        cdf.plot_cdf_grad(d.detach().cpu().numpy(), mode='arrow')
+        cdf.plot_rdf(d.detach().cpu().numpy(), mode='arrow')
         plt.show()
 
         cdf.plot_cdf(d.detach().cpu().numpy(), grad.detach().cpu().numpy(), mode='flow')
