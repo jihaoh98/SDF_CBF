@@ -278,12 +278,46 @@ class Collision_Avoidance:
         print('Median_time:', statistics.median(process_time))
         print('Average_time:', statistics.mean(process_time))
 
+    def storage_data(self, file_name):
+        np.savez(
+            file_name, xt=self.xt, ut=self.ut, 
+            obs_cbf_t=self.obs_cbf_t,
+            cir_obs_cbf_t=self.cir_obs_cbf_t,
+            obs_list_t=self.obstacle_state_t, 
+            cir_obs_list_t=self.cir_obstacle_state_t, 
+            ter=self.terminal_time
+        )
+    
+    def load_data_integral(self):
+        data = np.load('integral_data.npz')
+        self.xt = data['xt']
+        self.ut = data['ut']
+        self.obs_cbf_t = data['obs_cbf_t']
+        self.cir_obs_cbf_t = data['cir_obs_cbf_t']
+        self.obstacle_state_t = data['obs_list_t']
+        self.cir_obstacle_state_t = data['cir_obs_list_t']
+        self.terminal_time = data['ter']
+        # self.show_cbf()
+        self.show_controls()
+        # self.ani.show_integral_model(self.xt, self.obstacle_state_t, self.cir_obstacle_state_t, self.terminal_time, [17, 34, 44])
+
+    def load_data_unicycle(self):
+        data = np.load('unicycle.npz')
+        self.xt = data['xt']
+        self.ut = data['ut']
+        self.obs_cbf_t = data['obs_cbf_t']
+        self.obstacle_state_t = data['obs_list_t']
+        self.terminal_time = data['ter']
+        # self.render()
+        # self.ani.show_unicycle_cbf(self.obs_cbf_t, self.terminal_time)
+        self.ani.show_unicycle_model_controls(self.ut, self.terminal_time)
+        # self.ani.show_unicycle_model(self.xt, self.obstacle_state_t, self.terminal_time, [44, 102])
+
     def render(self):
         self.ani.render(self.xt, self.obstacle_state_t, self.cir_obstacle_state_t, self.terminal_time, self.show_obs)
 
-    def show_cbf(self, i):
-        # self.ani.show_both_cbf(i, self.obs_cbf_t, self.cir_obs_cbf_t, self.terminal_time)
-        self.ani.show_cbf(i, self.obs_cbf_t, self.terminal_time)
+    def show_cbf(self):
+        self.ani.show_integral_cbf(self.obs_cbf_t, self.cir_obs_cbf_t, self.terminal_time)
 
     def show_controls(self):
         self.ani.show_integral_controls(self.ut, self.terminal_time)
@@ -302,9 +336,14 @@ if __name__ == '__main__':
     # file_name = 'integral_settings.yaml'
     file_name = 'unicycle_settings.yaml'
     test_target = Collision_Avoidance(file_name)
-    test_target.collision_avoidance()
-    test_target.render()
+    # test_target.collision_avoidance()
+    # test_target.storage_data('integral_data.npz')
+    # test_target.storage_data('unicycle.npz')
+
+    # test_target.load_data_integral()
+    test_target.load_data_unicycle()
+    # test_target.render()
     # test_target.show_clf()
     # test_target.show_slack()
-    test_target.show_cbf(0)
-    test_target.show_controls()
+    # test_target.show_cbf(0)
+    # test_target.show_controls()

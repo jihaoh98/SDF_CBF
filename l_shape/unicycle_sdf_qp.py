@@ -150,7 +150,35 @@ class Unicycle_Sdf_Cbf_Clf:
                 min_sdf = cbf
 
         return min_sdf
+    
+    def add_cbf_cons_integrate(self, robot_cur_state, robot_params, two_center, obs_state, obs_vertex):
+        """ add cons w.r.t other-shaped obstacle """
+        # sample points from obstacles and add constraints to the optimal problem
+        num_closest_points = 6
+        sampled_points = self.robot.get_sampled_points_from_obstacle_vertexes(obs_vertex, num_samples=6)
 
+        cbf_values = []
+        obs_states = []
+
+        for i in range(sampled_points.shape[0]):
+            obs_cur_point_state = np.array([sampled_points[i][0], sampled_points[i][1], obs_state[2], obs_state[3]])
+            cbf = self.cbf(robot_cur_state, robot_params, two_center, obs_cur_point_state)
+            cbf_values.append(cbf)
+            obs_states.append(obs_cur_point_state)
+
+        cbf_values = np.array(cbf_values)
+        obs_states = np.array(obs_states)
+
+        closest_indices = np.argsort(cbf_values)[:num_closest_points]
+        for idx in closest_indices:
+            obs_state = obs_states[idx]
+            cbf = cbf_values[idx]
+
+            lf_cbf, lg_cbf, dt_obs_cbf = self.robot.derive_cbf_gradient(robot_cur_state, robot_params, two_center, obs_state)
+            self.opti.subject_to(lf_cbf + (lg_cbf @ self.u)[0, 0] + dt_obs_cbf + self.cbf_gamma * cbf >= 0)
+
+        return np.min(cbf_values)
+    
     def clf_qp(self, robot_cur_state, add_slack=False, u_ref=None):
         """ 
         calculate the optimal control which navigating the robot to its destination
@@ -216,7 +244,7 @@ class Unicycle_Sdf_Cbf_Clf:
             cbf_list = []
             obs_num = len(obs_states)
             for i in range(obs_num):
-                cbf = self.add_cbf_cons(robot_cur_state, robot_params, two_center, obs_states[i], obs_vertexes[i])
+                cbf = self.add_cbf_cons_integrate(robot_cur_state, robot_params, two_center, obs_states[i], obs_vertexes[i])
                 cbf_list.append(cbf)
     
         self.add_controls_physical_cons()
