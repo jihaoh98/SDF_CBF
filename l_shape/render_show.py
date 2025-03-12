@@ -396,7 +396,7 @@ class Render_Animation:
         figure, ax1 = plt.subplots(figsize=(16, 9))
         figure.set_dpi(200)
         font_path = "/home/hjh/simfang.ttf"  
-        legend_font = {"family": "Times New Roman", "weight": "normal", "size": 35}
+        legend_font = {"family": "Times New Roman", "weight": "normal", "size": 25}
         label_font = fm.FontProperties(fname=font_path, size=35)
 
         v_color = ['#EDDDC3', '#8EB69C', '#4EAB90']
@@ -434,7 +434,7 @@ class Render_Animation:
 
         lines = [vv, ww, v_min, v_max, w_min, w_max]
         labels = [r'$v$', r'$w$', r'$v_{min}$', r'$v_{max}$', r'$w_{min}$', r'$w_{max}$']
-        ax1.legend(lines, labels, loc='lower right', prop=legend_font, framealpha=0.5)
+        ax1.legend(lines, labels, loc='lower center', prop=legend_font, framealpha=0.5, ncol=6, bbox_to_anchor=(0.5, 0.05))
 
         ax1.tick_params(labelsize=45)
         ax2.tick_params(labelsize=45)
