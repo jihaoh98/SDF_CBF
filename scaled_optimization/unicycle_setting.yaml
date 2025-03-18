@@ -5,8 +5,8 @@ controller:
   smooth_input: [1.0, 0.5]
   weight_slack: [1000, 1000]
   clf_lambda: [1.0, 3.0]
-  cbf_gamma: 1.8 # static 1.0
-  min_beta: 1.5 # static 1.2
+  cbf_gamma: 0.8 # static 0.8
+  min_beta: 1.5 
 
 robot:
   model: 'unicycle'
@@ -36,7 +36,7 @@ obstacle_list:
 
   # obs_vertexes: [
   #   [[4.0, 5.0], [7.0, 5.0], [7.0, 6.5], [4.0, 6.5]],
-  #   [[7.5, 7.5], [9.6, 7.5], [9.6, 9.0], [7.5, 9.0]]
+  #   [[7.5, 7.5], [9.5, 7.5], [9.5, 9.0], [7.5, 9.0]]
   # ]
   # obs_vels: [
   #   [0.0, 0.0],

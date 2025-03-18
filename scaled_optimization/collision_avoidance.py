@@ -194,7 +194,36 @@ class Collision_Avoidance:
         print('Minimum_time:', min(process_time))
         print('Median_time:', statistics.median(process_time))
         print('Average_time:', statistics.mean(process_time))    
+
+    def storage_data(self, file_name):
+        np.savez(
+            file_name, xt=self.xt, ut=self.ut, 
+            obs_cbf_t=self.obs_cbf_t,
+            obs_list_t=self.obstacle_state_t, 
+            ter=self.terminal_time
+        )
+
+    def load_data_unicycle_static(self):
+        data = np.load('unicycle_static.npz')
+        self.xt = data['xt']
+        self.ut = data['ut']
+        self.obstacle_state_t = data['obs_list_t']
+        self.terminal_time = data['ter']
+
+        # self.ani.show_unicycle_model_controls(self.ut, self.terminal_time)
+        self.ani.show_unicycle_model(self.xt, self.obstacle_state_t, self.terminal_time, [32, 50])
         
+    def load_data_unicycle_dynamic(self):
+        data = np.load('unicycle_dynamic.npz')
+        self.xt = data['xt']
+        self.ut = data['ut']
+        self.obstacle_state_t = data['obs_list_t']
+        self.terminal_time = data['ter']
+        # self.render()
+
+        # self.ani.show_unicycle_model_controls(self.ut, self.terminal_time)
+        self.ani.show_unicycle_model(self.xt, self.obstacle_state_t, self.terminal_time, [30, 42, 60, 70, 80])
+
     def render(self):
         self.ani.render(self.xt, self.obstacle_state_t, self.terminal_time, self.show_obs)
     
@@ -222,7 +251,8 @@ if __name__ == '__main__':
 
     test_target = Collision_Avoidance(file_name)
     # test_target.navigation_destination()
-    test_target.collision_avoidance()
-    test_target.render()
-
+    # test_target.collision_avoidance()
     
+    # test_target.load_data_unicycle_static()
+    test_target.load_data_unicycle_dynamic()
+    # test_target.render()
