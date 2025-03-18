@@ -1,0 +1,47 @@
+controller:
+  Tmax: 30
+  step_time: 0.1
+  weight_input: [1.0, 1.0]
+  smooth_input: [1.0, 0.5]
+  weight_slack: [1000, 1000]
+  clf_lambda: [1.0, 3.0]
+  cbf_gamma: 1.8 # static 1.0
+  min_beta: 1.5 # static 1.2
+
+robot:
+  model: 'unicycle'
+  u_max: [2.0, 1.0]
+  u_min: [-2.0, -1.0]
+  initial_state: [2.0, 2.0, 0.0]
+  target_state: [12.0, 12.0, 0.0]
+  destination_margin: 0.3
+  width: 1.0  # half
+  height: 0.5  # half
+  sensor_range: 6.0
+  margin: 0.1
+  e0: 1e-3
+
+obstacle_list:
+  obs_vertexes: [
+    [[8.0, 4.0], [10.0, 4.0], [10.0, 5.0], [8.0, 5.0]],
+    [[10.0, 7.0], [12.0, 7.0], [12.0, 8.0], [10.0, 8.0]]
+  ]
+  obs_vels: [
+    [-0.3, 0.0],
+    [-0.5, 0.0]
+  ]
+  modes: [
+    'dynamic', 'dynamic'
+  ]
+
+  # obs_vertexes: [
+  #   [[4.0, 5.0], [7.0, 5.0], [7.0, 6.5], [4.0, 6.5]],
+  #   [[7.5, 7.5], [9.6, 7.5], [9.6, 9.0], [7.5, 9.0]]
+  # ]
+  # obs_vels: [
+  #   [0.0, 0.0],
+  #   [0.0, 0.0]
+  # ]
+  # modes: [
+  #   'static', 'static'
+  # ]
