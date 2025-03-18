@@ -286,8 +286,8 @@ class Render_Animation:
             linewidth=6, color=color_list[1]
         )
 
-        plt.xlabel("时间(s)", fontproperties=label_font)
-        plt.ylabel("距离(m) ", fontproperties=label_font)
+        plt.xlabel("时间" + r'$(s)$', fontproperties=label_font)
+        plt.ylabel("距离" + r'$(m)$', fontproperties=label_font)
         plt.gca().xaxis.set_major_formatter(FormatStrFormatter('%.1f'))
         plt.gca().yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
         plt.legend(
@@ -336,14 +336,15 @@ class Render_Animation:
 
         plt.gca().xaxis.set_major_formatter(FormatStrFormatter('%.1f'))
         plt.gca().yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
-        plt.xlabel("时间(s)", fontproperties=label_font)
-        plt.ylabel('速度(m/s)', fontproperties=label_font)
+        plt.xlabel("时间" + r'$(s)$', fontproperties=label_font)
+        plt.ylabel('速度' + r'$(m/s)$', fontproperties=label_font)
         
         plt.legend(
             handles=[vx, vy, v_min, v_max], 
             labels=[r'$v_x$', r'$v_y$', r'$v_{min}$', r'$v_{max}$'], 
             loc='lower right', prop=legend_font,
-            framealpha=0.5
+            framealpha=0.5, ncol=4,
+            bbox_to_anchor=(0.95, 0.05)
         )
 
         # set the tick in Times New Roman and size
@@ -373,8 +374,8 @@ class Render_Animation:
             linewidth=6, color=color_list[1]
         )
 
-        plt.xlabel("时间(s)", fontproperties=label_font)
-        plt.ylabel("距离(m) ", fontproperties=label_font)
+        plt.xlabel("时间" + r'$(s)$', fontproperties=label_font)
+        plt.ylabel("距离" + r'$(m)$', fontproperties=label_font)
         plt.gca().xaxis.set_major_formatter(FormatStrFormatter('%.1f'))
         plt.gca().yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
         plt.legend(
@@ -410,8 +411,8 @@ class Render_Animation:
         v_smooth = np.convolve(v, np.ones(window_size) / window_size, mode='valid')
         w_smooth = np.convolve(w, np.ones(window_size) / window_size, mode='valid')
 
-        ax1.set_xlabel("时间(s)", fontproperties=label_font)
-        ax1.set_ylabel("线速度 v (m/s)", fontproperties=label_font)
+        ax1.set_xlabel("时间" + r'$(s)$', fontproperties=label_font)
+        ax1.set_ylabel("线速度" + r'$v (m/s)$', fontproperties=label_font)
         ax1.tick_params(axis='y')
 
         vv, = ax1.plot(t[:v_smooth.size], v_smooth, linewidth=6, color=v_color[0])
@@ -424,7 +425,7 @@ class Render_Animation:
 
         ax2 = ax1.twinx()
         ax2.set_ylim(ax1.get_ylim())  
-        ax2.set_ylabel("角速度 w (rad/s)", fontproperties=label_font)
+        ax2.set_ylabel("角速度" + r'$w (rad/s)$', fontproperties=label_font)
         ax2.tick_params(axis='y')
         ax2.yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
 

@@ -210,8 +210,8 @@ class Collision_Avoidance:
         self.obstacle_state_t = data['obs_list_t']
         self.terminal_time = data['ter']
 
-        # self.ani.show_unicycle_model_controls(self.ut, self.terminal_time)
-        self.ani.show_unicycle_model(self.xt, self.obstacle_state_t, self.terminal_time, [32, 50])
+        self.ani.show_unicycle_model_controls(self.ut, self.terminal_time, name='controls_unicycle_static.png')
+        # self.ani.show_unicycle_model(self.xt, self.obstacle_state_t, self.terminal_time, [32, 50])
         
     def load_data_unicycle_dynamic(self):
         data = np.load('unicycle_dynamic.npz')
@@ -221,8 +221,8 @@ class Collision_Avoidance:
         self.terminal_time = data['ter']
         # self.render()
 
-        # self.ani.show_unicycle_model_controls(self.ut, self.terminal_time)
-        self.ani.show_unicycle_model(self.xt, self.obstacle_state_t, self.terminal_time, [30, 42, 60, 70, 80])
+        self.ani.show_unicycle_model_controls(self.ut, self.terminal_time)
+        # self.ani.show_unicycle_model(self.xt, self.obstacle_state_t, self.terminal_time, [30, 42, 60, 70, 80])
 
     def render(self):
         self.ani.render(self.xt, self.obstacle_state_t, self.terminal_time, self.show_obs)

@@ -312,7 +312,7 @@ class Render_Animation:
         # plt.savefig("controls.png", format="png", dpi=300)
         plt.show()
 
-    def show_unicycle_model_controls(self, ut, terminal_time):
+    def show_unicycle_model_controls(self, ut, terminal_time, name='controls_unicycle_dynamic.png'):
         """ show controls of unicycle model with dual y-axis """
         figure, ax1 = plt.subplots(figsize=(16, 9))
         figure.set_dpi(200)
@@ -331,8 +331,8 @@ class Render_Animation:
         v_smooth = np.convolve(v, np.ones(window_size) / window_size, mode='valid')
         w_smooth = np.convolve(w, np.ones(window_size) / window_size, mode='valid')
 
-        ax1.set_xlabel("时间(s)", fontproperties=label_font)
-        ax1.set_ylabel("线速度 v (m/s)", fontproperties=label_font)
+        ax1.set_xlabel("时间" + r'$(s)$', fontproperties=label_font)
+        ax1.set_ylabel("线速度" + r'$v (m/s)$', fontproperties=label_font)
         ax1.tick_params(axis='y')
 
         vv, = ax1.plot(t[:v_smooth.size], v_smooth, linewidth=6, color=v_color[0])
@@ -345,7 +345,7 @@ class Render_Animation:
 
         ax2 = ax1.twinx()
         ax2.set_ylim(ax1.get_ylim())  
-        ax2.set_ylabel("角速度 w (rad/s)", fontproperties=label_font)
+        ax2.set_ylabel("角速度" + r'$w (rad/s)$', fontproperties=label_font)
         ax2.tick_params(axis='y')
         ax2.yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
 
@@ -360,7 +360,7 @@ class Render_Animation:
         ax1.tick_params(labelsize=45)
         ax2.tick_params(labelsize=45)
 
-        plt.savefig('controls_unicycle_dynamic.png', format='png', dpi=300, bbox_inches='tight')
+        plt.savefig(name, format='png', dpi=300, bbox_inches='tight')
 
     def show_unicycle_model(self, xt, obs_list_t, terminal_time, index_t):
         font_path = "/home/hjh/simfang.ttf"  
