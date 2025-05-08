@@ -54,14 +54,14 @@ class Scaled_Cbf:
         self.u_max = robot_params['u_max']
         self.u_min = robot_params['u_min']
 
-        self.opti = ca.Opti('conic')
-        opts_setting = {
-            'printLevel': 'low',  
-            'error_on_fail': False,
-            'expand': True,
-            'print_time': 0
-        }
-        self.opti.solver('qpoases', opts_setting)
+        self.opti = ca.Opti()
+        # opts_setting = {
+        #     'printLevel': 'low',  
+        #     'error_on_fail': False,
+        #     'expand': True,
+        #     'print_time': 0
+        # }
+        self.opti.solver('ipopt')
 
         self.u = self.opti.variable(self.control_dim)
         if robot_params['model'] == 'unicycle':
@@ -217,6 +217,7 @@ class Scaled_Cbf:
     
         self.add_controls_physical_cons()
         
+        print('start solve')
         # optimize the qp problem
         try:
             sol = self.opti.solve()

@@ -251,8 +251,8 @@ if __name__ == '__main__':
 
     test_target = Collision_Avoidance(file_name)
     # test_target.navigation_destination()
-    # test_target.collision_avoidance()
+    test_target.collision_avoidance()
     
     # test_target.load_data_unicycle_static()
-    test_target.load_data_unicycle_dynamic()
-    # test_target.render()
+    # test_target.load_data_unicycle_dynamic()
+    test_target.render()
