@@ -69,6 +69,33 @@ class L_shaped_robot:
         self.cur_state = np.copy(self.init_state)
 
 
+    def get_vertices(self, cur_state):
+        vertices = np.zeros((2, 4, 2))
+        for i in range(2):
+            if i == 0:
+                rotation_matrix = np.array([
+                    [np.cos(cur_state[2]), -np.sin(cur_state[2])],
+                    [np.sin(cur_state[2]), np.cos(cur_state[2])]
+                ])
+            elif i == 1:
+                rotation_matrix = np.array([
+                    [np.cos(cur_state[2]), -np.sin(cur_state[2])],
+                    [np.sin(cur_state[2]), np.cos(cur_state[2])]
+                ])
+            
+            translated_vertices = self.vertices[i] - self.overlap_center 
+        
+            rotated_vertices = np.dot(translated_vertices, rotation_matrix.T)  # Apply rotation
+            rotated_vertices = rotated_vertices + self.overlap_center 
+        
+            translation_vector = cur_state[:2] - self.overlap_center
+        
+            cur_vertices = rotated_vertices + translation_vector
+            vertices[i] = cur_vertices
+
+        return vertices
+
+
     def update_vertexes(self):
         
         for i in range(2):
@@ -140,4 +167,30 @@ if __name__ == '__main__':
     plt.legend()
     plt.xlim(0, 4)
     plt.ylim(0, 4)
+    plt.show()
+
+
+    fig, ax = plt.subplots()
+
+    poly_A = mpatches.Polygon(test_target.vertices[0], alpha=0.5, color='red')
+    ax.add_patch(poly_A)
+    poly_B = mpatches.Polygon(test_target.vertices[1], alpha=0.5, color='blue')
+    ax.add_patch(poly_B)
+    plt.scatter(test_target.cur_state[0], test_target.cur_state[1], c='black', marker='o', label='init state')
+
+    xt = np.array([1.0, 1.0, np.pi/6])
+    ver = test_target.get_vertices(xt)
+    poly_A = mpatches.Polygon(ver[0], alpha=0.5, color='red')
+    ax.add_patch(poly_A)
+    poly_B = mpatches.Polygon(ver[1], alpha=0.5, color='blue')
+    ax.add_patch(poly_B)
+    plt.scatter(test_target.cur_state[0], test_target.cur_state[1], c='black', marker='o', label='cur state')
+
+
+    # plot the rotation center
+
+    plt.axis('equal')
+    plt.xlim(0, 4)
+    plt.ylim(0, 4)
+    plt.legend()
     plt.show()

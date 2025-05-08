@@ -37,8 +37,8 @@ class Collision_Avoidance:
         self.destination_margin = robot_params['destination_margin']
 
         # params for construct cbf
-        self.robot_params = np.array([self.robot.width, self.robot.height])
-        self.robot_two_center = self.robot.cur_center_body_frame.reshape(-1,)
+        # self.robot_params = np.array([self.robot.width, self.robot.height])
+        # self.robot_two_center = self.robot.cur_center_body_frame.reshape(-1,)
 
         # initialize the circular-shaped obstacle
         self.cir_obs_states_list = None
@@ -336,13 +336,14 @@ if __name__ == '__main__':
     # file_name = 'integral_settings.yaml'
     file_name = 'unicycle_settings.yaml'
     test_target = Collision_Avoidance(file_name)
+    test_target.navigation_destination()
     # test_target.collision_avoidance()
     # test_target.storage_data('integral_data.npz')
     # test_target.storage_data('unicycle.npz')
 
     # test_target.load_data_integral()
-    test_target.load_data_unicycle()
-    # test_target.render()
+    # test_target.load_data_unicycle()
+    test_target.render()
     # test_target.show_clf()
     # test_target.show_slack()
     # test_target.show_cbf(0)

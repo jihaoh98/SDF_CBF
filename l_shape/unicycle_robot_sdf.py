@@ -15,7 +15,7 @@ class Unicycle_Robot_Sdf:
         define the clf and cbf based on sdf for L-shaped robot with respect to any-shaped obstacle
         """
         # robot system states, half width with half height
-        self.state_dim = 3
+        self.state_dim = 3  # [x, y, theta]
         self.control_dim = 2
         self.margin = params['margin']
         self.e0 = float(params['e0'])

@@ -16,8 +16,8 @@ class Render_Animation:
         self.robot_model = self.robot.model
         self.robot_init_state = robot.init_state 
         self.robot_target_state = np.array(robot_params['target_state'])
-        self.robot_width = self.robot.width
-        self.robot_height = self.robot.height
+        # self.robot_width = self.robot.width
+        # self.robot_height = self.robot.height
         self.umax = robot_params['u_max']
         self.umin = robot_params['u_min']
 
@@ -46,6 +46,8 @@ class Render_Animation:
 
         # current state
         self.robot_body = None
+        self.robot_body_A = None
+        self.robot_body_B = None
         self.robot_arrow = None
         
         self.show_obs = True
@@ -95,16 +97,18 @@ class Render_Animation:
         self.animation_init()
 
         # robot and the arrow
-        init_vertexes = self.robot.get_vertexes(self.robot_init_state)
-        self.robot_body = mpatches.Polygon(init_vertexes, edgecolor='silver', facecolor=None)
-        self.ax.add_patch(self.robot_body)
+        init_vertexes = self.robot.get_vertices(self.robot_init_state)
+        self.robot_body_A = mpatches.Polygon(init_vertexes[0], alpha=0.5, color='red')
+        self.ax.add_patch(self.robot_body_A)
+        self.robot_body_B = mpatches.Polygon(init_vertexes[1], alpha=0.5, color='blue')
+        self.ax.add_patch(self.robot_body_B)
 
         if self.robot_model == 'unicycle':
             self.robot_arrow = mpatches.Arrow(
                 self.robot_init_state[0],
                 self.robot_init_state[1],
-                self.robot_width / 2 * np.cos(self.robot_init_state[2]),
-                self.robot_width / 2 * np.sin(self.robot_init_state[2]),
+                0.1 / 2 * np.cos(self.robot_init_state[2]),
+                0.1 / 2 * np.sin(self.robot_init_state[2]),
                 width=0.15,
                 color='k',
             )
@@ -140,17 +144,21 @@ class Render_Animation:
     def animation_init(self):
         """ init the robot start and end position """
         # start body and arrow
-        start_vertexes = self.robot.get_vertexes(self.robot_init_state)
-        self.start_body = mpatches.Polygon(start_vertexes, edgecolor='silver', facecolor=None)
-        self.ax.add_patch(self.start_body)
-        self.start_body.set_zorder(0)
+        start_vertexes = self.robot.get_vertices(self.robot_init_state)
+        self.robot_body_A = mpatches.Polygon(start_vertexes[0], alpha=0.5, color='red')
+        self.ax.add_patch(self.robot_body_A)
+        self.robot_body_B = mpatches.Polygon(start_vertexes[1], alpha=0.5, color='blue')
+        self.ax.add_patch(self.robot_body_B)
+
+        # self.robot_body_A.set_zorder(0)
+        # self.robot_body_B.set_zorder(1)
 
         if self.robot_model == 'unicycle':
             self.start_arrow = mpatches.Arrow(
                 self.robot_init_state[0],
                 self.robot_init_state[1], 
-                self.robot_width / 2 * np.cos(self.robot_init_state[2]),
-                self.robot_width / 2 * np.sin(self.robot_init_state[2]),
+                0.1 / 2 * np.cos(self.robot_init_state[2]),
+                0.1 / 2 * np.sin(self.robot_init_state[2]),
                 width=0.15,
                 color='k',
             )
@@ -167,18 +175,22 @@ class Render_Animation:
     def animation_loop(self, indx):
         """ loop for update the position of robot and obstacles """
         # robot
-        self.robot_body.remove()
-        cur_vertexes = self.robot.get_vertexes(self.xt[:, indx])
-        self.robot_body = mpatches.Polygon(cur_vertexes, edgecolor='r', facecolor=None)
-        self.ax.add_patch(self.robot_body)
+        # self.robot_body_A.remove()
+        # self.robot_body_B.remove()
+
+        cur_vertexes = self.robot.get_vertices(self.xt[:, indx])
+        self.robot_body_A = mpatches.Polygon(cur_vertexes[0], alpha=0.5, color='red')
+        self.ax.add_patch(self.robot_body_A)
+        self.robot_body_B = mpatches.Polygon(cur_vertexes[1], alpha=0.5, color='blue')
+        self.ax.add_patch(self.robot_body_B)
 
         if self.robot_model == 'unicycle':
             self.robot_arrow.remove()
             self.robot_arrow = mpatches.Arrow(
                 self.xt[:, indx][0],
                 self.xt[:, indx][1],
-                self.robot_width / 2 * np.cos(self.xt[:, indx][2]),
-                self.robot_width / 2 * np.sin(self.xt[:, indx][2]),
+                0.1 / 2 * np.cos(self.xt[:, indx][2]),
+                0.1 / 2 * np.sin(self.xt[:, indx][2]),
                 width=0.15, 
                 color='k',
             )
