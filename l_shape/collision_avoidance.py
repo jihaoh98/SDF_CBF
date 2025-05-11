@@ -7,7 +7,8 @@ import time
 import yaml
 import statistics
 from render_show import Render_Animation
-
+import casadi as ca
+from scipy.spatial import ConvexHull
 
 class Collision_Avoidance:
     def __init__(self, file_name) -> None:
@@ -121,6 +122,52 @@ class Collision_Avoidance:
         )
         self.show_obs = True
 
+    def convex_polygon_hrep(self, points):
+        """
+        Given a set of 2D points (vertices of a convex polygon or a point cloud),
+        compute the H-representation (A, b) of the convex polygon such that Ax ≤ b 
+        describes the polygon (each inequality corresponds to one edge).
+        """
+        # Convert input to a NumPy array (n_points x 2)
+        pts = np.asarray(points, dtype=float)
+        if pts.shape[1] != 2:
+            raise ValueError("Input points must be 2-dimensional coordinates.")
+        
+        # 1. Compute the convex hull of the points
+        hull = ConvexHull(pts)
+        
+        # The ConvexHull vertices are in counterclockwise order (for 2D):contentReference[oaicite:6]{index=6}.
+        # We could use hull.vertices (indices of hull points) if needed for further processing.
+        # Here, we'll use hull.equations to get the facet equations directly.
+        
+        # 2. Get the hyperplane equations for each facet (edge) of the hull.
+        # hull.equations is an array of shape (n_facets, 3) for 2D: [a, b, c] for each line (a*x + b*y + c = 0).
+        # For interior points of the hull, a*x + b*y + c ≤ 0 holds true:contentReference[oaicite:7]{index=7}.
+        equations = hull.equations  # shape (n_edges, 3)
+        
+        # 3. Split each equation into normal vector (a, b) and offset c.
+        A = equations[:, :2]   # all rows, first two columns -> coefficients [a, b] for x and y
+        c = equations[:, 2]    # last column is c in a*x + b*y + c = 0
+        
+        # 4. Convert to inequality form: a*x + b*y ≤ -c
+        # We move c to the right side: a*x + b*y ≤ -c.
+        b = -c  # Now each inequality is [a, b] · [x, y] ≤ b_i (where b_i = -c).
+        
+        # At this point, each row of A and corresponding element of b represent 
+        # an inequality defining the half-space that contains the convex polygon.
+        # (The normal vectors in A point outward, and the interior of the polygon 
+        # satisfies A*x ≤ b.)
+
+        b = b.reshape(-1, 1)  # Reshape b to be a column vector (n_edges x 1)
+        
+        return A, b, hull
+
+
+
+
+
+
+
     def navigation_destination(self):
         """ navigate the robot to its destination """
         t = 0
@@ -206,11 +253,67 @@ class Collision_Avoidance:
                     add_clf=add_clf,
                 )     
             elif self.robot_model == 'unicycle':
+                robot_vertices_list = self.robot.get_vertices(self.robot_cur_state)
+                # extract inequalities from the vertices
+                mat_A, vec_a, _ = self.convex_polygon_hrep(robot_vertices_list[0])
+                mat_B, vec_b, _ = self.convex_polygon_hrep(robot_vertices_list[1])
+                mat_G, vec_g, _ = self.convex_polygon_hrep(obs_vertexes_list[0])
+
+                # solve 2 x N QP, N depends on the number of obstacles
+                opti = ca.Opti('conic');
+                lam_A = opti.variable(1, 4)
+                lam_AG = opti.variable(1, 4)
+
+                obj = - 0.25 * lam_A @ mat_A @ mat_A.T @ lam_A.T - lam_A @ vec_a - lam_AG @ vec_g
+                opti.minimize(-obj)  # max optimization
+
+                opti.subject_to(lam_A @ mat_A + lam_AG @ mat_G == 0)
+                opti.subject_to(lam_A >= 0)
+                opti.subject_to(lam_AG >= 0)
+
+                opti.solver('qpoases');  # the options should be alinged with the solver
+                sol=opti.solve();
+                lam_A_star = sol.value(lam_A).reshape(1, -1)
+                lam_AG_star = sol.value(lam_AG).reshape(1, -1)
+                lam_A_pos_idx = np.where(lam_A_star[0, :] < 1e-5)
+                lam_AG_pos_idx = np.where(lam_AG_star[0, :] < 1e-5)
+                dist_square = sol.value(obj)
+                dist_AG = np.sqrt(dist_square)
+                print('the distance is :', dist_AG)
+
+                # # =======================the second QP problem
+                opti = ca.Opti('conic');
+                lam_B = opti.variable(1, 4)
+                lam_BG = opti.variable(1, 4)
+                # the second qp w.r.t. rectangle B
+                obj = - 0.25 * lam_B @ mat_B @ mat_B.T @ lam_B.T - lam_B @ vec_b - lam_BG @ vec_g
+                opti.minimize(-obj)
+
+                opti.subject_to(lam_B @ mat_B + lam_BG @ mat_G == 0)
+                opti.subject_to(lam_B >= 0)
+                opti.subject_to(lam_BG >= 0)
+
+                opti.solver('qpoases')
+                sol = opti.solve()
+                lam_B_star = sol.value(lam_B).reshape(1, -1)
+                lam_BG_star = sol.value(lam_BG).reshape(1, -1)
+                lam_B_pos_idx = np.where(lam_B_star[0, :] < 1e-5)
+                lam_BG_pos_idx = np.where(lam_BG_star[0, :] < 1e-5)
+                dist_square = sol.value(obj)
+                dist_BG = np.sqrt(dist_square)
+                print('the distance is :', dist_BG)
+
+
                 u, cbf_list, cir_cbf_list, clf1, clf2, slack1, slack2, feas = self.cbf_qp.cbf_clf_qp(
                     self.robot_cur_state,
-                    self.robot_params,
-                    self.robot_two_center,
+                    dist_AG, dist_BG,
+                    mat_A, vec_a,
+                    mat_B, vec_b,
+                    mat_G, vec_g,
+                    lam_A_star, lam_AG_star, lam_A_pos_idx, lam_AG_pos_idx,
+                    lam_B_star, lam_BG_star, lam_B_pos_idx, lam_BG_pos_idx,
                     self.obs_states_list,
+                    robot_vertices_list,
                     obs_vertexes_list,
                     self.cir_obs_states_list,
                     add_clf=add_clf,
@@ -336,8 +439,8 @@ if __name__ == '__main__':
     # file_name = 'integral_settings.yaml'
     file_name = 'unicycle_settings.yaml'
     test_target = Collision_Avoidance(file_name)
-    test_target.navigation_destination()
-    # test_target.collision_avoidance()
+    # test_target.navigation_destination()
+    test_target.collision_avoidance()
     # test_target.storage_data('integral_data.npz')
     # test_target.storage_data('unicycle.npz')
 

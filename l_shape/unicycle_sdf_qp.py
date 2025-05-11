@@ -1,7 +1,8 @@
 import numpy as np
 import casadi as ca
-from unicycle_robot_sdf import Unicycle_Robot_Sdf
 import yaml
+from scipy.spatial import ConvexHull
+from unicycle_robot_sdf import Unicycle_Robot_Sdf
 
 
 class Unicycle_Sdf_Cbf_Clf:
@@ -75,6 +76,9 @@ class Unicycle_Sdf_Cbf_Clf:
         self.opti.solver('qpoases', opts_setting)
 
         self.u = self.opti.variable(self.control_dim)
+        self.lam_A_dot = self.opti.variable(1, 4)
+        self.lam_B_dot = self.opti.variable(1, 4)
+        self.lam_G_dot = self.opti.variable(1, 4)
         self.slack1 = self.opti.variable()
         self.slack2 = self.opti.variable()
         self.obj = None
@@ -178,6 +182,41 @@ class Unicycle_Sdf_Cbf_Clf:
             self.opti.subject_to(lf_cbf + (lg_cbf @ self.u)[0, 0] + dt_obs_cbf + self.cbf_gamma * cbf >= 0)
 
         return np.min(cbf_values)
+
+
+    def add_cbf_dual_cons(self, robot_cur_state, h_AG, h_BG,
+                                mat_A, vec_a, mat_A_dot, vec_a_dot,  # sofa L shape
+                                mat_B, vec_b, mat_B_dot, vec_b_dot,  # sofa L shape
+                                mat_G, vec_g, mat_G_dot, vec_g_dot,  # one osbtacle
+                                lam_A_opt, lam_AG_opt, lam_A_pos_idx, lam_AG_pos_idx,
+                                lam_B_opt, lam_BG_opt, lam_B_pos_idx, lam_BG_pos_idx,):
+        # paper equation (18a)
+        L_dot_AG_1 = - 0.5 * lam_A_opt @ mat_A @ mat_A.T @ self.lam_A_dot.T
+        L_dot_AG_2 = - 0.5 * lam_A_opt @ mat_A @ mat_A_dot.T @ lam_A_opt.T
+        L_dot_AG_3 = - self.lam_A_dot @ vec_a - lam_A_opt @ vec_a_dot - self.lam_G_dot @ vec_g - lam_AG_opt @ vec_g_dot
+        L_dot_AG = L_dot_AG_1 + L_dot_AG_2 + L_dot_AG_3
+        self.opti.subject_to(L_dot_AG >= - 1.0 * (h_AG - 1e-5))  # paper equation (18a)
+        
+        L_dot_BG_1 = - 0.5 * lam_B_opt @ mat_B @ mat_B.T @ self.lam_B_dot.T
+        L_dot_BG_2 = - 0.5 * lam_B_opt @ mat_B @ mat_B_dot.T @ lam_B_opt.T
+        L_dot_BG_3 = - self.lam_B_dot @ vec_b - lam_B_opt @ vec_b_dot - self.lam_G_dot @ vec_g - lam_BG_opt @ vec_g_dot
+        L_dot_BG = L_dot_BG_1 + L_dot_BG_2 + L_dot_BG_3
+        self.opti.subject_to(L_dot_BG >= - 1.0 * (h_BG - 1e-5))  # paper equation (18a)
+
+        # paper cons. (18c)
+        self.opti.subject_to( self.lam_A_dot @ mat_A + lam_A_opt @ mat_A_dot + self.lam_G_dot @ mat_G + lam_AG_opt @ mat_G_dot == 0)  
+        self.opti.subject_to( self.lam_B_dot @ mat_A + lam_B_opt @ mat_B_dot + self.lam_G_dot @ mat_G + lam_BG_opt @ mat_G_dot == 0)  
+        # paper equation (18d)
+        for i in range(len(lam_A_pos_idx)):
+            self.opti.subject_to(self.lam_A_dot[lam_A_pos_idx[0][i]] >= 0)
+        for i in range(len(lam_AG_pos_idx)):
+            self.opti.subject_to(self.lam_G_dot[lam_AG_pos_idx[0][i]] >= 0)
+
+        for i in range(len(lam_B_pos_idx)):
+            self.opti.subject_to(self.lam_B_dot[lam_B_pos_idx[0][i]] >= 0)
+        for i in range(len(lam_BG_pos_idx)):
+            self.opti.subject_to(self.lam_G_dot[lam_BG_pos_idx[0][i]] >= 0)
+
     
     def clf_qp(self, robot_cur_state, add_slack=False, u_ref=None):
         """ 
@@ -204,7 +243,13 @@ class Unicycle_Sdf_Cbf_Clf:
             print(self.opti.return_status() + ' clf qp')
             return None, None, None, False
         
-    def cbf_clf_qp(self, robot_cur_state, robot_params, two_center, obs_states=None, obs_vertexes=None, cir_obs_states=None, add_clf=True, u_ref=None):
+
+    def cbf_clf_qp(self, robot_cur_state, dist_AG, dist_BG, 
+                        mat_A, vec_a, mat_B, vec_b, mat_G, vec_g,
+                        lam_A_opt, lam_AG_opt, lam_A_pos_idx, lam_AG_pos_idx,
+                        lam_B_opt, lam_BG_opt, lam_B_pos_idx, lam_BG_pos_idx,
+                        obs_states=None, robot_vertices=None, 
+                        obs_vertexes=None, cir_obs_states=None, add_clf=True, u_ref=None):
         """
         This is a function to calculate the optimal control for the robot with respect to different shaped obstacles
         Args:
@@ -216,8 +261,22 @@ class Unicycle_Sdf_Cbf_Clf:
         Returns:
             optimal control u
         """
+        # the second qp problem
         if u_ref is None:
             u_ref = np.zeros(self.control_dim)
+
+
+        R_mat = np.array([[np.cos(robot_cur_state[2]), -np.sin(robot_cur_state[2])], [np.sin(robot_cur_state[2]), np.cos(robot_cur_state[2])]])
+        dR_dtheta = np.array([[-np.sin(robot_cur_state[2]), np.cos(robot_cur_state[2])], [-np.cos(robot_cur_state[2]), -np.sin(robot_cur_state[2])]])
+        dR_dt_T = dR_dtheta.T * self.u[1]
+        dA_dt = mat_A @ dR_dt_T
+        dP_dt = np.array([np.cos(robot_cur_state[2]), np.sin(robot_cur_state[2])]) * self.u[0]
+        da_dt = mat_A @ ( dR_dt_T @ robot_cur_state[:2] + R_mat.T @ dP_dt)
+        dB_dt = mat_B @ dR_dt_T
+        db_dt = mat_B @ ( dR_dt_T @ robot_cur_state[:2] + R_mat.T @ dP_dt)
+        # obstacle
+        dg_dt = np.array([[0, 0, 0, 0]]).reshape(4, 1)  # if the obstacle is static
+        dG_dt = np.zeros((4, 2))  
 
         self.set_optimal_function(u_ref, add_slack=add_clf)
 
@@ -229,26 +288,20 @@ class Unicycle_Sdf_Cbf_Clf:
     
         # for plot
         cbf_list = None
-        cir_cbf_list = None
         
-        # add cbf constraints for each obstacles
-        # circular-shaped obstacles
-        if cir_obs_states is not None:
-            cir_cbf_list = []
-            for cir_obs_state in cir_obs_states:
-                cbf = self.add_cir_cbf_cons(robot_cur_state, robot_params, two_center, cir_obs_state)
-                cir_cbf_list.append(cbf)
-                
-        # other-shaped obstacles
-        if obs_states is not None:
-            cbf_list = []
-            obs_num = len(obs_states)
-            for i in range(obs_num):
-                cbf = self.add_cbf_cons_integrate(robot_cur_state, robot_params, two_center, obs_states[i], obs_vertexes[i])
-                cbf_list.append(cbf)
-    
+        # dual constraints
+        for i in range(1):
+            cbf = self.add_cbf_dual_cons(robot_cur_state, dist_AG, dist_BG,
+                                        mat_A, vec_a, dA_dt, da_dt, 
+                                        mat_B, vec_b, dB_dt, db_dt,
+                                        mat_G, vec_g, dG_dt, dg_dt,
+                                        lam_A_opt, lam_AG_opt, lam_A_pos_idx, lam_AG_pos_idx,
+                                        lam_B_opt, lam_BG_opt, lam_B_pos_idx, lam_BG_pos_idx,)
+
+
         self.add_controls_physical_cons()
         
+        cir_cbf_list = None
         # optimize the qp problem
         try:
             sol = self.opti.solve()
