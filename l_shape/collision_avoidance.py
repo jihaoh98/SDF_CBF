@@ -306,10 +306,6 @@ class Collision_Avoidance:
                     mat_G, vec_g,
                     lam_A_star, lam_AG_star, lam_A_pos_idx, lam_AG_pos_idx,
                     lam_B_star, lam_BG_star, lam_B_pos_idx, lam_BG_pos_idx,
-                    self.obs_states_list,
-                    robot_vertices_list,
-                    obs_vertexes_list,
-                    self.cir_obs_states_list,
                     add_clf=add_clf,
                 )
             process_time.append(time.time() - start_time)

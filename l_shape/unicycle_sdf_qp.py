@@ -255,8 +255,7 @@ class Unicycle_Sdf_Cbf_Clf:
                         mat_A, vec_a, mat_B, vec_b, mat_G, vec_g,
                         lam_A_opt, lam_AG_opt, lam_A_pos_idx, lam_AG_pos_idx,
                         lam_B_opt, lam_BG_opt, lam_B_pos_idx, lam_BG_pos_idx,
-                        obs_states=None, robot_vertices=None, 
-                        obs_vertexes=None, cir_obs_states=None, add_clf=True, u_ref=None):
+                        add_clf=True, u_ref=None):
         """
         This is a function to calculate the optimal control for the robot with respect to different shaped obstacles
         Args:
