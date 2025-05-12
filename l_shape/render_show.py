@@ -280,7 +280,7 @@ class Render_Animation:
 
     def show_integral_cbf(self, cbft, cir_cbft, terminal_time):
         """ show both cbf """
-        figure, ax = plt.subplots(figsize=(16, 9))
+        figure, ax = plt.subplots(figsize=(8, 8))
         figure.set_dpi(200)
 
         font_path = "/home/hjh/simfang.ttf"  
@@ -293,28 +293,29 @@ class Render_Animation:
             t, cbft[0, 0:terminal_time].reshape(terminal_time), 
             linewidth=6, color=color_list[0]
         )
-        cir_cbf, = plt.plot(
-            t, cir_cbft[0, 0:terminal_time].reshape(terminal_time),
-            linewidth=6, color=color_list[1]
-        )
+        # cir_cbf, = plt.plot(
+        #     t, cir_cbft[0, 0:terminal_time].reshape(terminal_time),
+        #     linewidth=6, color=color_list[1]
+        # )
 
-        plt.xlabel("时间" + r'$(s)$', fontproperties=label_font)
-        plt.ylabel("距离" + r'$(m)$', fontproperties=label_font)
-        plt.gca().xaxis.set_major_formatter(FormatStrFormatter('%.1f'))
-        plt.gca().yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
-        plt.legend(
-            handles=[cbf, cir_cbf], 
-            labels=['多边形障碍物', '圆形障碍物'], 
-            loc='lower right', prop=legend_font
-        )
+        # plt.xlabel("时间" + r'$(s)$', fontproperties=label_font)
+        # plt.ylabel("距离" + r'$(m)$', fontproperties=label_font)
+        # plt.gca().xaxis.set_major_formatter(FormatStrFormatter('%.1f'))
+        # plt.gca().yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
+        # plt.legend(
+        # #     handles=[cbf, cir_cbf], 
+        #     labels=['多边形障碍物', '圆形障碍物'], 
+        #     loc='lower right', prop=legend_font
+        # )
 
         # set the tick in Times New Roman and size
-        ax.tick_params(labelsize=40)
-        labels = ax.get_xticklabels() + ax.get_yticklabels()
-        [label.set_fontname('Times New Roman') for label in labels]
+        # ax.tick_params(labelsize=40)
+        # labels = ax.get_xticklabels() + ax.get_yticklabels()
+        # [label.set_fontname('Times New Roman') for label in labels]
 
-        plt.grid() 
-        plt.savefig('integral_cbf.png', format='png', dpi=300, bbox_inches='tight')
+        # plt.grid() 
+        # plt.savefig('integral_cbf.png', format='png', dpi=300, bbox_inches='tight')
+        plt.show()
 
     def show_integral_controls(self, ut, terminal_time):
         """ show controls of integral model """

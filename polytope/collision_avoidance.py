@@ -245,8 +245,8 @@ class Collision_Avoidance:
                     if self.robot_model == 'unicycle':
                         if self.obs_list[0].position[0] <= 0.5:
                             self.obs_list[0].vel[0] = 0.0
-                        if self.obs_list[1].position[0] >= 14.0:
-                            self.obs_list[1].vel[0] = 0.0
+                        # if self.obs_list[1].position[0] >= 14.0:
+                        #     self.obs_list[1].vel[0] = 0.0
                 self.obs_states_list = [self.obs_list[i].get_current_state() for i in range(self.obs_num)]
 
             if self.cir_obs_states_list is not None:

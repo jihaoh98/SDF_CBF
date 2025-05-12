@@ -162,12 +162,6 @@ class Collision_Avoidance:
         
         return A, b, hull
 
-
-
-
-
-
-
     def navigation_destination(self):
         """ navigate the robot to its destination """
         t = 0
@@ -347,8 +341,8 @@ class Collision_Avoidance:
                     if self.robot_model == 'unicycle':
                         if self.obs_list[0].position[0] <= 0.5:
                             self.obs_list[0].vel[0] = 0.0
-                        if self.obs_list[1].position[0] >= 14.0:
-                            self.obs_list[1].vel[0] = 0.0
+                        # if self.obs_list[1].position[0] >= 14.0:
+                        #     self.obs_list[1].vel[0] = 0.0
                 self.obs_states_list = [self.obs_list[i].get_current_state() for i in range(self.obs_num)]
 
             if self.cir_obs_states_list is not None:
@@ -449,5 +443,5 @@ if __name__ == '__main__':
     test_target.render()
     # test_target.show_clf()
     # test_target.show_slack()
-    # test_target.show_cbf(0)
+    test_target.show_cbf()
     # test_target.show_controls()

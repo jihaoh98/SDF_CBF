@@ -216,7 +216,14 @@ class Unicycle_Sdf_Cbf_Clf:
             self.opti.subject_to(self.lam_B_dot[lam_B_pos_idx[0][i]] >= 0)
         for i in range(len(lam_BG_pos_idx)):
             self.opti.subject_to(self.lam_G_dot[lam_BG_pos_idx[0][i]] >= 0)
-
+        
+        # paper cons. (18e)
+        self.opti.subject_to(self.lam_A_dot <= 1e5)
+        self.opti.subject_to(self.lam_B_dot <= 1e5)
+        self.opti.subject_to(self.lam_G_dot <= 1e5)
+        self.opti.subject_to(self.lam_A_dot >= -1e5)
+        self.opti.subject_to(self.lam_B_dot >= -1e5)
+        self.opti.subject_to(self.lam_G_dot >= -1e5)
     
     def clf_qp(self, robot_cur_state, add_slack=False, u_ref=None):
         """ 
@@ -287,11 +294,11 @@ class Unicycle_Sdf_Cbf_Clf:
             clf2 = self.add_clf_theta_cons(robot_cur_state, add_slack=True)
     
         # for plot
-        cbf_list = None
+        cbf_list = []
         
         # dual constraints
         for i in range(1):
-            cbf = self.add_cbf_dual_cons(robot_cur_state, dist_AG, dist_BG,
+            self.add_cbf_dual_cons(robot_cur_state, dist_AG, dist_BG,
                                         mat_A, vec_a, dA_dt, da_dt, 
                                         mat_B, vec_b, dB_dt, db_dt,
                                         mat_G, vec_g, dG_dt, dg_dt,
@@ -301,6 +308,7 @@ class Unicycle_Sdf_Cbf_Clf:
 
         self.add_controls_physical_cons()
         
+        cbf_list.append(dist_BG)
         cir_cbf_list = None
         # optimize the qp problem
         try:
