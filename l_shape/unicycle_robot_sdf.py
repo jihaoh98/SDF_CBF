@@ -110,8 +110,8 @@ class Unicycle_Robot_Sdf:
         """ define the system dynamics """
         f = sp.Matrix([0, 0, 0])
         g = sp.Matrix([
-            [sp.cos(self.robot_state[2]), 0],
-            [sp.sin(self.robot_state[2]), 0],
+            [sp.cos(self.robot_state[2] + np.pi/4), 0],
+            [sp.sin(self.robot_state[2] + np.pi/4), 0],
             [0, 1]])
 
         return f, g
@@ -229,256 +229,256 @@ class Unicycle_Robot_Sdf:
         self.cir_cbf = lambdify([self.robot_state, self.robot_param, self.two_center, self.cir_obstacle_state],
                                 self.cir_cbf_symbolic)
 
-    def get_relative_position(self, robot_state, obstacle_state):
-        """ get the coordinate of obstacle in the robot frame """
-        R_inverse = np.array([[cos(robot_state[2]), sin(robot_state[2])],
-                              [-sin(robot_state[2]), cos(robot_state[2])]])
-        relative_position = np.array([[obstacle_state[0] - robot_state[0]],
-                                      [obstacle_state[1] - robot_state[1]]])
-        # get position in the robot frame
-        relative_position = R_inverse @ relative_position
-        relative_position = relative_position.reshape(2, )
+    # def get_relative_position(self, robot_state, obstacle_state):
+    #     """ get the coordinate of obstacle in the robot frame """
+    #     R_inverse = np.array([[cos(robot_state[2]), sin(robot_state[2])],
+    #                           [-sin(robot_state[2]), cos(robot_state[2])]])
+    #     relative_position = np.array([[obstacle_state[0] - robot_state[0]],
+    #                                   [obstacle_state[1] - robot_state[1]]])
+    #     # get position in the robot frame
+    #     relative_position = R_inverse @ relative_position
+    #     relative_position = relative_position.reshape(2, )
 
-        # in shape (2, )
-        return relative_position
+    #     # in shape (2, )
+    #     return relative_position
 
-    def get_cbf_value(self, relative_position, robot_params, two_center, obs_shape=None, obstacle_radius=None):
-        """ get the cbf_value based on the relative position """
-        # diatance with the first rectangle (L-shaped robot combined by two rectangles)
-        # robot_params: [width and height]
-        dx1 = abs(relative_position[0] - two_center[0]) - robot_params[0] / 2
-        dy1 = abs(relative_position[1] - two_center[1]) - robot_params[1] / 2
-        distance_inside1 = min(max(dx1, dy1), 0.0)
-        distance_outside1 = sqrt(max(dx1, 0) ** 2 + max(dy1, 0) ** 2)
-        distance1 = distance_outside1 + distance_inside1
+    # def get_cbf_value(self, relative_position, robot_params, two_center, obs_shape=None, obstacle_radius=None):
+    #     """ get the cbf_value based on the relative position """
+    #     # diatance with the first rectangle (L-shaped robot combined by two rectangles)
+    #     # robot_params: [width and height]
+    #     dx1 = abs(relative_position[0] - two_center[0]) - robot_params[0] / 2
+    #     dy1 = abs(relative_position[1] - two_center[1]) - robot_params[1] / 2
+    #     distance_inside1 = min(max(dx1, dy1), 0.0)
+    #     distance_outside1 = sqrt(max(dx1, 0) ** 2 + max(dy1, 0) ** 2)
+    #     distance1 = distance_outside1 + distance_inside1
 
-        # diatance with the second rectangle
-        dx2 = abs(relative_position[0] - two_center[2]) - robot_params[1] / 2
-        dy2 = abs(relative_position[1] - two_center[3]) - robot_params[0] / 2
-        distance_inside2 = min(max(dx2, dy2), 0.0)
-        distance_outside2 = sqrt(max(dx2, 0) ** 2 + max(dy2, 0) ** 2)
-        distance2 = distance_outside2 + distance_inside2
+    #     # diatance with the second rectangle
+    #     dx2 = abs(relative_position[0] - two_center[2]) - robot_params[1] / 2
+    #     dy2 = abs(relative_position[1] - two_center[3]) - robot_params[0] / 2
+    #     distance_inside2 = min(max(dx2, dy2), 0.0)
+    #     distance_outside2 = sqrt(max(dx2, 0) ** 2 + max(dy2, 0) ** 2)
+    #     distance2 = distance_outside2 + distance_inside2
 
-        # both distance small than zero is not considered (have some defects, however, not important)
-        distance = min(distance1, distance2)
+    #     # both distance small than zero is not considered (have some defects, however, not important)
+    #     distance = min(distance1, distance2)
 
-        # add margin for collision avoidance
-        if obs_shape == 'circle':
-            distance = distance - obstacle_radius - self.margin
-        else:
-            distance = distance - self.margin
-        return distance
+    #     # add margin for collision avoidance
+    #     if obs_shape == 'circle':
+    #         distance = distance - obstacle_radius - self.margin
+    #     else:
+    #         distance = distance - self.margin
+    #     return distance
 
-    def derive_cbf_gradient_direct(self, robot_state, robot_params, two_center, obstacle_state, obs_shape=None):
-        """ get the cbf gradient directly """
-        if obs_shape == 'circle':
-            sdf = self.cir_cbf(robot_state, robot_params, two_center, obstacle_state)
-        else:
-            sdf = self.cbf(robot_state, robot_params, two_center, obstacle_state)
+    # def derive_cbf_gradient_direct(self, robot_state, robot_params, two_center, obstacle_state, obs_shape=None):
+    #     """ get the cbf gradient directly """
+    #     if obs_shape == 'circle':
+    #         sdf = self.cir_cbf(robot_state, robot_params, two_center, obstacle_state)
+    #     else:
+    #         sdf = self.cbf(robot_state, robot_params, two_center, obstacle_state)
 
-        # robot cbf gradient
-        sdf_gradient = np.zeros((robot_state.shape[0],))
-        for i in range(robot_state.shape[0]):
-            e = np.zeros((robot_state.shape[0],))
-            e[i] = self.e0
-            if obs_shape == 'circle':
-                sdf_next = self.cir_cbf(robot_state + e, robot_params, two_center, obstacle_state)
-            else:
-                sdf_next = self.cbf(robot_state + e, robot_params, two_center, obstacle_state)
-            sdf_gradient[i] = (sdf_next - sdf) / self.e0
+    #     # robot cbf gradient
+    #     sdf_gradient = np.zeros((robot_state.shape[0],))
+    #     for i in range(robot_state.shape[0]):
+    #         e = np.zeros((robot_state.shape[0],))
+    #         e[i] = self.e0
+    #         if obs_shape == 'circle':
+    #             sdf_next = self.cir_cbf(robot_state + e, robot_params, two_center, obstacle_state)
+    #         else:
+    #             sdf_next = self.cbf(robot_state + e, robot_params, two_center, obstacle_state)
+    #         sdf_gradient[i] = (sdf_next - sdf) / self.e0
 
-        lf_cbf = (sdf_gradient @ self.f(robot_state))[0]
-        lg_cbf = (sdf_gradient @ self.g(robot_state)).reshape(1, 2)
+    #     lf_cbf = (sdf_gradient @ self.f(robot_state))[0]
+    #     lg_cbf = (sdf_gradient @ self.g(robot_state)).reshape(1, 2)
 
-        # for dynamic obstacle
-        obs_gradient = np.zeros((2,))
-        for i in range(2):
-            e = np.zeros((obstacle_state.shape[0],))
-            e[i] = self.e0
-            if obs_shape == 'circle':
-                sdf_next = self.cir_cbf(robot_state, robot_params, two_center, obstacle_state + e)
-            else:
-                sdf_next = self.cbf(robot_state, robot_params, two_center, obstacle_state + e)
-            obs_gradient[i] = (sdf_next - sdf) / self.e0
+    #     # for dynamic obstacle
+    #     obs_gradient = np.zeros((2,))
+    #     for i in range(2):
+    #         e = np.zeros((obstacle_state.shape[0],))
+    #         e[i] = self.e0
+    #         if obs_shape == 'circle':
+    #             sdf_next = self.cir_cbf(robot_state, robot_params, two_center, obstacle_state + e)
+    #         else:
+    #             sdf_next = self.cbf(robot_state, robot_params, two_center, obstacle_state + e)
+    #         obs_gradient[i] = (sdf_next - sdf) / self.e0
 
-        # no difference for different obstacles
-        dt_obs_cbf = obs_gradient @ self.obstacle_dynamics(obstacle_state[0:4])[0:2]
-        return lf_cbf, lg_cbf, dt_obs_cbf[0]
+    #     # no difference for different obstacles
+    #     dt_obs_cbf = obs_gradient @ self.obstacle_dynamics(obstacle_state[0:4])[0:2]
+    #     return lf_cbf, lg_cbf, dt_obs_cbf[0]
 
-    def derive_cbf_gradient(self, robot_state, robot_params, two_center, obstacle_state, obs_shape=None):
-        """ 
-        derive the gradient of sdf between the rectangle robot and a point from the polytopic-shaped obstacle (or circular obstacle)
-        Args:
-            robot_state: x, y, theta in world frame
-            obstacle_state: [ox, oy, ovx, ovy], only one point of polytopic-shaped obstacle in the world frame
-            cir_obstacle_state: [ox, oy, ovx, ovy, obstacle radius] for circular obstacle
-        Returns:
-            lf_cbf in shape ()
-            lg_cbf in shape (1, 2)
-            dt_obs_cbf in shape ()
-        """
-        # x_b = R^(-1) * (x_o - xr)
-        # dh / dx = [dh / dp, dh / dtheta]
+    # def derive_cbf_gradient(self, robot_state, robot_params, two_center, obstacle_state, obs_shape=None):
+    #     """ 
+    #     derive the gradient of sdf between the rectangle robot and a point from the polytopic-shaped obstacle (or circular obstacle)
+    #     Args:
+    #         robot_state: x, y, theta in world frame
+    #         obstacle_state: [ox, oy, ovx, ovy], only one point of polytopic-shaped obstacle in the world frame
+    #         cir_obstacle_state: [ox, oy, ovx, ovy, obstacle radius] for circular obstacle
+    #     Returns:
+    #         lf_cbf in shape ()
+    #         lg_cbf in shape (1, 2)
+    #         dt_obs_cbf in shape ()
+    #     """
+    #     # x_b = R^(-1) * (x_o - xr)
+    #     # dh / dx = [dh / dp, dh / dtheta]
 
-        # calculate the dh / dx_b based on numerical values, and use dh / dx_b to express other terms
-        dh_dxb = self.get_dh_dxb_relative(robot_state, robot_params, two_center, obstacle_state, obs_shape)
+    #     # calculate the dh / dx_b based on numerical values, and use dh / dx_b to express other terms
+    #     dh_dxb = self.get_dh_dxb_relative(robot_state, robot_params, two_center, obstacle_state, obs_shape)
 
-        # lf_cbf, lg_cbf, dt_obs_cbf (dynamic obstacle)
-        lf_cbf, lg_cbf = self.get_cbf_gradient(robot_state, obstacle_state, dh_dxb)
-        dt_obs_cbf = self.get_dt_obs_cbf(robot_state, obstacle_state, dh_dxb)
+    #     # lf_cbf, lg_cbf, dt_obs_cbf (dynamic obstacle)
+    #     lf_cbf, lg_cbf = self.get_cbf_gradient(robot_state, obstacle_state, dh_dxb)
+    #     dt_obs_cbf = self.get_dt_obs_cbf(robot_state, obstacle_state, dh_dxb)
 
-        return lf_cbf, lg_cbf, dt_obs_cbf
+    #     return lf_cbf, lg_cbf, dt_obs_cbf
 
-    def get_dh_dxb(self, robot_state, obstacle_state, obs_shape=None):
-        """ calculate the sdf gradient based on numerical values """
-        # method1, based on world frame, not correct
-        if obs_shape == 'circle':
-            sdf = self.cir_cbf(robot_state, obstacle_state)
-        else:
-            sdf = self.cbf(robot_state, obstacle_state)
+    # def get_dh_dxb(self, robot_state, obstacle_state, obs_shape=None):
+    #     """ calculate the sdf gradient based on numerical values """
+    #     # method1, based on world frame, not correct
+    #     if obs_shape == 'circle':
+    #         sdf = self.cir_cbf(robot_state, obstacle_state)
+    #     else:
+    #         sdf = self.cbf(robot_state, obstacle_state)
 
-        sdf_gradient = np.zeros((obstacle_state[0:2].shape[0],))
-        for i in range(obstacle_state[0:2].shape[0]):
-            e = np.zeros((obstacle_state.shape[0],))
-            e[i] = self.e0
-            if obs_shape == 'circle':
-                sdf_next = self.cir_cbf(robot_state, obstacle_state + e)
-            else:
-                sdf_next = self.cbf(robot_state, obstacle_state + e)
-            sdf_gradient[i] = (sdf_next - sdf) / self.e0
+    #     sdf_gradient = np.zeros((obstacle_state[0:2].shape[0],))
+    #     for i in range(obstacle_state[0:2].shape[0]):
+    #         e = np.zeros((obstacle_state.shape[0],))
+    #         e[i] = self.e0
+    #         if obs_shape == 'circle':
+    #             sdf_next = self.cir_cbf(robot_state, obstacle_state + e)
+    #         else:
+    #             sdf_next = self.cbf(robot_state, obstacle_state + e)
+    #         sdf_gradient[i] = (sdf_next - sdf) / self.e0
 
-        return sdf_gradient
+    #     return sdf_gradient
 
-    def get_dh_dxb_relative(self, robot_state, robot_params, two_center, obstacle_state, obs_shape=None):
-        """ calculate the sdf gradient based on numerical values """
-        # method2, based on robot frame
-        relative_position = self.get_relative_position(robot_state, obstacle_state)
-        if obs_shape == 'circle':
-            sdf = self.get_cbf_value(relative_position, robot_params, two_center, obs_shape, obstacle_state[4])
-        else:
-            sdf = self.get_cbf_value(relative_position, robot_params, two_center)
+    # def get_dh_dxb_relative(self, robot_state, robot_params, two_center, obstacle_state, obs_shape=None):
+    #     """ calculate the sdf gradient based on numerical values """
+    #     # method2, based on robot frame
+    #     relative_position = self.get_relative_position(robot_state, obstacle_state)
+    #     if obs_shape == 'circle':
+    #         sdf = self.get_cbf_value(relative_position, robot_params, two_center, obs_shape, obstacle_state[4])
+    #     else:
+    #         sdf = self.get_cbf_value(relative_position, robot_params, two_center)
 
-        sdf_gradient = np.zeros((obstacle_state[0:2].shape[0],))
-        for i in range(obstacle_state[0:2].shape[0]):
-            e = np.zeros((obstacle_state[0:2].shape[0],))
-            e[i] = self.e0
-            if obs_shape == 'circle':
-                sdf_next = self.get_cbf_value(relative_position + e, robot_params, two_center, obs_shape,
-                                              obstacle_state[4])
-            else:
-                sdf_next = self.get_cbf_value(relative_position + e, robot_params, two_center)
-            sdf_gradient[i] = (sdf_next - sdf) / self.e0
+    #     sdf_gradient = np.zeros((obstacle_state[0:2].shape[0],))
+    #     for i in range(obstacle_state[0:2].shape[0]):
+    #         e = np.zeros((obstacle_state[0:2].shape[0],))
+    #         e[i] = self.e0
+    #         if obs_shape == 'circle':
+    #             sdf_next = self.get_cbf_value(relative_position + e, robot_params, two_center, obs_shape,
+    #                                           obstacle_state[4])
+    #         else:
+    #             sdf_next = self.get_cbf_value(relative_position + e, robot_params, two_center)
+    #         sdf_gradient[i] = (sdf_next - sdf) / self.e0
 
-        # sdf_gradient[1] = sdf_gradient[1] / np.abs(sdf_gradient[1])
-        # compute the normilization of sdf_gradient
-        # sdf_gradient = sdf_gradient / np.linalg.norm(sdf_gradient)
-        return sdf_gradient
+    #     # sdf_gradient[1] = sdf_gradient[1] / np.abs(sdf_gradient[1])
+    #     # compute the normilization of sdf_gradient
+    #     # sdf_gradient = sdf_gradient / np.linalg.norm(sdf_gradient)
+    #     return sdf_gradient
 
-    def get_cbf_gradient(self, robot_state, obstacle_state, sdf_gradient):
-        """ 
-        Args:
-            robot_state: x, y, theta
-            obstacle_state: ox, oy, ovx, ovy
-            cir_obstacle_state: ox, oy, ovx, ovy, o_radius
-            sdf_gradient: dh / dx_b
-        Returns:
-            lf_cbf in shape ()
-            lg_cbf in shape (1, 2)
-        """
-        # h is calculated based on the relative position of obstacle
-        # dh / dt = (dh / dx) * (dx / dt), x is a vector and dx / dt = f(x) + g(x) * u
-        # x_b is the obstacle state in robot frame, x_o is the obstacle state in world frame, xr is the robot state
-        # x_b = R^(-1) * (x_o - xr)
-        # dh / dx = [dh / dp, dh / dtheta] p is xr (x, y)
+    # def get_cbf_gradient(self, robot_state, obstacle_state, sdf_gradient):
+    #     """ 
+    #     Args:
+    #         robot_state: x, y, theta
+    #         obstacle_state: ox, oy, ovx, ovy
+    #         cir_obstacle_state: ox, oy, ovx, ovy, o_radius
+    #         sdf_gradient: dh / dx_b
+    #     Returns:
+    #         lf_cbf in shape ()
+    #         lg_cbf in shape (1, 2)
+    #     """
+    #     # h is calculated based on the relative position of obstacle
+    #     # dh / dt = (dh / dx) * (dx / dt), x is a vector and dx / dt = f(x) + g(x) * u
+    #     # x_b is the obstacle state in robot frame, x_o is the obstacle state in world frame, xr is the robot state
+    #     # x_b = R^(-1) * (x_o - xr)
+    #     # dh / dx = [dh / dp, dh / dtheta] p is xr (x, y)
 
-        # in shape (2, )
-        dh_dp = self.get_dh_dp(robot_state, sdf_gradient)
-        dh_dtheta = self.get_dh_dtheta(robot_state, obstacle_state, sdf_gradient)
-        dh_dx = np.array([dh_dp[0], dh_dp[1], dh_dtheta])
+    #     # in shape (2, )
+    #     dh_dp = self.get_dh_dp(robot_state, sdf_gradient)
+    #     dh_dtheta = self.get_dh_dtheta(robot_state, obstacle_state, sdf_gradient)
+    #     dh_dx = np.array([dh_dp[0], dh_dp[1], dh_dtheta])
 
-        # get lf_cbf, lg_cbf
-        lf_cbf = (dh_dx @ self.f(robot_state))[0]
-        lg_cbf = (dh_dx @ self.g(robot_state)).reshape(1, 2)
-        return lf_cbf, lg_cbf
+    #     # get lf_cbf, lg_cbf
+    #     lf_cbf = (dh_dx @ self.f(robot_state))[0]
+    #     lg_cbf = (dh_dx @ self.g(robot_state)).reshape(1, 2)
+    #     return lf_cbf, lg_cbf
 
-    def get_dh_dp(self, robot_state, sdf_gradient):
-        """ get dh_dp in shape (2, ) """
-        # x_b = R^(-1) * (x_o - xr)
-        # dh / dxr = (dx_b / dxr) @ (dh / dx_b) = -R @ (dh / d x_b)
-        R = np.array([[cos(robot_state[2]), -sin(robot_state[2])],
-                      [sin(robot_state[2]), cos(robot_state[2])]])
+    # def get_dh_dp(self, robot_state, sdf_gradient):
+    #     """ get dh_dp in shape (2, ) """
+    #     # x_b = R^(-1) * (x_o - xr)
+    #     # dh / dxr = (dx_b / dxr) @ (dh / dx_b) = -R @ (dh / d x_b)
+    #     R = np.array([[cos(robot_state[2]), -sin(robot_state[2])],
+    #                   [sin(robot_state[2]), cos(robot_state[2])]])
 
-        dh_dp = -R @ sdf_gradient.reshape(2, 1)
-        dh_dp = dh_dp.reshape(2, )
-        return dh_dp
+    #     dh_dp = -R @ sdf_gradient.reshape(2, 1)
+    #     dh_dp = dh_dp.reshape(2, )
+    #     return dh_dp
 
-    def get_dh_dtheta(self, robot_state, obstacle_state, sdf_gradient):
-        """ get dh_dtheta in shape () """
-        # x_b = R^(-1) * (x_o - xr)
-        # dh / dtheta = (dx_b / dtheta)^T @ (dh / dx_b)
-        # dx_b / dtheta = d R^-1 / d theta @ (x_o - xr)
+    # def get_dh_dtheta(self, robot_state, obstacle_state, sdf_gradient):
+    #     """ get dh_dtheta in shape () """
+    #     # x_b = R^(-1) * (x_o - xr)
+    #     # dh / dtheta = (dx_b / dtheta)^T @ (dh / dx_b)
+    #     # dx_b / dtheta = d R^-1 / d theta @ (x_o - xr)
 
-        dR_inverse_dtheta = np.array([[-sin(robot_state[2]), cos(robot_state[2])],
-                                      [-cos(robot_state[2]), -sin(robot_state[2])]])
-        relative_position = np.array([obstacle_state[0] - robot_state[0],
-                                      obstacle_state[1] - robot_state[1]])
-        dxb_dtheta = dR_inverse_dtheta @ relative_position.reshape(2, 1)
+    #     dR_inverse_dtheta = np.array([[-sin(robot_state[2]), cos(robot_state[2])],
+    #                                   [-cos(robot_state[2]), -sin(robot_state[2])]])
+    #     relative_position = np.array([obstacle_state[0] - robot_state[0],
+    #                                   obstacle_state[1] - robot_state[1]])
+    #     dxb_dtheta = dR_inverse_dtheta @ relative_position.reshape(2, 1)
 
-        # in shape (1, 1)
-        dh_dtheta = dxb_dtheta.T @ sdf_gradient.reshape(2, 1)
-        dh_dtheta = dh_dtheta[0, 0]
-        return dh_dtheta
+    #     # in shape (1, 1)
+    #     dh_dtheta = dxb_dtheta.T @ sdf_gradient.reshape(2, 1)
+    #     dh_dtheta = dh_dtheta[0, 0]
+    #     return dh_dtheta
 
-    def get_dt_obs_cbf(self, robot_state, obstacle_state, sdf_gradient):
-        """ 
-        get the dt_cbf with respect to the dynamic obstacle, assume the velocity of obstacle is a constant
-        Args:
-            robot_state: x, y ,theta
-            obstacle_state: ox, oy, ovx, ovy
-            cir_obstacle_state: ox, oy, ovx, ovy, o_radius
-            sdf_gradient: dh / dx_b
-        Returns:
-            dt_obs_cbf in shape ()
-        """
-        # x_b = R^(-1) * (x_o - xr)
-        # dh / dt = (dh / dx_o) @ (dx_o / dt)
-        # dh / dx_o = (dx_b / dx_o) @ (dh / dx_b)
-        # dx_b / d x_o = R
-        # dh /dt = (R @ (dh / d x_b)) @ (d x_o / dt)
+    # def get_dt_obs_cbf(self, robot_state, obstacle_state, sdf_gradient):
+    #     """ 
+    #     get the dt_cbf with respect to the dynamic obstacle, assume the velocity of obstacle is a constant
+    #     Args:
+    #         robot_state: x, y ,theta
+    #         obstacle_state: ox, oy, ovx, ovy
+    #         cir_obstacle_state: ox, oy, ovx, ovy, o_radius
+    #         sdf_gradient: dh / dx_b
+    #     Returns:
+    #         dt_obs_cbf in shape ()
+    #     """
+    #     # x_b = R^(-1) * (x_o - xr)
+    #     # dh / dt = (dh / dx_o) @ (dx_o / dt)
+    #     # dh / dx_o = (dx_b / dx_o) @ (dh / dx_b)
+    #     # dx_b / d x_o = R
+    #     # dh /dt = (R @ (dh / d x_b)) @ (d x_o / dt)
 
-        R = np.array([[cos(robot_state[2]), -sin(robot_state[2])],
-                      [sin(robot_state[2]), cos(robot_state[2])]])
+    #     R = np.array([[cos(robot_state[2]), -sin(robot_state[2])],
+    #                   [sin(robot_state[2]), cos(robot_state[2])]])
 
-        # in shape (2, 1)
-        dh_dox = R @ sdf_gradient.reshape(2, 1)
-        # no different for different obstacle
-        dt_obs_cbf = dh_dox.reshape(2, ) @ self.obstacle_dynamics(obstacle_state[0:4])[0:2]
+    #     # in shape (2, 1)
+    #     dh_dox = R @ sdf_gradient.reshape(2, 1)
+    #     # no different for different obstacle
+    #     dt_obs_cbf = dh_dox.reshape(2, ) @ self.obstacle_dynamics(obstacle_state[0:4])[0:2]
 
-        # dt_obs_cbf in shape (1, )
-        return dt_obs_cbf[0]
+    #     # dt_obs_cbf in shape (1, )
+    #     return dt_obs_cbf[0]
 
-    def get_sampled_points_from_obstacle_vertexes(self, obstacle_vertexes, num_samples):
-        """
-        get the sample points from the obstacle vertexes
-        Params:
-            obstacle vextexes: obstacle vertexes position in anticlockwise np.array (n, 2)
-            num_samples: the points sampled in each edge
+    # def get_sampled_points_from_obstacle_vertexes(self, obstacle_vertexes, num_samples):
+    #     """
+    #     get the sample points from the obstacle vertexes
+    #     Params:
+    #         obstacle vextexes: obstacle vertexes position in anticlockwise np.array (n, 2)
+    #         num_samples: the points sampled in each edge
 
-        Returns:
-            sampled points in np.array (n, 2)
-        """
+    #     Returns:
+    #         sampled points in np.array (n, 2)
+    #     """
 
-        sample_points = []
-        t = np.linspace(0, 1, num_samples)
+    #     sample_points = []
+    #     t = np.linspace(0, 1, num_samples)
 
-        # sample points
-        num_vertexes = obstacle_vertexes.shape[0]
-        for i in range(num_vertexes):
-            dx, dy = np.subtract(obstacle_vertexes[(i + 1) % num_vertexes], obstacle_vertexes[i])
-            edge_points = [[obstacle_vertexes[i][0] + dx * tt, obstacle_vertexes[i][1] + dy * tt] for tt in t[:-1]]
-            sample_points.extend(edge_points)
+    #     # sample points
+    #     num_vertexes = obstacle_vertexes.shape[0]
+    #     for i in range(num_vertexes):
+    #         dx, dy = np.subtract(obstacle_vertexes[(i + 1) % num_vertexes], obstacle_vertexes[i])
+    #         edge_points = [[obstacle_vertexes[i][0] + dx * tt, obstacle_vertexes[i][1] + dy * tt] for tt in t[:-1]]
+    #         sample_points.extend(edge_points)
 
-        return np.array(sample_points)
+    #     return np.array(sample_points)
 
     def next_state(self, current_state, u, dt):
         """ simple one step """

@@ -31,6 +31,7 @@ class Unicycle_Sdf_Cbf_Clf:
         self.clf2 = self.robot.clf2
         self.lf_clf2 = self.robot.lf_clf2
         self.lg_clf2 = self.robot.lg_clf2
+        
         # for both
         self.clf3 = self.robot.clf3
         self.lf_clf3 = self.robot.lf_clf3
@@ -59,32 +60,31 @@ class Unicycle_Sdf_Cbf_Clf:
         # optimize and set the solver
 
         # ipopt
-        # self.opti = ca.Opti()
-        # opts_setting = {
-        #         'ipopt.max_iter': 100,
-        #         'ipopt.print_level': 0,
-        #         'print_time': 0,
-        #         'ipopt.acceptable_tol': 1e-8,
-        #         'ipopt.acceptable_obj_change_tol': 1e-6
-        #     }
-        # self.opti.solver('ipopt', opts_setting)
+        self.opti = ca.Opti()
+        opts_setting = {
+                'ipopt.max_iter': 5000,
+                'ipopt.print_level': 0,
+                'print_time': 0,
+                'ipopt.acceptable_tol': 1e-8,
+                'ipopt.acceptable_obj_change_tol': 1e-6
+            }
+        self.opti.solver('ipopt', opts_setting)
 
         # qpoases
-        self.opti = ca.Opti('conic')
-        opts_setting = {
-            'printLevel': 'low',  
-            'error_on_fail': False,
-            'expand': True,
-            'print_time': 0
-        }
-        self.opti.solver('qpoases', opts_setting)
+        # self.opti = ca.Opti('conic')
+        # opts_setting = {
+        #     'printLevel': 'low',  
+        #     'error_on_fail': False,
+        #     'expand': True,
+        #     'print_time': 0
+        # }
+        # self.opti.solver('qpoases', opts_setting)
 
         self.u = self.opti.variable(self.control_dim)
         self.lam_A_dot = self.opti.variable(1, 4)
         self.lam_B_dot = self.opti.variable(1, 4)
         self.lam_G_dot = self.opti.variable(1, 4)
-        self.slack1 = self.opti.variable()
-        self.slack2 = self.opti.variable()
+        self.slack = self.opti.variable()
         self.obj = None
   
         # approach the desired control and smooth the control
@@ -95,41 +95,45 @@ class Unicycle_Sdf_Cbf_Clf:
         """ set the optimal function """
         self.obj = (self.u - u_ref).T @ self.H @ (self.u - u_ref)
         if add_slack:
-            self.obj = self.obj + self.weight_slack * self.slack1 ** 2
-            self.obj = self.obj + self.weight_slack * self.slack2 ** 2
+            # self.obj = self.obj
+            self.obj = self.obj + self.weight_slack * self.slack ** 2
         self.opti.minimize(self.obj)
-        self.opti.subject_to()
 
-    def add_clf_distance_cons(self, robot_cur_state, add_slack=True):
-        """ add clf cons of distance """
-        clf1 = self.clf1(robot_cur_state, self.target_state)
-        lf_clf1 = self.lf_clf1(robot_cur_state, self.target_state)
-        lg_clf1 = self.lg_clf1(robot_cur_state, self.target_state)
+        self.opti.subject_to(self.u[0] >= -0.3)
+        self.opti.subject_to(self.u[0] <= 0.3)
+        self.opti.subject_to(self.u[1] >= -0.2)
+        self.opti.subject_to(self.u[1] <= 0.2)
 
-        if add_slack:
-            self.opti.subject_to(lf_clf1 + (lg_clf1 @ self.u)[0, 0] + self.clf_lambda[0] * clf1 <= self.slack1)
-            self.opti.subject_to(self.opti.bounded(-np.inf, self.slack1, np.inf))
-        else:
-            self.opti.subject_to(lf_clf1 + (lg_clf1 @ self.u)[0, 0] + self.clf_lambda[0] * clf1 <= 0)
+    # def add_clf_distance_cons(self, robot_cur_state, add_slack=True):
+    #     """ add clf cons of distance """
+    #     clf1 = self.clf1(robot_cur_state, self.target_state)
+    #     lf_clf1 = self.lf_clf1(robot_cur_state, self.target_state)
+    #     lg_clf1 = self.lg_clf1(robot_cur_state, self.target_state)
+
+    #     if add_slack:
+    #         self.opti.subject_to(lf_clf1 + (lg_clf1 @ self.u)[0, 0] + self.clf_lambda[0] * clf1 <= self.slack1)
+    #         self.opti.subject_to(self.opti.bounded(-np.inf, self.slack1, np.inf))
+    #     else:
+    #         self.opti.subject_to(lf_clf1 + (lg_clf1 @ self.u)[0, 0] + self.clf_lambda[0] * clf1 <= 0)
         
-        return clf1
+    #     return clf1
     
-    def add_clf_theta_cons(self, robot_cur_state, add_slack=True):
-        """ add clf cons of theta """
-        clf2 = self.clf2(robot_cur_state, self.target_state)
-        lf_clf2 = self.lf_clf2(robot_cur_state, self.target_state)
-        lg_clf2 = self.robot.lg_clf2(robot_cur_state, self.target_state)
+    # def add_clf_theta_cons(self, robot_cur_state, add_slack=True):
+    #     """ add clf cons of theta """
+    #     clf2 = self.clf2(robot_cur_state, self.target_state)
+    #     lf_clf2 = self.lf_clf2(robot_cur_state, self.target_state)
+    #     lg_clf2 = self.robot.lg_clf2(robot_cur_state, self.target_state)
 
-        if lg_clf2[0, 1] != 0:
-            if add_slack:
-                self.opti.subject_to(lf_clf2 + (lg_clf2 @ self.u)[0, 0] + self.clf_lambda[1] * clf2 <= self.slack2)
-                self.opti.subject_to(self.opti.bounded(-np.inf, self.slack2, np.inf))
-            else:
-                self.opti.subject_to(lf_clf2 + (lg_clf2 @ self.u)[0, 0] + self.clf_lambda[1] * clf2 <= 0)
+    #     if lg_clf2[0, 1] != 0:
+    #         if add_slack:
+    #             self.opti.subject_to(lf_clf2 + (lg_clf2 @ self.u)[0, 0] + self.clf_lambda[1] * clf2 <= self.slack2)
+    #             self.opti.subject_to(self.opti.bounded(-np.inf, self.slack2, np.inf))
+    #         else:
+    #             self.opti.subject_to(lf_clf2 + (lg_clf2 @ self.u)[0, 0] + self.clf_lambda[1] * clf2 <= 0)
 
-        return clf2
+    #     return clf2
     
-    def add_clf_dist_theta_cons(self, robot_cur_state, add_slack=True):
+    def add_clf_dist_theta_cons(self, robot_cur_state, add_slack=False):
         """ add clf cons of theta """
         clf3 = self.clf3(robot_cur_state, self.target_state)
         lf_clf3 = self.lf_clf3(robot_cur_state, self.target_state)
@@ -137,13 +141,16 @@ class Unicycle_Sdf_Cbf_Clf:
 
         if lg_clf3[0, 1] != 0:
             if add_slack:
-                self.opti.subject_to(lf_clf3 + (lg_clf3 @ self.u)[0, 0] + self.clf_lambda[1] * clf3 <= self.slack2)
-                self.opti.subject_to(self.opti.bounded(-np.inf, self.slack2, np.inf))
+                self.opti.subject_to(lf_clf3 + (lg_clf3 @ self.u)[0, 0] + self.clf_lambda[1] * clf3 <= self.slack)
+                # self.opti.subject_to(self.opti.bounded(-np.inf, self.slack2, np.inf))
             else:
                 self.opti.subject_to(lf_clf3 + (lg_clf3 @ self.u)[0, 0] + self.clf_lambda[1] * clf3 <= 0)
 
-        return clf3
+        # return clf3
 
+        # term_1 = (robot_cur_state[:2] - self.target_state[:2]) @ np.array([np.cos(robot_cur_state[2] + np.pi/4), np.sin(robot_cur_state[2] + np.pi/4)])
+        # term_2 = (robot_cur_state[2] - self.target_state[2])
+        # self.opti.subject_to(term_1 * self.u[0] + term_2 * self.u[1] <= self.slack)
 
     def add_controls_physical_cons(self):
         """ add physical constraint of controls """
@@ -257,6 +264,7 @@ class Unicycle_Sdf_Cbf_Clf:
         if u_ref is None:
             u_ref = np.zeros(self.control_dim)
 
+
         self.set_optimal_function(u_ref, add_slack)
 
         # the old clfs
@@ -299,7 +307,7 @@ class Unicycle_Sdf_Cbf_Clf:
 
 
         R_mat = np.array([[np.cos(robot_cur_state[2]), -np.sin(robot_cur_state[2])], [np.sin(robot_cur_state[2]), np.cos(robot_cur_state[2])]])
-        dR_dtheta = np.array([[-np.sin(robot_cur_state[2]), np.cos(robot_cur_state[2])], [-np.cos(robot_cur_state[2]), -np.sin(robot_cur_state[2])]])
+        dR_dtheta = np.array([[-np.sin(robot_cur_state[2]), -np.cos(robot_cur_state[2])], [np.cos(robot_cur_state[2]), -np.sin(robot_cur_state[2])]])
         dR_dt_T = dR_dtheta.T * self.u[1]
         dA_dt = mat_A @ dR_dt_T
         dP_dt = np.array([np.cos(robot_cur_state[2]), np.sin(robot_cur_state[2])]) * self.u[0]
@@ -311,14 +319,8 @@ class Unicycle_Sdf_Cbf_Clf:
         dG_dt = np.zeros((4, 2))  
 
         self.set_optimal_function(u_ref, add_slack=add_clf)
-
-        clf1 = None
-        clf2 = None
-        # if add_clf:
-        #     clf1 = self.add_clf_distance_cons(robot_cur_state, add_slack=True)
-        #     clf2 = self.add_clf_theta_cons(robot_cur_state, add_slack=True)
     
-        clf3 = self.add_clf_dist_theta_cons(robot_cur_state, add_slack=True)
+        clf = self.add_clf_dist_theta_cons(robot_cur_state, add_slack=add_clf)
 
         # for plot
         cbf_list = []
@@ -333,20 +335,19 @@ class Unicycle_Sdf_Cbf_Clf:
                                         lam_B_opt, lam_BG_opt, lam_B_pos_idx, lam_BG_pos_idx,)
 
 
-        self.add_controls_physical_cons()
+        # self.add_controls_physical_cons()
         
         cbf_list.append(dist_BG)
-        cir_cbf_list = None
+        
         # optimize the qp problem
         try:
             sol = self.opti.solve()
             optimal_control = sol.value(self.u)
             if add_clf:
-                slack1 = sol.value(self.slack1)
-                slack2 = sol.value(self.slack2)
-                return optimal_control, cbf_list, cir_cbf_list, clf1, clf2, slack1, slack2, True
+                slack = sol.value(self.slack)
+                return optimal_control, cbf_list, clf, slack, True
             else:
-                return optimal_control, cbf_list, cir_cbf_list, None, None, None, None, True, 
+                return optimal_control, cbf_list, None, None, True, 
         except:
             print(self.opti.return_status() + ' sdf-cbf with clf')
-            return None, cbf_list, cir_cbf_list, None, None, None, None, False
+            return None, cbf_list, None, None, False

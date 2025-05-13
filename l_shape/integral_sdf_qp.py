@@ -128,32 +128,32 @@ class Integral_Sdf_Cbf_Clf:
 
         return min_sdf
     
-    def clf_qp(self, robot_cur_state, add_slack=False, u_ref=None):
-        """ 
-        calculate the optimal control which navigating the robot to its destination
-        Args: 
-            robot_cur_state: [x, y, theta] np.array(3, )
-            u_ref: None or np.array(2, )
-        Returns:
-            optimal control u
-        """
-        if u_ref is None:
-            u_ref = np.zeros(self.control_dim)
+    # def clf_qp(self, robot_cur_state, add_slack=False, u_ref=None):
+    #     """ 
+    #     calculate the optimal control which navigating the robot to its destination
+    #     Args: 
+    #         robot_cur_state: [x, y, theta] np.array(3, )
+    #         u_ref: None or np.array(2, )
+    #     Returns:
+    #         optimal control u
+    #     """
+    #     if u_ref is None:
+    #         u_ref = np.zeros(self.control_dim)
 
-        self.set_optimal_function(u_ref, add_slack)        
+    #     self.set_optimal_function(u_ref, add_slack)        
         
-        clf = self.add_clf_cons(robot_cur_state, add_slack)
+    #     clf = self.add_clf_cons(robot_cur_state, add_slack)
 
-        self.add_controls_physical_cons()
+    #     self.add_controls_physical_cons()
 
-        # optimize the qp problem
-        try:
-            sol = self.opti.solve()
-            optimal_control = sol.value(self.u)
-            return optimal_control, clf, True
-        except:
-            print(self.opti.return_status() + ' clf qp')
-            return None, None, False
+    #     # optimize the qp problem
+    #     try:
+    #         sol = self.opti.solve()
+    #         optimal_control = sol.value(self.u)
+    #         return optimal_control, clf, True
+    #     except:
+    #         print(self.opti.return_status() + ' clf qp')
+    #         return None, None, False
         
     def cbf_clf_qp(self, robot_cur_state, robot_params, two_center, obs_states=None, obs_vertexes=None, cir_obs_states=None, add_clf=True, u_ref=None):
         """

@@ -72,7 +72,7 @@ class Render_Animation:
         # legend font
         self.legend_font = {"family": "Times New Roman", "weight": "normal", "size": 12}
         
-    def render(self, xt, obs_list_t, cir_obs_list_t, terminal_time, show_obs, save_gif=False):
+    def render(self, xt, obs_list_t, terminal_time, show_obs, save_gif=False):
         """ Visualization """
         self.fig.set_size_inches(7, 6.5)
         self.fig.set_dpi(150)
@@ -91,17 +91,26 @@ class Render_Animation:
 
         self.xt = xt
         self.obs_list_t = obs_list_t
-        self.cir_obs_list_t = cir_obs_list_t
+        # self.cir_obs_list_t = cir_obs_list_t
         self.show_obs = show_obs
 
         self.animation_init()
 
         # robot and the arrow
-        init_vertexes = self.robot.get_vertices(self.robot_init_state)
+        init_vertexes = self.robot.get_vertices_at_absolute_state(self.robot_init_state)
         self.robot_body_A = mpatches.Polygon(init_vertexes[0], alpha=0.5, color='red')
         self.ax.add_patch(self.robot_body_A)
         self.robot_body_B = mpatches.Polygon(init_vertexes[1], alpha=0.5, color='blue')
         self.ax.add_patch(self.robot_body_B)
+
+        # plot the goal pose
+        goal_vertices = self.robot.get_vertices_at_absolute_state(self.robot_target_state)
+
+        goal_body_A = mpatches.Polygon(goal_vertices[0], alpha=0.5, color='red')
+        goal_body_B = mpatches.Polygon(goal_vertices[1], alpha=0.5, color='blue')
+
+        self.ax.add_patch(goal_body_A)
+        self.ax.add_patch(goal_body_B)
 
         if self.robot_model == 'unicycle':
             self.robot_arrow = mpatches.Arrow(
@@ -144,7 +153,8 @@ class Render_Animation:
     def animation_init(self):
         """ init the robot start and end position """
         # start body and arrow
-        start_vertexes = self.robot.get_vertices(self.robot_init_state)
+        start_vertexes = self.robot.get_vertices_at_absolute_state(self.robot_init_state)
+
         self.robot_body_A = mpatches.Polygon(start_vertexes[0], alpha=0.5, color='red')
         self.ax.add_patch(self.robot_body_A)
         self.robot_body_B = mpatches.Polygon(start_vertexes[1], alpha=0.5, color='blue')
@@ -178,7 +188,7 @@ class Render_Animation:
         # self.robot_body_A.remove()
         # self.robot_body_B.remove()
 
-        cur_vertexes = self.robot.get_vertices(self.xt[:, indx])
+        cur_vertexes = self.robot.get_vertices_at_absolute_state(self.xt[:, indx])        
         self.robot_body_A = mpatches.Polygon(cur_vertexes[0], alpha=0.5, color='red')
         self.ax.add_patch(self.robot_body_A)
         self.robot_body_B = mpatches.Polygon(cur_vertexes[1], alpha=0.5, color='blue')
@@ -319,11 +329,11 @@ class Render_Animation:
 
     def show_integral_controls(self, ut, terminal_time):
         """ show controls of integral model """
-        figure, ax = plt.subplots(figsize=(16, 9))
+        figure, ax = plt.subplots(figsize=(8, 8))
         figure.set_dpi(200)
-        font_path = "/home/hjh/simfang.ttf"  
-        legend_font = {"family": "Times New Roman", "weight": "normal", "size": 35}
-        label_font = fm.FontProperties(fname=font_path, size=35)
+        # font_path = "/home/hjh/simfang.ttf"  
+        # legend_font = {"family": "Times New Roman", "weight": "normal", "size": 35}
+        # label_font = fm.FontProperties(fname=font_path, size=35)
 
         t = np.arange(0, terminal_time * self.dt, self.dt)[0:terminal_time]
         v_x = ut[0][0:terminal_time].reshape(terminal_time,)
@@ -349,16 +359,16 @@ class Render_Animation:
 
         plt.gca().xaxis.set_major_formatter(FormatStrFormatter('%.1f'))
         plt.gca().yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
-        plt.xlabel("时间" + r'$(s)$', fontproperties=label_font)
-        plt.ylabel('速度' + r'$(m/s)$', fontproperties=label_font)
+        # plt.xlabel("时间" + r'$(s)$', fontproperties=label_font)
+        # plt.ylabel('速度' + r'$(m/s)$', fontproperties=label_font)
         
-        plt.legend(
-            handles=[vx, vy, v_min, v_max], 
-            labels=[r'$v_x$', r'$v_y$', r'$v_{min}$', r'$v_{max}$'], 
-            loc='lower right', prop=legend_font,
-            framealpha=0.5, ncol=4,
-            bbox_to_anchor=(0.95, 0.05)
-        )
+        # plt.legend(
+        #     handles=[vx, vy, v_min, v_max], 
+        #     labels=[r'$v_x$', r'$v_y$', r'$v_{min}$', r'$v_{max}$'], 
+        #     loc='lower right', prop=legend_font,
+        #     framealpha=0.5, ncol=4,
+        #     bbox_to_anchor=(0.95, 0.05)
+        # )
 
         # set the tick in Times New Roman and size
         ax.tick_params(labelsize=45)
@@ -366,8 +376,10 @@ class Render_Animation:
         [label.set_fontname('Times New Roman') for label in labels]
 
         plt.grid() 
-        plt.savefig('controls_integral.png', format='png', dpi=300, bbox_inches='tight')
-    
+        # plt.savefig('controls_integral.png', format='png', dpi=300, bbox_inches='tight')
+
+        plt.show()
+
     def show_unicycle_cbf(self, cbft, terminal_time):
         figure, ax = plt.subplots(figsize=(16, 9))
         figure.set_dpi(200)

@@ -10,6 +10,8 @@ from render_show import Render_Animation
 import casadi as ca
 from scipy.spatial import ConvexHull
 
+import matplotlib.pyplot as plt
+
 class Collision_Avoidance:
     def __init__(self, file_name) -> None:
         """ collision avoidance with obstacles """
@@ -31,7 +33,7 @@ class Collision_Avoidance:
         
         # initialize the robot 
         self.robot_vertexes = robot_params['vertexes']
-        self.robot = l_shape_robot.L_shaped_robot(0, self.robot_model, self.robot_vertexes)  
+        self.robot = l_shape_robot.L_shaped_robot(indx=0, init_state=[0.05, 1.5, np.pi/4], rects=self.robot_vertexes, mode='vertices')
         self.robot_init_state = self.robot.init_state
         self.robot_cur_state = np.copy(self.robot.init_state)
         self.robot_target_state = np.array(robot_params['target_state'])
@@ -179,7 +181,7 @@ class Collision_Avoidance:
             if self.robot_model == 'integral':
                 u, clf, feas = self.cbf_qp.clf_qp(self.robot_cur_state)
             elif self.robot_model == 'unicycle':
-                u, clf1, clf2, feas = self.cbf_qp.clf_qp(self.robot_cur_state)
+                u, clf1, clf2, feas = self.cbf_qp.clf_qp(self.robot_cur_state, add_slack=True)
             process_time.append(time.time() - start_time)
 
             if not feas:
@@ -236,78 +238,63 @@ class Collision_Avoidance:
                 obs_vertexes_list = [self.obs_list[i].vertexes for i in range(self.obs_num)]
 
             start_time = time.time()
-            if self.robot_model == 'integral':
-                u, cbf_list, cir_cbf_list, clf, slack, feas = self.cbf_qp.cbf_clf_qp(
-                    self.robot_cur_state, 
-                    self.robot_params, 
-                    self.robot_two_center, 
-                    self.obs_states_list, 
-                    obs_vertexes_list, 
-                    self.cir_obs_states_list, 
-                    add_clf=add_clf,
-                )     
-            elif self.robot_model == 'unicycle':
-                robot_vertices_list = self.robot.get_vertices(self.robot_cur_state)
-                # extract inequalities from the vertices
-                mat_A, vec_a, _ = self.convex_polygon_hrep(robot_vertices_list[0])
-                mat_B, vec_b, _ = self.convex_polygon_hrep(robot_vertices_list[1])
-                mat_G, vec_g, _ = self.convex_polygon_hrep(obs_vertexes_list[0])
 
-                # solve 2 x N QP, N depends on the number of obstacles
-                opti = ca.Opti('conic');
-                lam_A = opti.variable(1, 4)
-                lam_AG = opti.variable(1, 4)
+            robot_vertices_list = self.robot.get_vertices_at_absolute_state(self.robot_cur_state)
+            # extract inequalities from the vertices
+            mat_A, vec_a, _ = self.convex_polygon_hrep(robot_vertices_list[0])
+            mat_B, vec_b, _ = self.convex_polygon_hrep(robot_vertices_list[1])
+            mat_G, vec_g, _ = self.convex_polygon_hrep(obs_vertexes_list[0])
 
-                obj = - 0.25 * lam_A @ mat_A @ mat_A.T @ lam_A.T - lam_A @ vec_a - lam_AG @ vec_g
-                opti.minimize(-obj)  # max optimization
+            # solve 2 x N QP, N depends on the number of obstacles
+            opti = ca.Opti('conic');
+            lam_A = opti.variable(1, 4)
+            lam_AG = opti.variable(1, 4)
+            obj = - 0.25 * lam_A @ mat_A @ mat_A.T @ lam_A.T - lam_A @ vec_a - lam_AG @ vec_g
+            opti.minimize(-obj)  # max optimization
+            opti.subject_to(lam_A @ mat_A + lam_AG @ mat_G == 0)
+            opti.subject_to(lam_A >= 0)
+            opti.subject_to(lam_AG >= 0)
 
-                opti.subject_to(lam_A @ mat_A + lam_AG @ mat_G == 0)
-                opti.subject_to(lam_A >= 0)
-                opti.subject_to(lam_AG >= 0)
+            opti.solver('qpoases');  # the options should be alinged with the solver
+            sol=opti.solve();
+            lam_A_star = sol.value(lam_A).reshape(1, -1)
+            lam_AG_star = sol.value(lam_AG).reshape(1, -1)
+            lam_A_pos_idx = np.where(lam_A_star[0, :] < 1e-5)
+            lam_AG_pos_idx = np.where(lam_AG_star[0, :] < 1e-5)
+            dist_square = sol.value(obj)
+            dist_AG = np.sqrt(dist_square)
+            print('the distance is :', dist_AG)
 
-                opti.solver('qpoases');  # the options should be alinged with the solver
-                sol=opti.solve();
-                lam_A_star = sol.value(lam_A).reshape(1, -1)
-                lam_AG_star = sol.value(lam_AG).reshape(1, -1)
-                lam_A_pos_idx = np.where(lam_A_star[0, :] < 1e-5)
-                lam_AG_pos_idx = np.where(lam_AG_star[0, :] < 1e-5)
-                dist_square = sol.value(obj)
-                dist_AG = np.sqrt(dist_square)
-                print('the distance is :', dist_AG)
+            # # =======================the second QP problem
+            opti = ca.Opti('conic');
+            lam_B = opti.variable(1, 4)
+            lam_BG = opti.variable(1, 4)
+            # the second qp w.r.t. rectangle B
+            obj = - 0.25 * lam_B @ mat_B @ mat_B.T @ lam_B.T - lam_B @ vec_b - lam_BG @ vec_g
+            opti.minimize(-obj)
+            opti.subject_to(lam_B @ mat_B + lam_BG @ mat_G == 0)
+            opti.subject_to(lam_B >= 0)
+            opti.subject_to(lam_BG >= 0)
 
-                # # =======================the second QP problem
-                opti = ca.Opti('conic');
-                lam_B = opti.variable(1, 4)
-                lam_BG = opti.variable(1, 4)
-                # the second qp w.r.t. rectangle B
-                obj = - 0.25 * lam_B @ mat_B @ mat_B.T @ lam_B.T - lam_B @ vec_b - lam_BG @ vec_g
-                opti.minimize(-obj)
-
-                opti.subject_to(lam_B @ mat_B + lam_BG @ mat_G == 0)
-                opti.subject_to(lam_B >= 0)
-                opti.subject_to(lam_BG >= 0)
-
-                opti.solver('qpoases')
-                sol = opti.solve()
-                lam_B_star = sol.value(lam_B).reshape(1, -1)
-                lam_BG_star = sol.value(lam_BG).reshape(1, -1)
-                lam_B_pos_idx = np.where(lam_B_star[0, :] < 1e-5)
-                lam_BG_pos_idx = np.where(lam_BG_star[0, :] < 1e-5)
-                dist_square = sol.value(obj)
-                dist_BG = np.sqrt(dist_square)
-                print('the distance is :', dist_BG)
+            opti.solver('qpoases')
+            sol = opti.solve()
+            lam_B_star = sol.value(lam_B).reshape(1, -1)
+            lam_BG_star = sol.value(lam_BG).reshape(1, -1)
+            lam_B_pos_idx = np.where(lam_B_star[0, :] < 1e-5)
+            lam_BG_pos_idx = np.where(lam_BG_star[0, :] < 1e-5)
+            dist_square = sol.value(obj)
+            dist_BG = np.sqrt(dist_square)
+            print('the distance is :', dist_BG)
 
 
-                u, cbf_list, cir_cbf_list, clf1, clf2, slack1, slack2, feas = self.cbf_qp.cbf_clf_qp(
-                    self.robot_cur_state,
-                    dist_AG - 0.05, dist_BG - 0.05,
-                    mat_A, vec_a,
-                    mat_B, vec_b,
-                    mat_G, vec_g,
-                    lam_A_star, lam_AG_star, lam_A_pos_idx, lam_AG_pos_idx,
-                    lam_B_star, lam_BG_star, lam_B_pos_idx, lam_BG_pos_idx,
-                    add_clf=add_clf,
-                )
+            u, cbf_list, clf, slack, feas = self.cbf_qp.cbf_clf_qp(
+                self.robot_cur_state,
+                dist_AG - 0.1, dist_BG - 0.1,
+                mat_A, vec_a, mat_B, vec_b, mat_G, vec_g,
+                lam_A_star, lam_AG_star, lam_A_pos_idx, lam_AG_pos_idx,
+                lam_B_star, lam_BG_star, lam_B_pos_idx, lam_BG_pos_idx,
+                add_clf=add_clf)
+            
             process_time.append(time.time() - start_time)
 
             if not feas:
@@ -317,16 +304,8 @@ class Collision_Avoidance:
                 pass
 
             self.ut[:, t] = u
-            if self.robot_model == 'integral':
-                self.clft[0, t] = clf
-                self.slackt[0, t] = slack
-            elif self.robot_model == 'unicycle':
-                self.clft[:, t] = np.array([clf1, clf2])
-                self.slackt[:, t] = np.array([slack1, slack2])
-
-            # storage and update the state of robot and obstacle
-            self.xt[:, t] = np.copy(self.robot_cur_state)
-            self.robot_cur_state = self.cbf_qp.robot.next_state(self.robot_cur_state, u, self.step_time)
+            self.clft[:, t] = np.array([clf])
+            self.slackt[:, t] = np.array([slack])
             if self.obs_states_list is not None:
                 self.obs_cbf_t[:, t] = cbf_list
                 for i in range(self.obs_num):
@@ -337,16 +316,12 @@ class Collision_Avoidance:
                     if self.robot_model == 'unicycle':
                         if self.obs_list[0].position[0] <= 0.5:
                             self.obs_list[0].vel[0] = 0.0
-                        # if self.obs_list[1].position[0] >= 14.0:
-                        #     self.obs_list[1].vel[0] = 0.0
+
                 self.obs_states_list = [self.obs_list[i].get_current_state() for i in range(self.obs_num)]
 
-            if self.cir_obs_states_list is not None:
-                self.cir_obs_cbf_t[:, t] = cir_cbf_list
-                for i in range(self.cir_obs_num):
-                    self.cir_obstacle_state_t[i][:, t] = np.copy(self.cir_obs_states_list[i])
-                    self.cir_obs_list[i].move_forward(self.step_time)
-                self.cir_obs_states_list = [self.cir_obs_list[i].get_current_state() for i in range(self.cir_obs_num)]
+            # storage and update the state of robot and obstacle
+            self.xt[:, t] = np.copy(self.robot_cur_state)
+            self.robot_cur_state = self.cbf_qp.robot.next_state(self.robot_cur_state, u, self.step_time)
             t = t + 1
 
         self.terminal_time = t 
@@ -355,9 +330,9 @@ class Collision_Avoidance:
         if self.obs_states_list is not None:
             for i in range(self.obs_num):
                 self.obstacle_state_t[i][:, t] = np.copy(self.obs_states_list[i])
-        if self.cir_obs_states_list is not None:
-            for i in range(self.cir_obs_num):
-                self.cir_obstacle_state_t[i][:, t] = np.copy(self.cir_obs_states_list[i])
+        # if self.cir_obs_states_list is not None:
+        #     for i in range(self.cir_obs_num):
+        #         self.cir_obstacle_state_t[i][:, t] = np.copy(self.cir_obs_states_list[i])
 
         print('Total time: ', self.terminal_time)
         if np.linalg.norm(self.robot_cur_state[0:2] - self.robot_target_state[0:2]) <= self.destination_margin:
@@ -407,7 +382,7 @@ class Collision_Avoidance:
         # self.ani.show_unicycle_model(self.xt, self.obstacle_state_t, self.terminal_time, [44, 102])
 
     def render(self):
-        self.ani.render(self.xt, self.obstacle_state_t, self.cir_obstacle_state_t, self.terminal_time, self.show_obs)
+        self.ani.render(self.xt, self.obstacle_state_t , self.terminal_time, self.show_obs)
 
     def show_cbf(self):
         self.ani.show_integral_cbf(self.obs_cbf_t, self.cir_obs_cbf_t, self.terminal_time)
@@ -425,6 +400,7 @@ class Collision_Avoidance:
         if self.robot_model == 'unicycle':
             self.ani.show_slack('theta', self.slackt[1], self.terminal_time)
 
+
 if __name__ == '__main__':
     # file_name = 'integral_settings.yaml'
     file_name = 'unicycle_settings.yaml'
@@ -441,3 +417,11 @@ if __name__ == '__main__':
     # test_target.show_slack()
     test_target.show_cbf()
     # test_target.show_controls()
+
+    # plot controls here
+    fig, ax = plt.subplots(figsize=(6, 6))
+    # show the velocity u[0]
+    # show the omega u[1]
+    ax.plot(test_target.ut[0, :], label='u[0]', color='blue')
+    ax.plot(test_target.ut[1, :], label='u[1]', color='red')
+    plt.show()

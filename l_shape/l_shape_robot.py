@@ -134,26 +134,39 @@ class L_shaped_robot:
         return transformed
 
 
+    def get_vertices_at_absolute_state(self, absolute_state):
+        """Get the transformed vertices if robot is placed at absolute pose (x, y, theta)"""
+        x, y, theta = absolute_state
+        transformed = []
+        for rect in self.init_vertices:
+            new_rect = [self._rotate_and_translate(pt, theta, x, y) for pt in rect]
+            transformed.append(new_rect)
+        return transformed
+
+
 if __name__ == '__main__':
-    robot = L_shaped_robot(
-    indx=0,
-    init_state=[1.0, 1.0, np.pi/6],
-    size=(1.0, 0.2),  # length=1.0, width=0.2
-    mode='size'
-    )
-    print(robot.vertices)
+    # robot = L_shaped_robot(
+    # indx=0,
+    # init_state=[1.0, 1.0, np.pi/6],
+    # size=(1.0, 0.2),  # length=1.0, width=0.2
+    # mode='size'
+    # )
+    # print(robot.vertices)
 
+    # rect_A = [[0.0, 0.0], [0.1, 0.0], [0.1, 0.9], [0.0, 0.9]]   # vertical part
+    # rect_B = [[0.0, 0.0], [0.9, 0.0], [0.9, 0.1], [0.0, 0.1]]   # horizontal part
 
-    rect_A = [[1, 1], [1.1, 1], [1.1, 2], [1, 2]]
-    rect_B = [[1, 1], [2, 1], [2, 1.1], [1, 1.1]]
+    rect_A = [[0.0, 0.0], [0.0, -1.0], [0.1, -1.0], [0.1, 0.0]]  # vertical part
+    rect_B = [[0.0, 0.0], [0.0, -0.1], [1.0, -0.1], [1.0, 0.0]]  # horizontal part
+    
 
     robot = L_shaped_robot(
         indx=0,
-        init_state=[0.0, 0.0, -np.pi/4],
+        init_state=[0.0, 0.0, np.pi/4],  # pose refers to the center (will be auto-corrected by _normalize_to_center)
         rects=[rect_A, rect_B],
         mode='vertices'
-    )
-    print(robot.vertices)
+    )   
+
 
     # plot
     fig, ax = plt.subplots()
