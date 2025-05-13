@@ -141,7 +141,9 @@ class Integral_Sdf_Cbf_Clf:
             u_ref = np.zeros(self.control_dim)
 
         self.set_optimal_function(u_ref, add_slack)        
+        
         clf = self.add_clf_cons(robot_cur_state, add_slack)
+
         self.add_controls_physical_cons()
 
         # optimize the qp problem

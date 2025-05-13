@@ -120,6 +120,27 @@ class Unicycle_Robot_Sdf:
         """ init the control lyapunov functions for distance and orientation """
         self.init_clf1()
         self.init_clf2()
+        self.init_clf3()
+    
+    def init_clf3(self):
+        """ 
+        navigate the robot to its destination 
+        v(x) = (x_g - x) ** 2 + (y_g - y) ** 2 + (theta_g - theta) ** 2
+        """      
+        H = sp.Matrix([[1.0, 0.0, 0.0],
+                       [0.0, 1.0, 0.0],
+                       [0.0, 0.0, 1.0]])
+        relative_x = self.robot_state[0] - self.target_state[0]
+        relative_y = self.robot_state[1] - self.target_state[1]
+        relative_theta = self.robot_state[2] - self.target_state[2]
+        relative_state = sp.Matrix([relative_x, relative_y, relative_theta])
+
+        self.clf3_symbolic = (relative_state.T @ H @ relative_state)[0, 0]
+        self.clf3 = lambdify([self.robot_state, self.target_state], self.clf3_symbolic)
+
+        self.lf_clf3_symbolic, self.lg_clf3_symbolic = self.define_clf_derivative(self.clf3_symbolic)
+        self.lf_clf3 = lambdify([self.robot_state, self.target_state], self.lf_clf3_symbolic)
+        self.lg_clf3 = lambdify([self.robot_state, self.target_state], self.lg_clf3_symbolic)
 
     def init_clf1(self):
         """ 

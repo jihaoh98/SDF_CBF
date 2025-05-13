@@ -300,7 +300,7 @@ class Collision_Avoidance:
 
                 u, cbf_list, cir_cbf_list, clf1, clf2, slack1, slack2, feas = self.cbf_qp.cbf_clf_qp(
                     self.robot_cur_state,
-                    dist_AG, dist_BG,
+                    dist_AG - 0.05, dist_BG - 0.05,
                     mat_A, vec_a,
                     mat_B, vec_b,
                     mat_G, vec_g,

@@ -31,7 +31,11 @@ class Unicycle_Sdf_Cbf_Clf:
         self.clf2 = self.robot.clf2
         self.lf_clf2 = self.robot.lf_clf2
         self.lg_clf2 = self.robot.lg_clf2
-
+        # for both
+        self.clf3 = self.robot.clf3
+        self.lf_clf3 = self.robot.lf_clf3
+        self.lg_clf3 = self.robot.lg_clf3
+        
         # initialize CBF
         self.cbf = self.robot.cbf
         self.cir_cbf = self.robot.cir_cbf
@@ -124,6 +128,22 @@ class Unicycle_Sdf_Cbf_Clf:
                 self.opti.subject_to(lf_clf2 + (lg_clf2 @ self.u)[0, 0] + self.clf_lambda[1] * clf2 <= 0)
 
         return clf2
+    
+    def add_clf_dist_theta_cons(self, robot_cur_state, add_slack=True):
+        """ add clf cons of theta """
+        clf3 = self.clf3(robot_cur_state, self.target_state)
+        lf_clf3 = self.lf_clf3(robot_cur_state, self.target_state)
+        lg_clf3 = self.robot.lg_clf3(robot_cur_state, self.target_state)
+
+        if lg_clf3[0, 1] != 0:
+            if add_slack:
+                self.opti.subject_to(lf_clf3 + (lg_clf3 @ self.u)[0, 0] + self.clf_lambda[1] * clf3 <= self.slack2)
+                self.opti.subject_to(self.opti.bounded(-np.inf, self.slack2, np.inf))
+            else:
+                self.opti.subject_to(lf_clf3 + (lg_clf3 @ self.u)[0, 0] + self.clf_lambda[1] * clf3 <= 0)
+
+        return clf3
+
 
     def add_controls_physical_cons(self):
         """ add physical constraint of controls """
@@ -195,13 +215,13 @@ class Unicycle_Sdf_Cbf_Clf:
         L_dot_AG_2 = - 0.5 * lam_A_opt @ mat_A @ mat_A_dot.T @ lam_A_opt.T
         L_dot_AG_3 = - self.lam_A_dot @ vec_a - lam_A_opt @ vec_a_dot - self.lam_G_dot @ vec_g - lam_AG_opt @ vec_g_dot
         L_dot_AG = L_dot_AG_1 + L_dot_AG_2 + L_dot_AG_3
-        self.opti.subject_to(L_dot_AG >= - 1.0 * (h_AG - 1e-5))  # paper equation (18a)
+        self.opti.subject_to(L_dot_AG >= - 1.0 * (h_AG - 0.1))  # paper equation (18a)
         
         L_dot_BG_1 = - 0.5 * lam_B_opt @ mat_B @ mat_B.T @ self.lam_B_dot.T
         L_dot_BG_2 = - 0.5 * lam_B_opt @ mat_B @ mat_B_dot.T @ lam_B_opt.T
         L_dot_BG_3 = - self.lam_B_dot @ vec_b - lam_B_opt @ vec_b_dot - self.lam_G_dot @ vec_g - lam_BG_opt @ vec_g_dot
         L_dot_BG = L_dot_BG_1 + L_dot_BG_2 + L_dot_BG_3
-        self.opti.subject_to(L_dot_BG >= - 1.0 * (h_BG - 1e-5))  # paper equation (18a)
+        self.opti.subject_to(L_dot_BG >= - 1.0 * (h_BG - 0.1))  # paper equation (18a)
 
         # paper cons. (18c)
         self.opti.subject_to( self.lam_A_dot @ mat_A + lam_A_opt @ mat_A_dot + self.lam_G_dot @ mat_G + lam_AG_opt @ mat_G_dot == 0)  
@@ -238,14 +258,20 @@ class Unicycle_Sdf_Cbf_Clf:
             u_ref = np.zeros(self.control_dim)
 
         self.set_optimal_function(u_ref, add_slack)
-        clf1 = self.add_clf_distance_cons(robot_cur_state, add_slack)
-        clf2 = self.add_clf_theta_cons(robot_cur_state, add_slack)
+
+        # the old clfs
+        # clf1 = self.add_clf_distance_cons(robot_cur_state, add_slack)
+        # clf2 = self.add_clf_theta_cons(robot_cur_state, add_slack)
+
+        # the new clf
+        clf3 = self.add_clf_dist_theta_cons(robot_cur_state, add_slack)
 
         # optimize the qp problem
         try:
             sol = self.opti.solve()
             optimal_control = sol.value(self.u)
-            return optimal_control, clf1, clf2, True
+            # return optimal_control, clf1, clf2, True
+            return optimal_control, clf3, clf3, True
         except:
             print(self.opti.return_status() + ' clf qp')
             return None, None, None, False
@@ -288,10 +314,12 @@ class Unicycle_Sdf_Cbf_Clf:
 
         clf1 = None
         clf2 = None
-        if add_clf:
-            clf1 = self.add_clf_distance_cons(robot_cur_state, add_slack=True)
-            clf2 = self.add_clf_theta_cons(robot_cur_state, add_slack=True)
+        # if add_clf:
+        #     clf1 = self.add_clf_distance_cons(robot_cur_state, add_slack=True)
+        #     clf2 = self.add_clf_theta_cons(robot_cur_state, add_slack=True)
     
+        clf3 = self.add_clf_dist_theta_cons(robot_cur_state, add_slack=True)
+
         # for plot
         cbf_list = []
         

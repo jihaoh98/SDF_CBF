@@ -1,17 +1,17 @@
 import numpy as np
+import numpy as np
 from math import cos, sin
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 
-
 class L_shaped_robot:
-    def __init__(self, indx, model=None, init_state=None, rects=None, size=None, mode='size', step_time=0.1, goal=np.zeros((2, 1)), goal_margin=0.3, **kwargs) -> None:
+    def __init__(self, indx, model=None, init_state=None, rects=None, size=None, mode='size', step_time=0.1, goal=np.zeros((2, 1)), goal_margin=0.3):
         self.id = indx
-        self.goal = goal
         self.model = model
-        self.goal_margin = goal_margin
         self.init_state = init_state
         self.step_time = step_time
+        self.goal = goal
+        self.goal_margin = goal_margin
 
         self.mode = mode
         if mode == 'size':
@@ -26,21 +26,6 @@ class L_shaped_robot:
         self.init_vertices_consider_theta = None
         self.initialize_vertices()
 
-
-        # two vector of center point and length, width of L-shaped robot
-        self.overlap_center = None
-        self.center_vectors = None
-        self.init_state = init_state
-        self.cur_state = None
-
-        self.step_time = step_time
-        self.goal = goal
-        self.goal_margin = goal_margin
-
-        self.arrive_flag = False
-        self.collision_flag = False
-
-
     def _build_L_shape_from_size(self):
         l, w = self.rect_length, self.rect_width
 
@@ -51,7 +36,6 @@ class L_shaped_robot:
         rect_B = [[0, -w/2], [l, -w/2], [l, w/2], [0, w/2]]
 
         return [rect_A, rect_B]
-
 
     def _normalize_to_center(self, rects):
         """Shift given rectangles so their intersection center is at origin"""
@@ -105,36 +89,8 @@ class L_shaped_robot:
             return None
 
 
-    def get_vertices_at_relative_state(self, relative_state):
-        """
-        Get the transformed vertices if the robot moves from init_state by (dx, dy, dtheta).
-        relative_state: [dx, dy, dtheta]
-        """
-        dx, dy, dtheta = relative_state
-        x0, y0, theta0 = self.init_state
 
-        # Rotate the delta position by theta0 (rotate in world frame)
-        R0 = np.array([
-            [np.cos(theta0), -np.sin(theta0)],
-            [np.sin(theta0),  np.cos(theta0)]
-        ])
-        delta_pos = R0 @ np.array([dx, dy])
-
-        # Final state
-        new_x = x0 + delta_pos[0]
-        new_y = y0 + delta_pos[1]
-        new_theta = theta0 + dtheta
-
-        # Apply this transformation to the shape
-        transformed = []
-        for rect in self.init_vertices:
-            new_rect = [self._rotate_and_translate(pt, new_theta, new_x, new_y) for pt in rect]
-            transformed.append(new_rect)
-
-        return transformed
-
-
-if __name__ == '__main__':
+def main():
     robot = L_shaped_robot(
     indx=0,
     init_state=[1.0, 1.0, np.pi/6],
@@ -149,34 +105,26 @@ if __name__ == '__main__':
 
     robot = L_shaped_robot(
         indx=0,
-        init_state=[0.0, 0.0, -np.pi/4],
+        init_state=[0.0, 0.0, 0],
         rects=[rect_A, rect_B],
         mode='vertices'
     )
     print(robot.vertices)
 
-    # plot
     fig, ax = plt.subplots()
     poly_A = mpatches.Polygon(robot.vertices[0], alpha=0.5, color='red')
     ax.add_patch(poly_A)
     poly_B = mpatches.Polygon(robot.vertices[1], alpha=0.5, color='blue')
     ax.add_patch(poly_B)
 
-    # plot the rotation center
-    plt.scatter(robot.init_state[0], robot.init_state[1], c='black', marker='o', label='robot init')
 
     plt.axis('equal')
     plt.legend()
-    plt.xlim(-2, 2)
-    plt.ylim(-2, 2)
-
-    relative_move = [0.5, 1.0, np.pi/6]  # Move forward by 0.5 in robot's x direction and rotate 30 degrees more
-    moved_vertices = robot.get_vertices_at_relative_state(relative_move)
-
-    poly_A = mpatches.Polygon(moved_vertices[0], alpha=0.5, color='red')
-    ax.add_patch(poly_A)
-    poly_B = mpatches.Polygon(moved_vertices[1], alpha=0.5, color='blue')
-    ax.add_patch(poly_B)
-    plt.scatter(relative_move[0], relative_move[1], c='black', marker='o', label='robot init')
-
+    plt.xlim(0, 4)
+    plt.ylim(0, 4)
     plt.show()
+
+
+
+if __name__ =='__main__':
+    main()
