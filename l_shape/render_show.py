@@ -145,9 +145,9 @@ class Render_Animation:
         )
 
         plt.grid('--')
-        if save_gif:
-            writer = animation.PillowWriter(fps=15, metadata=dict(artist='Me'), bitrate=1800)
-            self.ani.save('integral.gif', writer=writer)
+        # if save_gif:
+        #     writer = animation.PillowWriter(fps=15, metadata=dict(artist='Me'), bitrate=1800)
+        #     self.ani.save('integral.gif', writer=writer)
         plt.show()
 
     def animation_init(self):
@@ -288,7 +288,7 @@ class Render_Animation:
         # plt.savefig('slack_{}.png'.format(clf_type), format='png', dpi=300)
         plt.show()
 
-    def show_integral_cbf(self, cbft, cir_cbft, terminal_time):
+    def show_integral_cbf(self, cbft, cbft2, terminal_time):
         """ show both cbf """
         figure, ax = plt.subplots(figsize=(8, 8))
         figure.set_dpi(200)
@@ -299,32 +299,17 @@ class Render_Animation:
         color_list = ['#219EBC', '#FEB705']
 
         t = np.arange(0, (terminal_time) * self.dt, self.dt)[0:terminal_time]
-        cbf, = plt.plot(
+
+        plt.plot(
             t, cbft[0, 0:terminal_time].reshape(terminal_time), 
-            linewidth=6, color=color_list[0]
+            linewidth=6, color=color_list[0], label='sofa_cbf_1'
         )
-        # cir_cbf, = plt.plot(
-        #     t, cir_cbft[0, 0:terminal_time].reshape(terminal_time),
-        #     linewidth=6, color=color_list[1]
-        # )
 
-        # plt.xlabel("时间" + r'$(s)$', fontproperties=label_font)
-        # plt.ylabel("距离" + r'$(m)$', fontproperties=label_font)
-        # plt.gca().xaxis.set_major_formatter(FormatStrFormatter('%.1f'))
-        # plt.gca().yaxis.set_major_formatter(FormatStrFormatter('%.1f'))
-        # plt.legend(
-        # #     handles=[cbf, cir_cbf], 
-        #     labels=['多边形障碍物', '圆形障碍物'], 
-        #     loc='lower right', prop=legend_font
-        # )
-
-        # set the tick in Times New Roman and size
-        # ax.tick_params(labelsize=40)
-        # labels = ax.get_xticklabels() + ax.get_yticklabels()
-        # [label.set_fontname('Times New Roman') for label in labels]
-
-        # plt.grid() 
-        # plt.savefig('integral_cbf.png', format='png', dpi=300, bbox_inches='tight')
+        plt.plot(
+            t, cbft2[0, 0:terminal_time].reshape(terminal_time), 
+            linewidth=6, color=color_list[1], label = 'sofa_cbf_2'
+        )
+        plt.legend()
         plt.show()
 
     def show_integral_controls(self, ut, terminal_time):

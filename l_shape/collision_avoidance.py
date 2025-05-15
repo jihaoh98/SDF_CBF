@@ -100,9 +100,11 @@ class Collision_Avoidance:
 
         self.obstacle_state_t = None
         self.obs_cbf_t = None
+        self.obs_cbf_t2 = None
         if obs_params is not None:
             self.obstacle_state_t = np.zeros((self.obs_num, 4, self.time_steps + 1))
             self.obs_cbf_t = np.zeros((self.obs_num, self.time_steps))
+            self.obs_cbf_t2 = np.zeros((self.obs_num, self.time_steps))
 
         self.cir_obstacle_state_t = None
         self.cir_obs_cbf_t = None
@@ -223,7 +225,10 @@ class Collision_Avoidance:
         """ solve the collision avoidance between robot and obstacles based on sdf-cbf """
         t = 0
         process_time = []
-        # approach the destination or exceed the maximum time
+        # approach the destination or exceed the maximum timec
+
+        cbf_1_list = []
+        cbf_2_list = []
         while (
             np.linalg.norm(self.robot_cur_state[0:2] - self.robot_target_state[0:2])
             >= self.destination_margin
@@ -263,9 +268,8 @@ class Collision_Avoidance:
             lam_AG_pos_idx = np.where(lam_AG_star[0, :] < 1e-5)
             dist_square = sol.value(obj)
             dist_AG = np.sqrt(dist_square)
-            print('the distance is :', dist_AG)
 
-            # # =======================the second QP problem
+            # # ======================= the second QP problem
             opti = ca.Opti('conic');
             lam_B = opti.variable(1, 4)
             lam_BG = opti.variable(1, 4)
@@ -284,12 +288,17 @@ class Collision_Avoidance:
             lam_BG_pos_idx = np.where(lam_BG_star[0, :] < 1e-5)
             dist_square = sol.value(obj)
             dist_BG = np.sqrt(dist_square)
-            print('the distance is :', dist_BG)
+            print('the AG distance is :', dist_AG)
+            print('the BG distance is :', dist_BG)
 
+            cbf_1_list.append(dist_AG)
+            cbf_2_list.append(dist_BG)
 
-            u, cbf_list, clf, slack, feas = self.cbf_qp.cbf_clf_qp(
+            # exit()
+            # ======================= the CLF-CBF-QP problem
+            u, clf, slack, feas = self.cbf_qp.cbf_clf_qp(
                 self.robot_cur_state,
-                dist_AG - 0.1, dist_BG - 0.1,
+                dist_AG, dist_BG,
                 mat_A, vec_a, mat_B, vec_b, mat_G, vec_g,
                 lam_A_star, lam_AG_star, lam_A_pos_idx, lam_AG_pos_idx,
                 lam_B_star, lam_BG_star, lam_B_pos_idx, lam_BG_pos_idx,
@@ -307,7 +316,8 @@ class Collision_Avoidance:
             self.clft[:, t] = np.array([clf])
             self.slackt[:, t] = np.array([slack])
             if self.obs_states_list is not None:
-                self.obs_cbf_t[:, t] = cbf_list
+                self.obs_cbf_t[:, t] = dist_AG
+                self.obs_cbf_t2[:, t] = dist_BG
                 for i in range(self.obs_num):
                     self.obstacle_state_t[i][:, t] = np.copy(self.obs_states_list[i])
                     self.obs_list[i].move_forward(self.step_time)
@@ -330,9 +340,6 @@ class Collision_Avoidance:
         if self.obs_states_list is not None:
             for i in range(self.obs_num):
                 self.obstacle_state_t[i][:, t] = np.copy(self.obs_states_list[i])
-        # if self.cir_obs_states_list is not None:
-        #     for i in range(self.cir_obs_num):
-        #         self.cir_obstacle_state_t[i][:, t] = np.copy(self.cir_obs_states_list[i])
 
         print('Total time: ', self.terminal_time)
         if np.linalg.norm(self.robot_cur_state[0:2] - self.robot_target_state[0:2]) <= self.destination_margin:
@@ -385,7 +392,7 @@ class Collision_Avoidance:
         self.ani.render(self.xt, self.obstacle_state_t , self.terminal_time, self.show_obs)
 
     def show_cbf(self):
-        self.ani.show_integral_cbf(self.obs_cbf_t, self.cir_obs_cbf_t, self.terminal_time)
+        self.ani.show_integral_cbf(self.obs_cbf_t, self.obs_cbf_t2, self.terminal_time)
 
     def show_controls(self):
         self.ani.show_integral_controls(self.ut, self.terminal_time)
@@ -415,13 +422,12 @@ if __name__ == '__main__':
     test_target.render()
     # test_target.show_clf()
     # test_target.show_slack()
-    test_target.show_cbf()
     # test_target.show_controls()
+    test_target.show_cbf()
 
     # plot controls here
-    fig, ax = plt.subplots(figsize=(6, 6))
-    # show the velocity u[0]
-    # show the omega u[1]
-    ax.plot(test_target.ut[0, :], label='u[0]', color='blue')
-    ax.plot(test_target.ut[1, :], label='u[1]', color='red')
+    fig, ax = plt.subplots(figsize=(8, 8))
+    ax.plot(test_target.ut[0, :], label='u[0], v', color='blue')
+    ax.plot(test_target.ut[1, :], label='u[1], w', color='red')
+    plt.legend()
     plt.show()

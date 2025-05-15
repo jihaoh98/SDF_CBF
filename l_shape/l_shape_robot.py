@@ -184,7 +184,7 @@ if __name__ == '__main__':
     plt.ylim(-2, 2)
 
     relative_move = [0.5, 1.0, np.pi/6]  # Move forward by 0.5 in robot's x direction and rotate 30 degrees more
-    moved_vertices = robot.get_vertices_at_relative_state(relative_move)
+    moved_vertices = robot.get_vertices_at_absolute_state(relative_move)
 
     poly_A = mpatches.Polygon(moved_vertices[0], alpha=0.5, color='red')
     ax.add_patch(poly_A)
