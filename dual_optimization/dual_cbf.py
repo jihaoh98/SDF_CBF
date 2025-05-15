@@ -631,7 +631,7 @@ def main():
         plt.scatter(s[i + 1, :][0], s[i + 1, :][1], c='black', marker='o', label='robot init')
 
 
-    plt.show()
+        plt.show()
 
 
 
