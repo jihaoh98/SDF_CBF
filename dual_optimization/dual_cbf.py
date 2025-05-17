@@ -574,20 +574,7 @@ def main():
     # visualize the solution
     fig, ax = plt.subplots(figsize=(8, 8))
     color_list = ['blue', 'green']
-    # # add obs
-    for i in range(3):
-        poly_obs = mpatches.Polygon(obs[i], alpha=0.5, color='red')
-        ax.add_patch(poly_obs)
 
-    # # add robot
-    for i in range(2):
-        poly_robot = mpatches.Polygon(robot.vertices[i], alpha=0.5, color=color_list[i])
-        ax.add_patch(poly_robot)
-
-    plt.axis('equal')
-    plt.legend()
-    plt.xlim(-2.5, 8.5)
-    plt.ylim(-2.5, 8.5)
 
     for i in range(N - 1):  # MATLAB: 1 to length(t)-1
 
@@ -621,11 +608,25 @@ def main():
         log['time'][i, :] = log_i['time']
         log['duals'][:, :, i] = log_i['duals']
 
-
         vertices_at_s_t =robot.get_vertices_at_absolute_state(s[i + 1, :])
         for i in range(2):
             poly_robot = mpatches.Polygon(vertices_at_s_t[i], alpha=0.5, color=color_list[i])
             ax.add_patch(poly_robot)
+
+        # # add obs
+        for i in range(3):
+            poly_obs = mpatches.Polygon(obs[i], alpha=0.5, color='red')
+            ax.add_patch(poly_obs)
+
+        # # add robot
+        for i in range(2):
+            poly_robot = mpatches.Polygon(robot.vertices[i], alpha=0.5, color=color_list[i])
+            ax.add_patch(poly_robot)
+
+        plt.axis('equal')
+        plt.legend()
+        plt.xlim(-2.5, 8.5)
+        plt.ylim(-2.5, 8.5)
 
         # plot the rotation center
         plt.scatter(s[i + 1, :][0], s[i + 1, :][1], c='black', marker='o', label='robot init')

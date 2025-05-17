@@ -2,23 +2,30 @@ import numpy as np
 from math import cos, sin
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
+from scipy.spatial import ConvexHull
 
 
 class L_shaped_robot:
-    def __init__(self, indx, model=None, init_state=None, rects=None, size=None, mode='size', step_time=0.1, goal=np.zeros((2, 1)), goal_margin=0.3, **kwargs) -> None:
+    def __init__(self, indx, model=None, init_state=None, rects=None, size=None,
+                 mode='size', center_mode='overlap', step_time=0.1, goal=np.zeros((2, 1)), goal_margin=0.3):
         self.id = indx
-        self.goal = goal
         self.model = model
-        self.goal_margin = goal_margin
         self.init_state = init_state
         self.step_time = step_time
-
+        self.goal = goal
+        self.goal_margin = goal_margin
         self.mode = mode
+        self.center_mode = center_mode  # 'overlap' or 'vertex'
+        self.current_state = None
+
         if mode == 'size':
             self.rect_length, self.rect_width = size
-            self.init_vertices = self._build_L_shape_from_size()
+            self.init_vertices = self._build_L_shape_from_size_vertex()
         elif mode == 'vertices':
-            self.init_vertices = self._normalize_to_center(rects)
+            if center_mode == 'vertex':
+                self.init_vertices = self._normalize_to_vertex(rects)
+            else:
+                self.init_vertices = self._normalize_to_center(rects)
         else:
             raise ValueError("Mode must be either 'size' or 'vertices'")
 
@@ -26,43 +33,35 @@ class L_shaped_robot:
         self.init_vertices_consider_theta = None
         self.initialize_vertices()
 
-
-        # two vector of center point and length, width of L-shaped robot
-        self.overlap_center = None
-        self.center_vectors = None
-        self.init_state = init_state
-        self.cur_state = None
-
-        self.step_time = step_time
-        self.goal = goal
-        self.goal_margin = goal_margin
-
-        self.arrive_flag = False
-        self.collision_flag = False
-
-
-    def _build_L_shape_from_size(self):
+    def _build_L_shape_from_size_vertex(self):
+        """Build L-shape with shared vertex at origin (0,0)"""
         l, w = self.rect_length, self.rect_width
 
-        # Build vertical rectangle centered at origin intersection
-        rect_A = [[-w/2, 0], [w/2, 0], [w/2, l], [-w/2, l]]
+        # Vertical rectangle starts at (0, 0), goes up
+        rect_A = [[0, 0], [w, 0], [w, l], [0, l]]
 
-        # Build horizontal rectangle centered at origin intersection
-        rect_B = [[0, -w/2], [l, -w/2], [l, w/2], [0, w/2]]
+        # Horizontal rectangle starts at (0, 0), goes right
+        rect_B = [[0, 0], [l, 0], [l, w], [0, w]]
 
         return [rect_A, rect_B]
 
-
-    def _normalize_to_center(self, rects):
-        """Shift given rectangles so their intersection center is at origin"""
-        center = self.get_center(rects)
-        if center is None:
-            raise ValueError("Provided rectangles do not overlap")
-        cx, cy, _ = center
+    def _normalize_to_vertex(self, rects, tol=1e-6):
+        """Shift so that the shared vertex of two rectangles is at origin"""
+        shared = self._find_common_vertex(rects[0], rects[1], tol=tol)
+        if shared is None:
+            raise ValueError("No shared vertex found between rectangles")
         shifted = []
         for rect in rects:
-            shifted.append([[x - cx, y - cy] for (x, y) in rect])
+            shifted.append([[x - shared[0], y - shared[1]] for (x, y) in rect])
         return shifted
+
+    def _find_common_vertex(self, rect1, rect2, tol=1e-6):
+        """Find a shared vertex between two rectangles (within tolerance)"""
+        for v1 in rect1:
+            for v2 in rect2:
+                if np.linalg.norm(np.array(v1) - np.array(v2)) < tol:
+                    return v1
+        return None
 
     def initialize_vertices(self):
         """Rotate and translate L-shape according to init_state"""
@@ -104,7 +103,6 @@ class L_shaped_robot:
         else:
             return None
 
-
     def get_vertices_at_relative_state(self, relative_state):
         """
         Get the transformed vertices if the robot moves from init_state by (dx, dy, dtheta).
@@ -133,7 +131,6 @@ class L_shaped_robot:
 
         return transformed
 
-
     def get_vertices_at_absolute_state(self, absolute_state):
         """Get the transformed vertices if robot is placed at absolute pose (x, y, theta)"""
         x, y, theta = absolute_state
@@ -159,13 +156,13 @@ if __name__ == '__main__':
     rect_A = [[0.0, 0.0], [0.0, -1.0], [0.1, -1.0], [0.1, 0.0]]  # vertical part
     rect_B = [[0.0, 0.0], [0.0, -0.1], [1.0, -0.1], [1.0, 0.0]]  # horizontal part
     
-
     robot = L_shaped_robot(
         indx=0,
-        init_state=[0.0, 0.0, np.pi/4],  # pose refers to the center (will be auto-corrected by _normalize_to_center)
+        init_state=[0.0, 0.0, 0],  # move shared corner to (1.0, 1.0)
         rects=[rect_A, rect_B],
-        mode='vertices'
-    )   
+        mode='vertices',
+        center_mode='vertex'
+    )
 
 
     # plot

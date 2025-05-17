@@ -3,7 +3,8 @@ import casadi as ca
 import yaml
 from scipy.spatial import ConvexHull
 from unicycle_robot_sdf import Unicycle_Robot_Sdf
-
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 
 class Unicycle_Sdf_Cbf_Clf:
     def __init__(self, file_name) -> None:
@@ -216,27 +217,52 @@ class Unicycle_Sdf_Cbf_Clf:
 
     #     return np.min(cbf_values)
 
+        return (A_new, a_new, B_new, b_new, dist_AG, dist_BG, lam_A_star, lam_AG_star, lam_A_pos_idx,
+                 lam_AG_pos_idx, lam_B_star, lam_BG_star, lam_B_pos_idx, lam_BG_pos_idx)
 
-    def add_cbf_dual_cons(self, robot_cur_state, h_AG, h_BG,
-                                mat_A, vec_a, mat_A_dot, vec_a_dot,  # sofa L shape
-                                mat_B, vec_b, mat_B_dot, vec_b_dot,  # sofa L shape
-                                mat_G, vec_g, mat_G_dot, vec_g_dot,  # one osbtacle
-                                lam_A_opt, lam_AG_opt, lam_A_pos_idx, lam_AG_pos_idx,
-                                lam_B_opt, lam_BG_opt, lam_B_pos_idx, lam_BG_pos_idx,):
+
+    def add_cbf_dual_cons(self, dual_res):
+        A_new, a_new = dual_res[0], dual_res[1]
+        B_new, b_new = dual_res[2], dual_res[3]
+        h_AG, h_BG = dual_res[4], dual_res[5]
+
+
+    R_mat = np.array([[np.cos(robot_cur_state[2]), -np.sin(robot_cur_state[2])], [np.sin(robot_cur_state[2]), np.cos(robot_cur_state[2])]])
+    dR_dtheta = np.array([[-np.sin(robot_cur_state[2]), -np.cos(robot_cur_state[2])], [np.cos(robot_cur_state[2]), -np.sin(robot_cur_state[2])]])
+    dR_dt_T = dR_dtheta.T * self.u[1]
+    dA_dt = mat_A @ dR_dt_T
+
+    dP_dt = np.array([np.cos(robot_cur_state[2] + np.pi/4), np.sin(robot_cur_state[2]) + np.pi/4]) * self.u[0]
+    da_dt = mat_A @ ( dR_dt_T @ robot_cur_state[:2] + R_mat.T @ dP_dt)
+    
+    dB_dt = mat_B @ dR_dt_T
+    db_dt = mat_B @ ( dR_dt_T @ robot_cur_state[:2] + R_mat.T @ dP_dt)
+    # obstacle
+    dg_dt = np.array([[0, 0, 0, 0]]).reshape(4, 1)  # if the obstacle is static
+    dG_dt = np.zeros((4, 2))  
+
+
+
+
+
+
+
+
+
         # paper equation (18a)
         L_dot_AG_1 = - 0.5 * lam_A_opt @ mat_A @ mat_A.T @ self.lam_A_dot.T
         L_dot_AG_2 = - 0.5 * lam_A_opt @ mat_A @ mat_A_dot.T @ lam_A_opt.T
         L_dot_AG_3 = - self.lam_A_dot @ vec_a - lam_A_opt @ vec_a_dot - self.lam_G_dot @ vec_g - lam_AG_opt @ vec_g_dot
         L_dot_AG = L_dot_AG_1 + L_dot_AG_2 + L_dot_AG_3
-        # self.opti.subject_to(L_dot_AG >= - 1.0 * (h_AG - 0.01))  # paper equation (18a)
-        self.opti.subject_to(L_dot_AG + h_AG >= 0)  # paper equation (18a)
+        self.opti.subject_to(L_dot_AG >= - 1.0 * (h_AG - 0.01))  # paper equation (18a)
+        # self.opti.subject_to(L_dot_AG + h_AG >= 0)  # paper equation (18a)
 
         L_dot_BG_1 = - 0.5 * lam_B_opt @ mat_B @ mat_B.T @ self.lam_B_dot.T
         L_dot_BG_2 = - 0.5 * lam_B_opt @ mat_B @ mat_B_dot.T @ lam_B_opt.T
         L_dot_BG_3 = - self.lam_B_dot @ vec_b - lam_B_opt @ vec_b_dot - self.lam_G_dot @ vec_g - lam_BG_opt @ vec_g_dot
         L_dot_BG = L_dot_BG_1 + L_dot_BG_2 + L_dot_BG_3
-        # self.opti.subject_to(L_dot_BG >= - 1.0 * (h_BG - 0.01))  # paper equation (18a)
-        self.opti.subject_to(L_dot_BG + h_BG >= 0)  # paper equation (18a)
+        self.opti.subject_to(L_dot_BG >= - 1.0 * (h_BG - 0.01))  # paper equation (18a)
+        # self.opti.subject_to(L_dot_BG + h_BG >= 0)  # paper equation (18a)
 
         # paper cons. (18c)
         self.opti.subject_to( self.lam_A_dot @ mat_A + lam_A_opt @ mat_A_dot + self.lam_G_dot @ mat_G + lam_AG_opt @ mat_G_dot == 0)  
@@ -245,15 +271,15 @@ class Unicycle_Sdf_Cbf_Clf:
         # self.opti.subject_to( self.lam_B_dot @ mat_A + lam_B_opt @ mat_B_dot + self.lam_G_dot @ mat_G == 0)    
 
         # # paper equation (18d)
-        # for i in range(len(lam_A_pos_idx)):
-        #     self.opti.subject_to(self.lam_A_dot[lam_A_pos_idx[0][i]] >= 0)
-        # for i in range(len(lam_AG_pos_idx)):
-        #     self.opti.subject_to(self.lam_G_dot[lam_AG_pos_idx[0][i]] >= 0)
+        for i in range(len(lam_A_pos_idx)):
+            self.opti.subject_to(self.lam_A_dot[lam_A_pos_idx[0][i]] >= 0)
+        for i in range(len(lam_AG_pos_idx)):
+            self.opti.subject_to(self.lam_G_dot[lam_AG_pos_idx[0][i]] >= 0)
 
-        # for i in range(len(lam_B_pos_idx)):
-        #     self.opti.subject_to(self.lam_B_dot[lam_B_pos_idx[0][i]] >= 0)
-        # for i in range(len(lam_BG_pos_idx)):
-        #     self.opti.subject_to(self.lam_G_dot[lam_BG_pos_idx[0][i]] >= 0)
+        for i in range(len(lam_B_pos_idx)):
+            self.opti.subject_to(self.lam_B_dot[lam_B_pos_idx[0][i]] >= 0)
+        for i in range(len(lam_BG_pos_idx)):
+            self.opti.subject_to(self.lam_G_dot[lam_BG_pos_idx[0][i]] >= 0)
         
         # # # paper cons. (18e)
         # self.opti.subject_to(self.lam_A_dot <= 1e5)
@@ -262,6 +288,48 @@ class Unicycle_Sdf_Cbf_Clf:
         # self.opti.subject_to(self.lam_A_dot >= -1e5)
         # self.opti.subject_to(self.lam_B_dot >= -1e5)
         # self.opti.subject_to(self.lam_G_dot >= -1e5)
+
+    def convex_polygon_hrep(self, points):
+        """
+        Given a set of 2D points (vertices of a convex polygon or a point cloud),
+        compute the H-representation (A, b) of the convex polygon such that Ax ≤ b 
+        describes the polygon (each inequality corresponds to one edge).
+        """
+        # Convert input to a NumPy array (n_points x 2)
+        pts = np.asarray(points, dtype=float)
+        if pts.shape[1] != 2:
+            raise ValueError("Input points must be 2-dimensional coordinates.")
+        
+        # 1. Compute the convex hull of the points
+        hull = ConvexHull(pts)
+        
+        # The ConvexHull vertices are in counterclockwise order (for 2D):contentReference[oaicite:6]{index=6}.
+        # We could use hull.vertices (indices of hull points) if needed for further processing.
+        # Here, we'll use hull.equations to get the facet equations directly.
+        
+        # 2. Get the hyperplane equations for each facet (edge) of the hull.
+        # hull.equations is an array of shape (n_facets, 3) for 2D: [a, b, c] for each line (a*x + b*y + c = 0).
+        # For interior points of the hull, a*x + b*y + c ≤ 0 holds true:contentReference[oaicite:7]{index=7}.
+        equations = hull.equations  # shape (n_edges, 3)
+        
+        # 3. Split each equation into normal vector (a, b) and offset c.
+        A = equations[:, :2]   # all rows, first two columns -> coefficients [a, b] for x and y
+        c = equations[:, 2]    # last column is c in a*x + b*y + c = 0
+        
+        # 4. Convert to inequality form: a*x + b*y ≤ -c
+        # We move c to the right side: a*x + b*y ≤ -c.
+        b = -c  # Now each inequality is [a, b] · [x, y] ≤ b_i (where b_i = -c).
+        
+        # At this point, each row of A and corresponding element of b represent 
+        # an inequality defining the half-space that contains the convex polygon.
+        # (The normal vectors in A point outward, and the interior of the polygon 
+        # satisfies A*x ≤ b.)
+
+        b = b.reshape(-1, 1)  # Reshape b to be a column vector (n_edges x 1)
+        
+        return A, b, hull
+
+
 
     def clf_qp(self, robot_cur_state, add_slack=False, u_ref=None):
         """ 
@@ -295,11 +363,58 @@ class Unicycle_Sdf_Cbf_Clf:
             print(self.opti.return_status() + ' clf qp')
             return None, None, None, False
         
+    def dual_qp(self, robot_, mat_G, vec_g):
+        # rotate and translate the L-shape robot to the cur_state, then get the vertices, A, b
+        robot_vertices_after_rot_trans = robot_.get_vertices_at_absolute_state(robot_.current_state)
+        A_new, a_new, _ = self.convex_polygon_hrep(robot_vertices_after_rot_trans[0])
+        B_new, b_new, _ = self.convex_polygon_hrep(robot_vertices_after_rot_trans[1])
 
-    def cbf_clf_qp(self, robot_cur_state, dist_AG, dist_BG, 
-                        mat_A, vec_a, mat_B, vec_b, mat_G, vec_g,
-                        lam_A_opt, lam_AG_opt, lam_A_pos_idx, lam_AG_pos_idx,
-                        lam_B_opt, lam_BG_opt, lam_B_pos_idx, lam_BG_pos_idx,
+        # solve 2 x N QP, N depends on the number of obstacles
+        opti = ca.Opti('conic');
+        lam_A = opti.variable(1, 4)
+        lam_AG = opti.variable(1, 4)
+        obj = - 0.25 * lam_A @ A_new @ A_new.T @ lam_A.T - lam_A @ a_new - lam_AG @ vec_g
+        opti.minimize(-obj)  # max optimization
+        opti.subject_to(lam_A @ A_new + lam_AG @ mat_G == 0)
+        opti.subject_to(lam_A >= 0)
+        opti.subject_to(lam_AG >= 0)
+
+        opti.solver('qpoases');  # the options should be alinged with the solver
+        sol=opti.solve();
+        lam_A_star = sol.value(lam_A).reshape(1, -1)
+        lam_AG_star = sol.value(lam_AG).reshape(1, -1)
+        lam_A_pos_idx = np.where(lam_A_star[0, :] < 1e-5)
+        lam_AG_pos_idx = np.where(lam_AG_star[0, :] < 1e-5)
+        dist_square = sol.value(obj)
+        dist_AG = np.sqrt(dist_square)
+
+        # # ======================= the second QP problem
+        opti = ca.Opti('conic');
+        lam_B = opti.variable(1, 4)
+        lam_BG = opti.variable(1, 4)
+        # the second qp w.r.t. rectangle B
+        obj = - 0.25 * lam_B @ B_new @ B_new.T @ lam_B.T - lam_B @ b_new - lam_BG @ vec_g
+        opti.minimize(-obj)
+        opti.subject_to(lam_B @ B_new + lam_BG @ mat_G == 0)
+        opti.subject_to(lam_B >= 0)
+        opti.subject_to(lam_BG >= 0)
+
+        opti.solver('qpoases')
+        sol = opti.solve()
+        lam_B_star = sol.value(lam_B).reshape(1, -1)
+        lam_BG_star = sol.value(lam_BG).reshape(1, -1)
+        lam_B_pos_idx = np.where(lam_B_star[0, :] < 1e-5)
+        lam_BG_pos_idx = np.where(lam_BG_star[0, :] < 1e-5)
+        dist_square = sol.value(obj)
+        dist_BG = np.sqrt(dist_square)
+        print('the AG distance is :', dist_AG)
+        print('the BG distance is :', dist_BG)
+
+        return (A_new, a_new, B_new, b_new,  dist_AG, dist_BG, lam_A_star, lam_AG_star, lam_A_pos_idx,
+                 lam_AG_pos_idx, lam_B_star, lam_BG_star, lam_B_pos_idx, lam_BG_pos_idx)
+
+
+    def cbf_clf_qp(self, robot_, A_init, a_init, B_init, b_init, G_init, g_int,
                         add_clf=True, u_ref=None):
         """
         This is a function to calculate the optimal control for the robot with respect to different shaped obstacles
@@ -316,32 +431,15 @@ class Unicycle_Sdf_Cbf_Clf:
         if u_ref is None:
             u_ref = np.zeros(self.control_dim)
 
-        R_mat = np.array([[np.cos(robot_cur_state[2]), -np.sin(robot_cur_state[2])], [np.sin(robot_cur_state[2]), np.cos(robot_cur_state[2])]])
-        dR_dtheta = np.array([[-np.sin(robot_cur_state[2]), -np.cos(robot_cur_state[2])], [np.cos(robot_cur_state[2]), -np.sin(robot_cur_state[2])]])
-        dR_dt_T = dR_dtheta.T * self.u[1]
-        dA_dt = mat_A @ dR_dt_T
-
-        dP_dt = np.array([np.cos(robot_cur_state[2] + np.pi/4), np.sin(robot_cur_state[2]) + np.pi/4]) * self.u[0]
-        da_dt = mat_A @ ( dR_dt_T @ robot_cur_state[:2] + R_mat.T @ dP_dt)
-        
-        dB_dt = mat_B @ dR_dt_T
-        db_dt = mat_B @ ( dR_dt_T @ robot_cur_state[:2] + R_mat.T @ dP_dt)
-        # obstacle
-        dg_dt = np.array([[0, 0, 0, 0]]).reshape(4, 1)  # if the obstacle is static
-        dG_dt = np.zeros((4, 2))  
-
+        # solve the dual problems to get the dual variables
+        dual_res = self.dual_qp(robot_)
+   
         self.set_optimal_function(u_ref, add_slack=add_clf)
     
-        clf = self.add_clf_dist_theta_cons(robot_cur_state, add_slack=add_clf)
+        clf = self.add_clf_dist_theta_cons(robot_.current_state, add_slack=add_clf)
 
         # dual constraints
-        self.add_cbf_dual_cons(robot_cur_state, dist_AG, dist_BG,
-                                    mat_A, vec_a, dA_dt, da_dt, 
-                                    mat_B, vec_b, dB_dt, db_dt,
-                                    mat_G, vec_g, dG_dt, dg_dt,
-                                    lam_A_opt, lam_AG_opt, lam_A_pos_idx, lam_AG_pos_idx,
-                                    lam_B_opt, lam_BG_opt, lam_B_pos_idx, lam_BG_pos_idx,)
-
+        self.add_cbf_dual_cons(dual_res)
 
         # self.add_controls_physical_cons()
         
