@@ -192,7 +192,7 @@ class Unicycle_Sdf_Cbf_Clf:
         lam_dot_j_1 = opti.variable(1, 4)
         lam_dot_j_2 = opti.variable(1, 4)
 
-        A_j, b_j = dual_res[4], dual_res[5]
+        A_j, b_j = dual_res[4], dual_res[5]  # obstacle is static
         h_ij_1, h_ij_2 = dual_res[6], dual_res[7]
         lam_star_i_1, lam_star_j_1 = dual_res[8], dual_res[9]
         lam_dot_i_1_positive_idx = dual_res[10]
@@ -226,25 +226,25 @@ class Unicycle_Sdf_Cbf_Clf:
         L_dot_AG_1 = -0.5 * lam_star_j_1 @ (A_j @ A_j.T) @ lam_dot_j_1.T     # 0.5*l2'*(Ai*Ai'), obstacle
         L_dot_AG_2 = 0                                                      # obstacle, 转化成障碍物，障碍物不旋转，静止的
         L_dot_AG_3 = - lam_dot_i_1 @ (b_i_1_init + A_i_1_init @ Rot.T @ p)  # robot, di'
-        dARp_dt_1 = lam_star_i_1 @ A_i_1_init @ dR.T  @ p * u[1]  # robot,
-        dARp_dt_2 = lam_star_i_1 @ A_i_1_init @ Rot.T @ np.array([np.cos(s[2] + np.pi/4), np.sin(s[2]) + np.pi/4]) * u[0]
-        L_dot_AG_4 = - (dARp_dt_2 + dARp_dt_1)    # robot
+        dARp_dt_1_AG = lam_star_i_1 @ A_i_1_init @ dR.T  @ p * u[1]  # robot,
+        dARp_dt_2_AG = lam_star_i_1 @ A_i_1_init @ Rot.T @ np.array([np.cos(s[2] + np.pi/4), np.sin(s[2]) + np.pi/4]) * u[0]
+        L_dot_AG_4 = - (dARp_dt_2_AG + dARp_dt_1_AG)    # robot
         L_dot_AG_5 = - lam_dot_j_1 @ b_j                                  # obstacle
         L_dot_AG_6 = 0                     
         L_dot_AG = L_dot_AG_1 + L_dot_AG_2 + L_dot_AG_3 + L_dot_AG_4 + L_dot_AG_5 + L_dot_AG_6
-        opti.subject_to(L_dot_AG + 1.0 * (h_ij_1 - 0.025) >= 0)                  # paper equation (18b)
+        opti.subject_to(L_dot_AG >= -1.0 * (h_ij_1 - 0.015))                  # paper equation (18b)
 
         # L_dot between rectangle B and obstacle G
         L_dot_BG_1 = -0.5 * lam_star_j_2 @ (A_j @ A_j.T) @ lam_dot_j_2.T     # 0.5*l2'*(Ai*Ai'), obstacle
         L_dot_BG_2 = 0                                                      # obstacle, 转化成障碍物，障碍物不旋转，静止的
         L_dot_BG_3 = - lam_dot_i_2 @ (b_i_2_init + A_i_2_init @ Rot.T @ p)  # robot, di'
-        dARp_dt_1 = lam_star_i_2 @ A_i_2_init @ dR.T  @ p * u[1]  # robot,
-        dARp_dt_2 = lam_star_i_2 @ A_i_2_init @ Rot.T @ np.array([np.cos(s[2] + np.pi/4), np.sin(s[2]) + np.pi/4]) * u[0]
-        L_dot_BG_4 = - (dARp_dt_2 + dARp_dt_1)    # robot
+        dARp_dt_1_BG = lam_star_i_2 @ A_i_2_init @ dR.T  @ p * u[1]  # robot,
+        dARp_dt_2_BG = lam_star_i_2 @ A_i_2_init @ Rot.T @ np.array([np.cos(s[2] + np.pi/4), np.sin(s[2]) + np.pi/4]) * u[0]
+        L_dot_BG_4 = - (dARp_dt_2_BG + dARp_dt_1_BG)    # robot
         L_dot_BG_5 = - lam_dot_j_2 @ b_j                                  # obstacle
         L_dot_BG_6 = 0
         L_dot_BG = L_dot_BG_1 + L_dot_BG_2 + L_dot_BG_3 + L_dot_BG_4 + L_dot_BG_5 + L_dot_BG_6
-        opti.subject_to(L_dot_BG + 1.0 * (h_ij_2 - 0.025) >= 0)                  # paper equation (18b)
+        opti.subject_to(L_dot_BG >= -1.0 * (h_ij_2 - 0.015))                  # paper equation (18b)
 
         # equality constraints
         eq_AG_1 = lam_dot_i_1 @ (A_i_1_init @ Rot.T)
