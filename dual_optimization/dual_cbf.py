@@ -379,7 +379,7 @@ def control(i, t_curr, s_curr, env, param):
             # === Aeq: dual dynamics constraint ===
             row_eq = 2 * k
             Aeq[row_eq:row_eq+2, :] = np.hstack([
-                np.zeros((2, 1)),                            # slack δ
+                np.zeros((2, 1)),                            # 
                 dR @ Ci.T @ l1,                              # ∂R/∂θ · Ci' · λ
                 np.zeros((2, 8 * k)),                        # padding before dotλ
                 R @ Ci.T,                                    # for control u
@@ -572,9 +572,24 @@ def main():
 
 
     # visualize the solution
+    # initializ e figure and axes
     fig, ax = plt.subplots(figsize=(8, 8))
     color_list = ['blue', 'green']
+    display_text = ''
 
+    # plot static obstacles only once (they don’t move)
+    obs_patches = []
+    for i in range(3):
+        poly_obs = mpatches.Polygon(obs[i], alpha=0.5, color='red')
+        obs_patches.append(poly_obs)
+        ax.add_patch(poly_obs)
+
+    # fix axes and legend once
+    ax.set_aspect('equal')
+    ax.set_xlim(-2.5, 8.5)
+    ax.set_ylim(-2.5, 8.5)
+    robot_center = ax.scatter([], [], c='black', marker='o', label='robot center')
+    ax.legend()
 
     for i in range(N - 1):  # MATLAB: 1 to length(t)-1
 
@@ -594,47 +609,32 @@ def main():
         display_text = f"time: {t[i,0]:.2f} s, loop time: {loop_time:.4f} s, frequency: {1/loop_time:.1f} Hz"
         print('\r' + display_text, end='')
 
-        # Simulate forward using solve_ivp (like ode45)
-        sol = solve_ivp(
-            fun=lambda t_, s_: dyn_u(t_, s_, u_t, param),
-            t_span=[0, dt],
-            y0=s[i, :],
-            method='RK45',
-            t_eval=[dt]  # only want the result at the end of the step
-        )
-        s[i + 1, :] = sol.y[:, -1]  # store final state
-
+        # update the
+        s[i+1, 0] = s[i, 0] + dt * u_t[0] * np.cos(s[i, 2] + param['head'])
+        s[i+1, 1] = s[i, 1] + dt * u_t[0] * np.sin(s[i, 2] + param['head'])
+        s[i+1, 2] = s[i, 2] + dt * u_t[1]
         # Log data
         log['time'][i, :] = log_i['time']
         log['duals'][:, :, i] = log_i['duals']
 
         vertices_at_s_t =robot.get_vertices_at_absolute_state(s[i + 1, :])
-        for i in range(2):
-            poly_robot = mpatches.Polygon(vertices_at_s_t[i], alpha=0.5, color=color_list[i])
+
+        # Get and plot robot at new state
+        vertices_at_s_t = robot.get_vertices_at_absolute_state(s[i + 1, :])
+
+        # Clear previous robot patches
+        for artist in ax.patches[len(obs_patches):]:  # avoid removing obs
+            artist.remove()
+
+        for j in range(2):
+            poly_robot = mpatches.Polygon(vertices_at_s_t[j], alpha=0.5, color=color_list[j])
             ax.add_patch(poly_robot)
 
-        # # add obs
-        for i in range(3):
-            poly_obs = mpatches.Polygon(obs[i], alpha=0.5, color='red')
-            ax.add_patch(poly_obs)
+        # Update rotation center
+        robot_center.set_offsets([[s[i + 1, 0], s[i + 1, 1]]])
 
-        # # add robot
-        for i in range(2):
-            poly_robot = mpatches.Polygon(robot.vertices[i], alpha=0.5, color=color_list[i])
-            ax.add_patch(poly_robot)
-
-        plt.axis('equal')
-        plt.legend()
-        plt.xlim(-2.5, 8.5)
-        plt.ylim(-2.5, 8.5)
-
-        # plot the rotation center
-        plt.scatter(s[i + 1, :][0], s[i + 1, :][1], c='black', marker='o', label='robot init')
-
-
-        plt.show()
-
-
+        # Redraw and pause
+        plt.pause(0.01)  # allow for real-time update
 
 
 if __name__ == '__main__':

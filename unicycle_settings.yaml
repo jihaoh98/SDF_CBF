@@ -1,6 +1,6 @@
 controller:
   Tmax: 20
-  step_time: 0.1
+  step_time: 0.05
   weight_input: [1, 1]
   smooth_input: [0.0, 0.0]
   weight_slack: 10
@@ -47,7 +47,7 @@ cir_obstacle_list:
 
 obstacle_list:
   obs_vertexes: [
-    [[2.0, 2.0], [3.0, 2.0], [3.0, 4.0], [2.0, 4.0]],
+    [[1, 0.5],[8, 0.5],[8, 5],[1, 5]],
     # [[3.5, 7.0], [5.5, 7.0], [5.5, 8.0], [3.5, 8.0]]
   ]
   obs_vels: [

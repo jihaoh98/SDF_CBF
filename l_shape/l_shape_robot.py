@@ -17,6 +17,12 @@ class L_shaped_robot:
         self.mode = mode
         self.center_mode = center_mode  # 'overlap' or 'vertex'
         self.current_state = None
+        self.A_init = None
+        self.a_init = None
+        self.B_init = None
+        self.b_init = None
+        self.G_init = None
+        self.g_init = None
 
         if mode == 'size':
             self.rect_length, self.rect_width = size
@@ -140,6 +146,23 @@ class L_shaped_robot:
             transformed.append(new_rect)
         return transformed
 
+    def get_h_form_rot_trans(self, s):
+        p = s[:2].reshape(2, 1)
+        theta = s[2]
+
+        Rotation_matrix = np.array([
+            [np.cos(theta), -np.sin(theta)],
+            [np.sin(theta),  np.cos(theta)]
+        ])
+
+        A_new = self.A_init @ Rotation_matrix.T
+        a_new = self.a_init + self.A_init @ Rotation_matrix.T @ p
+ 
+        B_new = self.B_init @ Rotation_matrix.T
+        b_new = self.b_init + self.B_init @ Rotation_matrix.T @ p
+
+        return A_new, a_new, B_new, b_new
+
 
 if __name__ == '__main__':
     # robot = L_shaped_robot(
@@ -158,7 +181,7 @@ if __name__ == '__main__':
     
     robot = L_shaped_robot(
         indx=0,
-        init_state=[0.0, 0.0, 0],  # move shared corner to (1.0, 1.0)
+        init_state=[0.05, 1.5, np.pi/4],  # move shared corner to (1.0, 1.0)
         rects=[rect_A, rect_B],
         mode='vertices',
         center_mode='vertex'
@@ -180,13 +203,13 @@ if __name__ == '__main__':
     plt.xlim(-2, 2)
     plt.ylim(-2, 2)
 
-    relative_move = [0.5, 1.0, np.pi/6]  # Move forward by 0.5 in robot's x direction and rotate 30 degrees more
-    moved_vertices = robot.get_vertices_at_absolute_state(relative_move)
+    absolute_move = [0.05, 1.5, np.pi/6]  # Move forward by 0.5 in robot's x direction and rotate 30 degrees more
+    moved_vertices = robot.get_vertices_at_absolute_state(absolute_move)
 
     poly_A = mpatches.Polygon(moved_vertices[0], alpha=0.5, color='red')
     ax.add_patch(poly_A)
     poly_B = mpatches.Polygon(moved_vertices[1], alpha=0.5, color='blue')
     ax.add_patch(poly_B)
-    plt.scatter(relative_move[0], relative_move[1], c='black', marker='o', label='robot init')
+    plt.scatter(absolute_move[0], absolute_move[1], c='black', marker='o', label='robot init')
 
     plt.show()

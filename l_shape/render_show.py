@@ -302,12 +302,12 @@ class Render_Animation:
 
         plt.plot(
             t, cbft[0, 0:terminal_time].reshape(terminal_time), 
-            linewidth=6, color=color_list[0], label='sofa_cbf_1'
+            linewidth=3, color=color_list[0], label='sofa_cbf_1', marker='o'
         )
 
         plt.plot(
             t, cbft2[0, 0:terminal_time].reshape(terminal_time), 
-            linewidth=6, color=color_list[1], label = 'sofa_cbf_2'
+            linewidth=3, color=color_list[1], label = 'sofa_cbf_2', marker='o'
         )
         plt.legend()
         plt.show()

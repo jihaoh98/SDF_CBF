@@ -1,130 +1,62 @@
 import numpy as np
-import numpy as np
-from math import cos, sin
-import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
+from scipy.spatial import HalfspaceIntersection
+from scipy.spatial import ConvexHull
 
-class L_shaped_robot:
-    def __init__(self, indx, model=None, init_state=None, rects=None, size=None, mode='size', step_time=0.1, goal=np.zeros((2, 1)), goal_margin=0.3):
-        self.id = indx
-        self.model = model
-        self.init_state = init_state
-        self.step_time = step_time
-        self.goal = goal
-        self.goal_margin = goal_margin
+def convex_polygon_hrep(points):
+    """
+    Given a set of 2D points (vertices of a convex polygon or a point cloud),
+    compute the H-representation (A, b) of the convex polygon such that Ax ≤ b 
+    describes the polygon (each inequality corresponds to one edge).
+    """
+    # Convert input to a NumPy array (n_points x 2)
+    pts = np.asarray(points, dtype=float)
+    if pts.shape[1] != 2:
+        raise ValueError("Input points must be 2-dimensional coordinates.")
+    
+    # 1. Compute the convex hull of the points
+    hull = ConvexHull(pts)
+    
+    # The ConvexHull vertices are in counterclockwise order (for 2D):contentReference[oaicite:6]{index=6}.
+    # We could use hull.vertices (indices of hull points) if needed for further processing.
+    # Here, we'll use hull.equations to get the facet equations directly.
+    
+    # 2. Get the hyperplane equations for each facet (edge) of the hull.
+    # hull.equations is an array of shape (n_facets, 3) for 2D: [a, b, c] for each line (a*x + b*y + c = 0).
+    # For interior points of the hull, a*x + b*y + c ≤ 0 holds true:contentReference[oaicite:7]{index=7}.
+    equations = hull.equations  # shape (n_edges, 3)
+    
+    # 3. Split each equation into normal vector (a, b) and offset c.
+    A = equations[:, :2]   # all rows, first two columns -> coefficients [a, b] for x and y
+    c = equations[:, 2]    # last column is c in a*x + b*y + c = 0
+    
+    # 4. Convert to inequality form: a*x + b*y ≤ -c
+    # We move c to the right side: a*x + b*y ≤ -c.
+    b = -c  # Now each inequality is [a, b] · [x, y] ≤ b_i (where b_i = -c).
+    
+    # At this point, each row of A and corresponding element of b represent 
+    # an inequality defining the half-space that contains the convex polygon.
+    # (The normal vectors in A point outward, and the interior of the polygon 
+    # satisfies A*x ≤ b.)
 
-        self.mode = mode
-        if mode == 'size':
-            self.rect_length, self.rect_width = size
-            self.init_vertices = self._build_L_shape_from_size()
-        elif mode == 'vertices':
-            self.init_vertices = self._normalize_to_center(rects)
-        else:
-            raise ValueError("Mode must be either 'size' or 'vertices'")
+    b = b.reshape(-1, 1)  # Reshape b to be a column vector (n_edges x 1)
+    
+    return A, b, hull
 
-        self.vertices = None
-        self.init_vertices_consider_theta = None
-        self.initialize_vertices()
+A = np.vstack((np.eye(2), -np.eye(2)))
+theta = np.pi/4
+Rotation_matrix = np.array([[np.cos(theta), -np.sin(theta)],
+                            [np.sin(theta), np.cos(theta)]])
 
-    def _build_L_shape_from_size(self):
-        l, w = self.rect_length, self.rect_width
+A_new = A @ Rotation_matrix.T
 
-        # Build vertical rectangle centered at origin intersection
-        rect_A = [[-w/2, 0], [w/2, 0], [w/2, l], [-w/2, l]]
+b_0 = np.array([0.1, 0.0, 0.0, 1.0]).reshape(-1, 1)
 
-        # Build horizontal rectangle centered at origin intersection
-        rect_B = [[0, -w/2], [l, -w/2], [l, w/2], [0, w/2]]
+b_new = b_0 + A @ Rotation_matrix.T @ np.array([0.05, 1.5]).reshape(-1, 1)
 
-        return [rect_A, rect_B]
-
-    def _normalize_to_center(self, rects):
-        """Shift given rectangles so their intersection center is at origin"""
-        center = self.get_center(rects)
-        if center is None:
-            raise ValueError("Provided rectangles do not overlap")
-        cx, cy, _ = center
-        shifted = []
-        for rect in rects:
-            shifted.append([[x - cx, y - cy] for (x, y) in rect])
-        return shifted
-
-    def initialize_vertices(self):
-        """Rotate and translate L-shape according to init_state"""
-        x, y, theta = self.init_state
-        transformed = []
-        for rect in self.init_vertices:
-            new_rect = [self._rotate_and_translate(pt, theta, x, y) for pt in rect]
-            transformed.append(new_rect)
-        self.vertices = transformed
-        self.init_vertices_consider_theta = transformed
-
-    def _rotate_and_translate(self, pt, theta, dx, dy):
-        """Rotate point around origin and translate"""
-        R = np.array([[np.cos(theta), -np.sin(theta)],
-                      [np.sin(theta),  np.cos(theta)]])
-        pt = np.array(pt)
-        return (R @ pt + np.array([dx, dy])).tolist()
-
-    def get_bounds(self, vertices):
-        vertices = np.array(vertices)
-        x_min, x_max = vertices[:, 0].min(), vertices[:, 0].max()
-        y_min, y_max = vertices[:, 1].min(), vertices[:, 1].max()
-        return x_min, x_max, y_min, y_max
-
-    def get_center(self, rects):
-        rect1 = rects[0]
-        rect2 = rects[1]
-        x1_min, x1_max, y1_min, y1_max = self.get_bounds(rect1)
-        x2_min, x2_max, y2_min, y2_max = self.get_bounds(rect2)
-
-        x_overlap_min = max(x1_min, x2_min)
-        x_overlap_max = min(x1_max, x2_max)
-        y_overlap_min = max(y1_min, y2_min)
-        y_overlap_max = min(y1_max, y2_max)
-
-        center_theta = 0
-        if x_overlap_min < x_overlap_max and y_overlap_min < y_overlap_max:
-            return (x_overlap_min + x_overlap_max)/2, (y_overlap_min + y_overlap_max)/2, center_theta
-        else:
-            return None
+print(b_new)
 
 
-
-def main():
-    robot = L_shaped_robot(
-    indx=0,
-    init_state=[1.0, 1.0, np.pi/6],
-    size=(1.0, 0.2),  # length=1.0, width=0.2
-    mode='size'
-    )
-    print(robot.vertices)
-
-
-    rect_A = [[1, 1], [1.1, 1], [1.1, 2], [1, 2]]
-    rect_B = [[1, 1], [2, 1], [2, 1.1], [1, 1.1]]
-
-    robot = L_shaped_robot(
-        indx=0,
-        init_state=[0.0, 0.0, 0],
-        rects=[rect_A, rect_B],
-        mode='vertices'
-    )
-    print(robot.vertices)
-
-    fig, ax = plt.subplots()
-    poly_A = mpatches.Polygon(robot.vertices[0], alpha=0.5, color='red')
-    ax.add_patch(poly_A)
-    poly_B = mpatches.Polygon(robot.vertices[1], alpha=0.5, color='blue')
-    ax.add_patch(poly_B)
-
-
-    plt.axis('equal')
-    plt.legend()
-    plt.xlim(0, 4)
-    plt.ylim(0, 4)
-    plt.show()
-
-
-
-if __name__ =='__main__':
-    main()
+vertices = [[0.0, 1.5], [0.7071067811865475, 0.7928932188134524], [0.7778174593052022, 0.8636038969321072], [0.07071067811865477, 1.5707106781186548]]
+A_pkg, b_pkg, _ = convex_polygon_hrep(vertices)
+print(b_pkg)

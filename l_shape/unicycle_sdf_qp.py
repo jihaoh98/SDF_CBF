@@ -61,15 +61,15 @@ class Unicycle_Sdf_Cbf_Clf:
         # optimize and set the solver
 
         # ipopt
-        self.opti = ca.Opti()
-        opts_setting = {
-                'ipopt.max_iter': 5000,
-                'ipopt.print_level': 0,
-                'print_time': 0,
-                'ipopt.acceptable_tol': 1e-8,
-                'ipopt.acceptable_obj_change_tol': 1e-6
-            }
-        self.opti.solver('ipopt', opts_setting)
+        # self.opti = ca.Opti()
+        # opts_setting = {
+        #         'ipopt.max_iter': 5000,
+        #         'ipopt.print_level': 0,
+        #         'print_time': 0,
+        #         'ipopt.acceptable_tol': 1e-8,
+        #         'ipopt.acceptable_obj_change_tol': 1e-6
+        #     }
+        # self.opti.solver('ipopt', opts_setting)
 
         # qpoases
         # self.opti = ca.Opti('conic')
@@ -81,255 +81,228 @@ class Unicycle_Sdf_Cbf_Clf:
         # }
         # self.opti.solver('qpoases', opts_setting)
 
-        self.u = self.opti.variable(self.control_dim)
-        self.lam_A_dot = self.opti.variable(1, 4)
-        self.lam_B_dot = self.opti.variable(1, 4)
-        self.lam_G_dot = self.opti.variable(1, 4)
-        self.slack = self.opti.variable()
-        self.obj = None
+        # self.u = self.opti.variable(self.control_dim)
+        # self.lam_A_dot = self.opti.variable(1, 4)
+        # self.lam_B_dot = self.opti.variable(1, 4)
+        # self.lam_AG_dot = self.opti.variable(1, 4)
+        # self.lam_BG_dot = self.opti.variable(1, 4)
+
+        # self.slack = self.opti.variable()
+        # self.obj = None
   
         # approach the desired control and smooth the control
-        self.H = np.diag(self.weight_input)
-        self.R = np.diag(self.smooth_input)
+        # self.H = np.diag(self.weight_input)
+        # self.R = np.diag(self.smooth_input)
 
-    def set_optimal_function(self, u_ref, add_slack=True):
-        """ set the optimal function """
-        self.obj = (self.u - u_ref).T @ self.H @ (self.u - u_ref)
-        if add_slack:
-            # self.obj = self.obj
-            self.obj = self.obj + self.weight_slack * self.slack ** 2
-        self.opti.minimize(self.obj)
-
-        # self.opti.subject_to(self.u[0] >= -0.3)
-        # self.opti.subject_to(self.u[0] <= 0.3)
-        # self.opti.subject_to(self.u[1] >= -0.2)
-        # self.opti.subject_to(self.u[1] <= 0.2)
-
-    # def add_clf_distance_cons(self, robot_cur_state, add_slack=True):
-    #     """ add clf cons of distance """
-    #     clf1 = self.clf1(robot_cur_state, self.target_state)
-    #     lf_clf1 = self.lf_clf1(robot_cur_state, self.target_state)
-    #     lg_clf1 = self.lg_clf1(robot_cur_state, self.target_state)
-
+    # def set_optimal_function(self, u_ref, add_slack=True):
+    #     """ set the optimal function """
+    #     self.obj = (self.u - u_ref).T @ self.H @ (self.u - u_ref)
     #     if add_slack:
-    #         self.opti.subject_to(lf_clf1 + (lg_clf1 @ self.u)[0, 0] + self.clf_lambda[0] * clf1 <= self.slack1)
-    #         self.opti.subject_to(self.opti.bounded(-np.inf, self.slack1, np.inf))
-    #     else:
-    #         self.opti.subject_to(lf_clf1 + (lg_clf1 @ self.u)[0, 0] + self.clf_lambda[0] * clf1 <= 0)
-        
-    #     return clf1
+    #         # self.obj = self.obj
+    #         self.obj = self.obj + self.weight_slack * self.slack ** 2
+    #     self.opti.minimize(self.obj)
+
+
+
     
-    # def add_clf_theta_cons(self, robot_cur_state, add_slack=True):
+    # def add_clf_dist_theta_cons(self, robot_cur_state, add_slack=False):
     #     """ add clf cons of theta """
-    #     clf2 = self.clf2(robot_cur_state, self.target_state)
-    #     lf_clf2 = self.lf_clf2(robot_cur_state, self.target_state)
-    #     lg_clf2 = self.robot.lg_clf2(robot_cur_state, self.target_state)
+    #     # clf3 = self.clf3(robot_cur_state, self.target_state)
+    #     # lf_clf3 = self.lf_clf3(robot_cur_state, self.target_state)
+    #     # lg_clf3 = self.robot.lg_clf3(robot_cur_state, self.target_state)
 
-    #     if lg_clf2[0, 1] != 0:
-    #         if add_slack:
-    #             self.opti.subject_to(lf_clf2 + (lg_clf2 @ self.u)[0, 0] + self.clf_lambda[1] * clf2 <= self.slack2)
-    #             self.opti.subject_to(self.opti.bounded(-np.inf, self.slack2, np.inf))
-    #         else:
-    #             self.opti.subject_to(lf_clf2 + (lg_clf2 @ self.u)[0, 0] + self.clf_lambda[1] * clf2 <= 0)
+    #     # if lg_clf3[0, 1] != 0:
+    #     #     if add_slack:
+    #     #         self.opti.subject_to(lf_clf3 + (lg_clf3 @ self.u)[0, 0] + self.clf_lambda[1] * clf3 <= self.slack)
+    #     #         # self.opti.subject_to(self.opti.bounded(-np.inf, self.slack2, np.inf))
+    #     #     else:
+    #     #         self.opti.subject_to(lf_clf3 + (lg_clf3 @ self.u)[0, 0] + self.clf_lambda[1] * clf3 <= 0)
 
-    #     return clf2
+    #     # return clf3
+
+    #     # clf from the paper
+    #     term_1 = (robot_cur_state[:2] - self.target_state[:2]) @ np.array([np.cos(robot_cur_state[2] + np.pi/4), np.sin(robot_cur_state[2] + np.pi/4)])
+    #     term_2 = (robot_cur_state[2] - self.target_state[2])
+    #     term_3 = (robot_cur_state - self.target_state) @ (robot_cur_state - self.target_state)
+    #     self.opti.subject_to(term_1 * self.u[0] + term_2 * self.u[1] <= -1.0 * term_3 + self.slack)
+
+    #     clf3 = term_3
+
+    #     return clf3
+
+    def dual_qp(self, robot_):
+            # rotate and translate the L-shape robot to the cur_state, then get the vertices, A, b
+            A_new, a_new, B_new, b_new = robot_.get_h_form_rot_trans(robot_.current_state)
+            G_new = robot_.G_init
+            g_new = robot_.g_init
+            
+            # solve 2 x N QP, N depends on the number of obstacles
+            opti = ca.Opti('conic');
+            lam_A = opti.variable(1, 4)
+            lam_AG = opti.variable(1, 4)
+            obj = - 0.25 * lam_A @ A_new @ A_new.T @ lam_A.T - lam_A @ a_new - lam_AG @ g_new
+            opti.minimize(-obj)  # max optimization
+            opti.subject_to(lam_A @ A_new + lam_AG @ G_new == 0)
+            opti.subject_to(lam_A >= 0)
+            opti.subject_to(lam_AG >= 0)
+
+            opti.solver('qpoases');  # the options should be alinged with the solver
+            sol=opti.solve();
+            lam_A_star = sol.value(lam_A).reshape(1, -1)
+            lam_AG_star = sol.value(lam_AG).reshape(1, -1)
+            lam_A_pos_idx = np.where(lam_A_star[0, :] < 1e-5)
+            lam_AG_pos_idx = np.where(lam_AG_star[0, :] < 1e-5)
+            dist_square = sol.value(obj)
+            dist_AG = np.sqrt(dist_square)
+            # dist_AG = dist_square
+
+            # # ======================= the second QP problem
+            opti = ca.Opti('conic');
+            lam_B = opti.variable(1, 4)
+            lam_BG = opti.variable(1, 4)
+            # the second qp w.r.t. rectangle B
+            obj = - 0.25 * lam_B @ B_new @ B_new.T @ lam_B.T - lam_B @ b_new - lam_BG @ g_new
+            opti.minimize(-obj)
+            opti.subject_to(lam_B @ B_new + lam_BG @ G_new == 0)
+            opti.subject_to(lam_B >= 0)
+            opti.subject_to(lam_BG >= 0)
+
+            opti.solver('qpoases')
+            sol = opti.solve()
+            lam_B_star = sol.value(lam_B).reshape(1, -1)
+            lam_BG_star = sol.value(lam_BG).reshape(1, -1)
+            lam_B_pos_idx = np.where(lam_B_star[0, :] < 1e-5)
+            lam_BG_pos_idx = np.where(lam_BG_star[0, :] < 1e-5)
+            dist_square_ = sol.value(obj)
+            dist_BG = np.sqrt(dist_square_)
+            # dist_BG = dist_square_
     
-    def add_clf_dist_theta_cons(self, robot_cur_state, add_slack=False):
-        """ add clf cons of theta """
-        # clf3 = self.clf3(robot_cur_state, self.target_state)
-        # lf_clf3 = self.lf_clf3(robot_cur_state, self.target_state)
-        # lg_clf3 = self.robot.lg_clf3(robot_cur_state, self.target_state)
+            print('the AG distance is :', dist_AG)
+            print('the BG distance is :', dist_BG)
 
-        # if lg_clf3[0, 1] != 0:
-        #     if add_slack:
-        #         self.opti.subject_to(lf_clf3 + (lg_clf3 @ self.u)[0, 0] + self.clf_lambda[1] * clf3 <= self.slack)
-        #         # self.opti.subject_to(self.opti.bounded(-np.inf, self.slack2, np.inf))
-        #     else:
-        #         self.opti.subject_to(lf_clf3 + (lg_clf3 @ self.u)[0, 0] + self.clf_lambda[1] * clf3 <= 0)
+            return (A_new, a_new, B_new, b_new, G_new, g_new, dist_AG, dist_BG, lam_A_star, lam_AG_star, lam_A_pos_idx,
+                    lam_AG_pos_idx, lam_B_star, lam_BG_star, lam_B_pos_idx, lam_BG_pos_idx)
 
-        # return clf3
+    def add_cbf_dual_cons(self, robot_, dual_res, u_ref):
+        opti = ca.Opti()
+        u = opti.variable(self.control_dim)  # 2 
+        slack = opti.variable()  # 1
+        lam_dot_i_1 = opti.variable(1, 4)
+        lam_dot_i_2 = opti.variable(1, 4)
+        lam_dot_j_1 = opti.variable(1, 4)
+        lam_dot_j_2 = opti.variable(1, 4)
 
-        # clf from the paper
-        term_1 = (robot_cur_state[:2] - self.target_state[:2]) @ np.array([np.cos(robot_cur_state[2] + np.pi/4), np.sin(robot_cur_state[2] + np.pi/4)])
-        term_2 = (robot_cur_state[2] - self.target_state[2])
-        term_3 = (robot_cur_state - self.target_state) @ (robot_cur_state - self.target_state)
-        self.opti.subject_to(term_1 * self.u[0] + term_2 * self.u[1] <= -1.0 * term_3 + self.slack)
+        A_j, b_j = dual_res[4], dual_res[5]
+        h_ij_1, h_ij_2 = dual_res[6], dual_res[7]
+        lam_star_i_1, lam_star_j_1 = dual_res[8], dual_res[9]
+        lam_dot_i_1_positive_idx = dual_res[10]
+        lam_dot_j_1_positive_idx = dual_res[11]
+        lam_star_i_2, lam_star_j_2 = dual_res[12], dual_res[13]
+        lam_dot_i_2_positive_idx = dual_res[14]
+        lam_dot_j_2_positive_idx = dual_res[15]
+        A_i_1_init, b_i_1_init = robot_.A_init, robot_.a_init
+        A_i_2_init, b_i_2_init = robot_.B_init, robot_.b_init
 
-        clf3 = term_3
+        s = robot_.current_state
+        p = s[:2]
+        Rot = np.array([[np.cos(s[2]), -np.sin(s[2])], [np.sin(s[2]), np.cos(s[2])]])
+        dR = np.array([[-np.sin(s[2]), -np.cos(s[2])], [np.cos(s[2]), -np.sin(s[2])]])
 
-        return clf3
+        """ set the cost function """
+        H_mat = np.diag(self.weight_input)
+        obj = (u - u_ref).T @ H_mat @ (u - u_ref)
+        obj = obj + self.weight_slack * slack ** 2
+        opti.minimize(obj)
 
-    # def add_controls_physical_cons(self):
-    #     """ add physical constraint of controls """
-    #     self.opti.subject_to(self.opti.bounded(self.u_min, self.u, self.u_max))
+        """ set the CLF constraints """
+        term_1 = (s[:2] - self.target_state[:2]) @ np.array([np.cos(s[2] + np.pi/4), np.sin(s[2] + np.pi/4)])
+        term_2 = (s[2] - self.target_state[2])
+        term_3 = (s - self.target_state) @ (s - self.target_state)
+        opti.subject_to(term_1 * u[0] + term_2 * u[1] <= -1.0 * term_3 + slack)
+        clf = term_3
 
-    # def add_cir_cbf_cons(self, robot_cur_state, robot_params, two_center, cir_obs_state):
-    #     """ add cons w.r.t circle obstacle """
-    #     cbf = self.cir_cbf(robot_cur_state, robot_params, two_center, cir_obs_state)
-    #     lf_cbf, lg_cbf, dt_obs_cbf = self.robot.derive_cbf_gradient(robot_cur_state, robot_params, two_center, cir_obs_state, obs_shape='circle')
-    #     self.opti.subject_to(lf_cbf + (lg_cbf @ self.u)[0, 0] + dt_obs_cbf + self.cbf_gamma * cbf >= 0)
+        """ set the CBF constraints """
+        # L_dot between rectangle A and obstacle G
+        L_dot_AG_1 = -0.5 * lam_star_j_1 @ (A_j @ A_j.T) @ lam_dot_j_1.T     # 0.5*l2'*(Ai*Ai'), obstacle
+        L_dot_AG_2 = 0                                                      # obstacle, 转化成障碍物，障碍物不旋转，静止的
+        L_dot_AG_3 = - lam_dot_i_1 @ (b_i_1_init + A_i_1_init @ Rot.T @ p)  # robot, di'
+        dARp_dt_1 = lam_star_i_1 @ A_i_1_init @ dR.T  @ p * u[1]  # robot,
+        dARp_dt_2 = lam_star_i_1 @ A_i_1_init @ Rot.T @ np.array([np.cos(s[2] + np.pi/4), np.sin(s[2]) + np.pi/4]) * u[0]
+        L_dot_AG_4 = - (dARp_dt_2 + dARp_dt_1)    # robot
+        L_dot_AG_5 = - lam_dot_j_1 @ b_j                                  # obstacle
+        L_dot_AG_6 = 0                     
+        L_dot_AG = L_dot_AG_1 + L_dot_AG_2 + L_dot_AG_3 + L_dot_AG_4 + L_dot_AG_5 + L_dot_AG_6
+        opti.subject_to(L_dot_AG + 1.0 * (h_ij_1 - 0.025) >= 0)                  # paper equation (18b)
 
-    #     return cbf
-    
-    # def add_cbf_cons(self, robot_cur_state, robot_params, two_center, obs_state, obs_vertex):
-    #     """ add cons w.r.t other-shaped obstacle """
-    #     min_sdf = 10000
-    #     # sample points from obstacles and add constraints to the optimal problem
-    #     sampled_points = self.robot.get_sampled_points_from_obstacle_vertexes(obs_vertex, num_samples=6)
-         
-    #     # TODO, reduce the number of points
-    #     for i in range(sampled_points.shape[0]):
-    #         obs_cur_point_state = np.array([sampled_points[i][0], sampled_points[i][1], obs_state[2], obs_state[3]])
-    #         cbf = self.cbf(robot_cur_state, robot_params, two_center, obs_cur_point_state)
-    #         lf_cbf, lg_cbf, dt_obs_cbf = self.robot.derive_cbf_gradient(robot_cur_state, robot_params, two_center, obs_cur_point_state)
-    #         self.opti.subject_to(lf_cbf + (lg_cbf @ self.u)[0, 0] + dt_obs_cbf + self.cbf_gamma * cbf >= 0)
+        # L_dot between rectangle B and obstacle G
+        L_dot_BG_1 = -0.5 * lam_star_j_2 @ (A_j @ A_j.T) @ lam_dot_j_2.T     # 0.5*l2'*(Ai*Ai'), obstacle
+        L_dot_BG_2 = 0                                                      # obstacle, 转化成障碍物，障碍物不旋转，静止的
+        L_dot_BG_3 = - lam_dot_i_2 @ (b_i_2_init + A_i_2_init @ Rot.T @ p)  # robot, di'
+        dARp_dt_1 = lam_star_i_2 @ A_i_2_init @ dR.T  @ p * u[1]  # robot,
+        dARp_dt_2 = lam_star_i_2 @ A_i_2_init @ Rot.T @ np.array([np.cos(s[2] + np.pi/4), np.sin(s[2]) + np.pi/4]) * u[0]
+        L_dot_BG_4 = - (dARp_dt_2 + dARp_dt_1)    # robot
+        L_dot_BG_5 = - lam_dot_j_2 @ b_j                                  # obstacle
+        L_dot_BG_6 = 0
+        L_dot_BG = L_dot_BG_1 + L_dot_BG_2 + L_dot_BG_3 + L_dot_BG_4 + L_dot_BG_5 + L_dot_BG_6
+        opti.subject_to(L_dot_BG + 1.0 * (h_ij_2 - 0.025) >= 0)                  # paper equation (18b)
 
-    #         if cbf < min_sdf:
-    #             min_sdf = cbf
+        # equality constraints
+        eq_AG_1 = lam_dot_i_1 @ (A_i_1_init @ Rot.T)
+        eq_AG_2 = lam_star_i_1 @ (A_i_1_init @ dR.T) * u[1]
+        eq_AG_3 = lam_dot_j_1 @ (A_j @ Rot.T)
+        opti.subject_to(eq_AG_1 + eq_AG_2 + eq_AG_3 == 0)
 
-    #     return min_sdf
-    
-    # def add_cbf_cons_integrate(self, robot_cur_state, robot_params, two_center, obs_state, obs_vertex):
-    #     """ add cons w.r.t other-shaped obstacle """
-    #     # sample points from obstacles and add constraints to the optimal problem
-    #     num_closest_points = 6
-    #     sampled_points = self.robot.get_sampled_points_from_obstacle_vertexes(obs_vertex, num_samples=6)
-
-    #     cbf_values = []
-    #     obs_states = []
-
-    #     for i in range(sampled_points.shape[0]):
-    #         obs_cur_point_state = np.array([sampled_points[i][0], sampled_points[i][1], obs_state[2], obs_state[3]])
-    #         cbf = self.cbf(robot_cur_state, robot_params, two_center, obs_cur_point_state)
-    #         cbf_values.append(cbf)
-    #         obs_states.append(obs_cur_point_state)
-
-    #     cbf_values = np.array(cbf_values)
-    #     obs_states = np.array(obs_states)
-
-    #     closest_indices = np.argsort(cbf_values)[:num_closest_points]
-    #     for idx in closest_indices:
-    #         obs_state = obs_states[idx]
-    #         cbf = cbf_values[idx]
-
-    #         lf_cbf, lg_cbf, dt_obs_cbf = self.robot.derive_cbf_gradient(robot_cur_state, robot_params, two_center, obs_state)
-    #         self.opti.subject_to(lf_cbf + (lg_cbf @ self.u)[0, 0] + dt_obs_cbf + self.cbf_gamma * cbf >= 0)
-
-    #     return np.min(cbf_values)
-
-        return (A_new, a_new, B_new, b_new, dist_AG, dist_BG, lam_A_star, lam_AG_star, lam_A_pos_idx,
-                 lam_AG_pos_idx, lam_B_star, lam_BG_star, lam_B_pos_idx, lam_BG_pos_idx)
-
-
-    def add_cbf_dual_cons(self, dual_res):
-        A_new, a_new = dual_res[0], dual_res[1]
-        B_new, b_new = dual_res[2], dual_res[3]
-        h_AG, h_BG = dual_res[4], dual_res[5]
-
-
-    R_mat = np.array([[np.cos(robot_cur_state[2]), -np.sin(robot_cur_state[2])], [np.sin(robot_cur_state[2]), np.cos(robot_cur_state[2])]])
-    dR_dtheta = np.array([[-np.sin(robot_cur_state[2]), -np.cos(robot_cur_state[2])], [np.cos(robot_cur_state[2]), -np.sin(robot_cur_state[2])]])
-    dR_dt_T = dR_dtheta.T * self.u[1]
-    dA_dt = mat_A @ dR_dt_T
-
-    dP_dt = np.array([np.cos(robot_cur_state[2] + np.pi/4), np.sin(robot_cur_state[2]) + np.pi/4]) * self.u[0]
-    da_dt = mat_A @ ( dR_dt_T @ robot_cur_state[:2] + R_mat.T @ dP_dt)
-    
-    dB_dt = mat_B @ dR_dt_T
-    db_dt = mat_B @ ( dR_dt_T @ robot_cur_state[:2] + R_mat.T @ dP_dt)
-    # obstacle
-    dg_dt = np.array([[0, 0, 0, 0]]).reshape(4, 1)  # if the obstacle is static
-    dG_dt = np.zeros((4, 2))  
-
-
-
-
-
-
-
-
-
-        # paper equation (18a)
-        L_dot_AG_1 = - 0.5 * lam_A_opt @ mat_A @ mat_A.T @ self.lam_A_dot.T
-        L_dot_AG_2 = - 0.5 * lam_A_opt @ mat_A @ mat_A_dot.T @ lam_A_opt.T
-        L_dot_AG_3 = - self.lam_A_dot @ vec_a - lam_A_opt @ vec_a_dot - self.lam_G_dot @ vec_g - lam_AG_opt @ vec_g_dot
-        L_dot_AG = L_dot_AG_1 + L_dot_AG_2 + L_dot_AG_3
-        self.opti.subject_to(L_dot_AG >= - 1.0 * (h_AG - 0.01))  # paper equation (18a)
-        # self.opti.subject_to(L_dot_AG + h_AG >= 0)  # paper equation (18a)
-
-        L_dot_BG_1 = - 0.5 * lam_B_opt @ mat_B @ mat_B.T @ self.lam_B_dot.T
-        L_dot_BG_2 = - 0.5 * lam_B_opt @ mat_B @ mat_B_dot.T @ lam_B_opt.T
-        L_dot_BG_3 = - self.lam_B_dot @ vec_b - lam_B_opt @ vec_b_dot - self.lam_G_dot @ vec_g - lam_BG_opt @ vec_g_dot
-        L_dot_BG = L_dot_BG_1 + L_dot_BG_2 + L_dot_BG_3
-        self.opti.subject_to(L_dot_BG >= - 1.0 * (h_BG - 0.01))  # paper equation (18a)
-        # self.opti.subject_to(L_dot_BG + h_BG >= 0)  # paper equation (18a)
-
-        # paper cons. (18c)
-        self.opti.subject_to( self.lam_A_dot @ mat_A + lam_A_opt @ mat_A_dot + self.lam_G_dot @ mat_G + lam_AG_opt @ mat_G_dot == 0)  
-        self.opti.subject_to( self.lam_B_dot @ mat_A + lam_B_opt @ mat_B_dot + self.lam_G_dot @ mat_G + lam_BG_opt @ mat_G_dot == 0)  
-        # self.opti.subject_to( self.lam_A_dot @ mat_A + lam_A_opt @ mat_A_dot + self.lam_G_dot @ mat_G == 0)  
-        # self.opti.subject_to( self.lam_B_dot @ mat_A + lam_B_opt @ mat_B_dot + self.lam_G_dot @ mat_G == 0)    
+        eq_BG_1 = lam_dot_i_2 @ (A_i_2_init @ Rot.T)
+        eq_BG_2 = lam_star_i_2 @ (A_i_2_init @ dR.T) * u[1]
+        eq_BG_3 = lam_dot_j_2 @ (A_j @ Rot.T)
+        opti.subject_to(eq_BG_1 + eq_BG_2 + eq_BG_3 == 0)
 
         # # paper equation (18d)
-        for i in range(len(lam_A_pos_idx)):
-            self.opti.subject_to(self.lam_A_dot[lam_A_pos_idx[0][i]] >= 0)
-        for i in range(len(lam_AG_pos_idx)):
-            self.opti.subject_to(self.lam_G_dot[lam_AG_pos_idx[0][i]] >= 0)
+        for i in range(len(lam_dot_i_1_positive_idx)):
+            opti.subject_to(lam_dot_i_1[lam_dot_i_1_positive_idx[0][i]] >= 0)
+        for i in range(len(lam_dot_j_1_positive_idx)):
+            opti.subject_to(lam_dot_j_1[lam_dot_j_1_positive_idx[0][i]] >= 0)
 
-        for i in range(len(lam_B_pos_idx)):
-            self.opti.subject_to(self.lam_B_dot[lam_B_pos_idx[0][i]] >= 0)
-        for i in range(len(lam_BG_pos_idx)):
-            self.opti.subject_to(self.lam_G_dot[lam_BG_pos_idx[0][i]] >= 0)
+        for i in range(len(lam_dot_i_2_positive_idx)):
+            opti.subject_to(lam_dot_i_2[lam_dot_i_2_positive_idx[0][i]] >= 0)
+        for i in range(len(lam_dot_j_2_positive_idx)):
+            opti.subject_to(lam_dot_j_2[lam_dot_j_2_positive_idx[0][i]] >= 0)
         
-        # # # paper cons. (18e)
-        # self.opti.subject_to(self.lam_A_dot <= 1e5)
-        # self.opti.subject_to(self.lam_B_dot <= 1e5)
-        # self.opti.subject_to(self.lam_G_dot <= 1e5)
-        # self.opti.subject_to(self.lam_A_dot >= -1e5)
-        # self.opti.subject_to(self.lam_B_dot >= -1e5)
-        # self.opti.subject_to(self.lam_G_dot >= -1e5)
+        # # # # paper cons. (18e)
+        opti.subject_to(lam_dot_i_1 <= 1e5)
+        opti.subject_to(lam_dot_j_1 <= 1e5)
+        opti.subject_to(lam_dot_i_2 <= 1e5)
+        opti.subject_to(lam_dot_j_2 <= 1e5)
+        opti.subject_to(lam_dot_i_1 >= -1e5)
+        opti.subject_to(lam_dot_j_1 >= -1e5)
+        opti.subject_to(lam_dot_i_2 >= -1e5)
+        opti.subject_to(lam_dot_j_2 >= -1e5)  
+        
+        # opti.subject_to(u[0] >= -0.3)
+        # opti.subject_to(u[0] <= 0.3)
+        # opti.subject_to(u[1] >= -0.2) 
+        # opti.subject_to(u[1] <= 0.2)
 
-    def convex_polygon_hrep(self, points):
-        """
-        Given a set of 2D points (vertices of a convex polygon or a point cloud),
-        compute the H-representation (A, b) of the convex polygon such that Ax ≤ b 
-        describes the polygon (each inequality corresponds to one edge).
-        """
-        # Convert input to a NumPy array (n_points x 2)
-        pts = np.asarray(points, dtype=float)
-        if pts.shape[1] != 2:
-            raise ValueError("Input points must be 2-dimensional coordinates.")
-        
-        # 1. Compute the convex hull of the points
-        hull = ConvexHull(pts)
-        
-        # The ConvexHull vertices are in counterclockwise order (for 2D):contentReference[oaicite:6]{index=6}.
-        # We could use hull.vertices (indices of hull points) if needed for further processing.
-        # Here, we'll use hull.equations to get the facet equations directly.
-        
-        # 2. Get the hyperplane equations for each facet (edge) of the hull.
-        # hull.equations is an array of shape (n_facets, 3) for 2D: [a, b, c] for each line (a*x + b*y + c = 0).
-        # For interior points of the hull, a*x + b*y + c ≤ 0 holds true:contentReference[oaicite:7]{index=7}.
-        equations = hull.equations  # shape (n_edges, 3)
-        
-        # 3. Split each equation into normal vector (a, b) and offset c.
-        A = equations[:, :2]   # all rows, first two columns -> coefficients [a, b] for x and y
-        c = equations[:, 2]    # last column is c in a*x + b*y + c = 0
-        
-        # 4. Convert to inequality form: a*x + b*y ≤ -c
-        # We move c to the right side: a*x + b*y ≤ -c.
-        b = -c  # Now each inequality is [a, b] · [x, y] ≤ b_i (where b_i = -c).
-        
-        # At this point, each row of A and corresponding element of b represent 
-        # an inequality defining the half-space that contains the convex polygon.
-        # (The normal vectors in A point outward, and the interior of the polygon 
-        # satisfies A*x ≤ b.)
+        # optimize the qp problem
+        opts_setting = {
+                'ipopt.max_iter': 5000,
+                'ipopt.print_level': 0,
+                'print_time': 0,
+                'ipopt.acceptable_tol': 1e-8,
+                'ipopt.acceptable_obj_change_tol': 1e-6
+            }
+        opti.solver('ipopt', opts_setting)
 
-        b = b.reshape(-1, 1)  # Reshape b to be a column vector (n_edges x 1)
-        
-        return A, b, hull
+        try:
+            sol = opti.solve()
+            optimal_control = sol.value(u)
+            slack = sol.value(slack)
+            return optimal_control, clf, slack
+        except:
+            print(opti.return_status() + ' sdf-cbf with clf')
+            return None, None, None
 
-
+    
 
     def clf_qp(self, robot_cur_state, add_slack=False, u_ref=None):
         """ 
@@ -363,59 +336,9 @@ class Unicycle_Sdf_Cbf_Clf:
             print(self.opti.return_status() + ' clf qp')
             return None, None, None, False
         
-    def dual_qp(self, robot_, mat_G, vec_g):
-        # rotate and translate the L-shape robot to the cur_state, then get the vertices, A, b
-        robot_vertices_after_rot_trans = robot_.get_vertices_at_absolute_state(robot_.current_state)
-        A_new, a_new, _ = self.convex_polygon_hrep(robot_vertices_after_rot_trans[0])
-        B_new, b_new, _ = self.convex_polygon_hrep(robot_vertices_after_rot_trans[1])
+   
 
-        # solve 2 x N QP, N depends on the number of obstacles
-        opti = ca.Opti('conic');
-        lam_A = opti.variable(1, 4)
-        lam_AG = opti.variable(1, 4)
-        obj = - 0.25 * lam_A @ A_new @ A_new.T @ lam_A.T - lam_A @ a_new - lam_AG @ vec_g
-        opti.minimize(-obj)  # max optimization
-        opti.subject_to(lam_A @ A_new + lam_AG @ mat_G == 0)
-        opti.subject_to(lam_A >= 0)
-        opti.subject_to(lam_AG >= 0)
-
-        opti.solver('qpoases');  # the options should be alinged with the solver
-        sol=opti.solve();
-        lam_A_star = sol.value(lam_A).reshape(1, -1)
-        lam_AG_star = sol.value(lam_AG).reshape(1, -1)
-        lam_A_pos_idx = np.where(lam_A_star[0, :] < 1e-5)
-        lam_AG_pos_idx = np.where(lam_AG_star[0, :] < 1e-5)
-        dist_square = sol.value(obj)
-        dist_AG = np.sqrt(dist_square)
-
-        # # ======================= the second QP problem
-        opti = ca.Opti('conic');
-        lam_B = opti.variable(1, 4)
-        lam_BG = opti.variable(1, 4)
-        # the second qp w.r.t. rectangle B
-        obj = - 0.25 * lam_B @ B_new @ B_new.T @ lam_B.T - lam_B @ b_new - lam_BG @ vec_g
-        opti.minimize(-obj)
-        opti.subject_to(lam_B @ B_new + lam_BG @ mat_G == 0)
-        opti.subject_to(lam_B >= 0)
-        opti.subject_to(lam_BG >= 0)
-
-        opti.solver('qpoases')
-        sol = opti.solve()
-        lam_B_star = sol.value(lam_B).reshape(1, -1)
-        lam_BG_star = sol.value(lam_BG).reshape(1, -1)
-        lam_B_pos_idx = np.where(lam_B_star[0, :] < 1e-5)
-        lam_BG_pos_idx = np.where(lam_BG_star[0, :] < 1e-5)
-        dist_square = sol.value(obj)
-        dist_BG = np.sqrt(dist_square)
-        print('the AG distance is :', dist_AG)
-        print('the BG distance is :', dist_BG)
-
-        return (A_new, a_new, B_new, b_new,  dist_AG, dist_BG, lam_A_star, lam_AG_star, lam_A_pos_idx,
-                 lam_AG_pos_idx, lam_B_star, lam_BG_star, lam_B_pos_idx, lam_BG_pos_idx)
-
-
-    def cbf_clf_qp(self, robot_, A_init, a_init, B_init, b_init, G_init, g_int,
-                        add_clf=True, u_ref=None):
+    def cbf_clf_qp(self, robot_, add_clf=True, u_ref=None):
         """
         This is a function to calculate the optimal control for the robot with respect to different shaped obstacles
         Args:
@@ -433,25 +356,17 @@ class Unicycle_Sdf_Cbf_Clf:
 
         # solve the dual problems to get the dual variables
         dual_res = self.dual_qp(robot_)
-   
-        self.set_optimal_function(u_ref, add_slack=add_clf)
-    
-        clf = self.add_clf_dist_theta_cons(robot_.current_state, add_slack=add_clf)
 
         # dual constraints
-        self.add_cbf_dual_cons(dual_res)
-
-        # self.add_controls_physical_cons()
+        opt_control, clf, slack= self.add_cbf_dual_cons(robot_, dual_res, u_ref)
         
-        # optimize the qp problem
-        try:
-            sol = self.opti.solve()
-            optimal_control = sol.value(self.u)
-            if add_clf:
-                slack = sol.value(self.slack)
-                return optimal_control, clf, slack, True
-            else:
-                return optimal_control, None, None, True, 
-        except:
-            print(self.opti.return_status() + ' sdf-cbf with clf')
-            return None, None, None, False
+        cbf = []
+        cbf.append([dual_res[6], dual_res[7]])
+
+        if opt_control is None:
+            return None, cbf, None, None, False
+        
+
+
+        return opt_control, cbf, clf, slack, True
+  
