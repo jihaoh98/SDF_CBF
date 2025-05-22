@@ -243,7 +243,7 @@ class Unicycle_Sdf_Cbf_Clf:
         L_dot_AG_5 = - lam_dot_j_1 @ b_j              
         L_dot_AG_6 = 0                     
         L_dot_AG = L_dot_AG_1 + L_dot_AG_2 + L_dot_AG_3 + L_dot_AG_4 + L_dot_AG_5 + L_dot_AG_6
-        opti.subject_to(L_dot_AG >= -2.0 * (h_ij_1 - 0.025**2))          
+        opti.subject_to(L_dot_AG >= -1.0 * (h_ij_1 - 0.025**2))          
 
         # L_dot between rectangle B and obstacle G
         L_dot_BG_1 = -0.5 * lam_star_j_2 @ (A_j @ A_j.T) @ lam_dot_j_2.T    
@@ -255,7 +255,7 @@ class Unicycle_Sdf_Cbf_Clf:
         L_dot_BG_5 = - lam_dot_j_2 @ b_j              
         L_dot_BG_6 = 0
         L_dot_BG = L_dot_BG_1 + L_dot_BG_2 + L_dot_BG_3 + L_dot_BG_4 + L_dot_BG_5 + L_dot_BG_6
-        opti.subject_to(L_dot_BG >= -2.0 * (h_ij_2 - 0.025**2))     
+        opti.subject_to(L_dot_BG >= -1.0 * (h_ij_2 - 0.025**2))     
 
         # equality constraints
         eq_AG_1 = lam_dot_i_1 @ (A_i_1_init @ Rot.T)
