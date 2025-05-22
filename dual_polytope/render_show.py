@@ -98,19 +98,15 @@ class Render_Animation:
 
         # robot and the arrow
         init_vertexes = self.robot.get_vertices_at_absolute_state(self.robot_init_state)
-        self.robot_body_A = mpatches.Polygon(init_vertexes[0], alpha=0.5, color='red')
+        self.robot_body_A = mpatches.Polygon(init_vertexes, alpha=0.5, color='red')
         self.ax.add_patch(self.robot_body_A)
-        self.robot_body_B = mpatches.Polygon(init_vertexes[1], alpha=0.5, color='blue')
-        self.ax.add_patch(self.robot_body_B)
+
 
         # plot the goal pose
         goal_vertices = self.robot.get_vertices_at_absolute_state(self.robot_target_state)
-
-        goal_body_A = mpatches.Polygon(goal_vertices[0], alpha=0.5, color='red')
-        goal_body_B = mpatches.Polygon(goal_vertices[1], alpha=0.5, color='blue')
+        goal_body_A = mpatches.Polygon(goal_vertices, alpha=0.5, color='red')
 
         self.ax.add_patch(goal_body_A)
-        self.ax.add_patch(goal_body_B)
 
         if self.robot_model == 'unicycle':
             self.robot_arrow = mpatches.Arrow(
@@ -155,10 +151,8 @@ class Render_Animation:
         # start body and arrow
         start_vertexes = self.robot.get_vertices_at_absolute_state(self.robot_init_state)
 
-        self.robot_body_A = mpatches.Polygon(start_vertexes[0], alpha=0.5, color='red')
+        self.robot_body_A = mpatches.Polygon(start_vertexes, alpha=0.5, color='red')
         self.ax.add_patch(self.robot_body_A)
-        self.robot_body_B = mpatches.Polygon(start_vertexes[1], alpha=0.5, color='blue')
-        self.ax.add_patch(self.robot_body_B)
 
         # self.robot_body_A.set_zorder(0)
         # self.robot_body_B.set_zorder(1)
@@ -189,10 +183,8 @@ class Render_Animation:
         # self.robot_body_B.remove()
 
         cur_vertexes = self.robot.get_vertices_at_absolute_state(self.xt[:, indx])        
-        self.robot_body_A = mpatches.Polygon(cur_vertexes[0], alpha=0.5, color='red')
+        self.robot_body_A = mpatches.Polygon(cur_vertexes, alpha=0.5, color='red')
         self.ax.add_patch(self.robot_body_A)
-        self.robot_body_B = mpatches.Polygon(cur_vertexes[1], alpha=0.5, color='blue')
-        self.ax.add_patch(self.robot_body_B)
 
         if self.robot_model == 'unicycle':
             self.robot_arrow.remove()
@@ -305,10 +297,7 @@ class Render_Animation:
             linewidth=3, color=color_list[0], label='sofa_cbf_1', marker='o'
         )
 
-        plt.plot(
-            t, cbft2[0, 0:terminal_time].reshape(terminal_time), 
-            linewidth=3, color=color_list[1], label = 'sofa_cbf_2', marker='o'
-        )
+
         plt.legend()
         plt.show()
 

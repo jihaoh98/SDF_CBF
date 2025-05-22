@@ -4,7 +4,7 @@ import yaml
 from math import sqrt, cos, sin
 from sympy.utilities.lambdify import lambdify
 import matplotlib.pyplot as plt
-from l_shape_robot import L_shaped_robot
+from polytopic_robot import polytopic_robot
 
 
 class Integral_Robot_Sdf:
@@ -267,27 +267,27 @@ class Integral_Robot_Sdf:
 
 if __name__ == '__main__':
     file_name = 'settings.yaml'
-    with open(file_name) as file:
-        config = yaml.safe_load(file)
+    # with open(file_name) as file:
+    #     config = yaml.safe_load(file)
 
-    robot_params = config['robot']
-    test_target = Integral_Robot_Sdf(robot_params)
-    robot_vertexes = [[1.0, 1.0], [2.0, 1.0], [2.0, 1.5], [1.5, 1.5], [1.5, 2.0], [1.0, 2.0]]
-    test_robot = L_shaped_robot(0, robot_vertexes)
+    # robot_params = config['robot']
+    # test_target = Integral_Robot_Sdf(robot_params)
+    # robot_vertexes = [[1.0, 1.0], [2.0, 1.0], [2.0, 1.5], [1.5, 1.5], [1.5, 2.0], [1.0, 2.0]]
+    # test_robot = L_shaped_robot(0, robot_vertexes)
     
-    gradient = []
-    for i in np.arange(1.98, 2.1, 0.001):
-        obstacle_state = np.array([i, 1.7, 0.0, 0.0])
+    # gradient = []
+    # for i in np.arange(1.98, 2.1, 0.001):
+    #     obstacle_state = np.array([i, 1.7, 0.0, 0.0])
         
-        _, b, _ = test_target.derive_cbf_gradient(test_robot.cur_state, [test_robot.width, test_robot.height], test_robot.cur_center_body_frame.reshape(-1, ), obstacle_state)
-        gradient.append([b[0, 0], b[0, 1]])
-    gradient = np.array(gradient)
-    t = np.arange(1.98, 2.1, 0.001)
-    plt.plot(t, gradient[:, 0], color='k')
-    plt.plot(t, gradient[:, 1], color='b')
+    #     _, b, _ = test_target.derive_cbf_gradient(test_robot.cur_state, [test_robot.width, test_robot.height], test_robot.cur_center_body_frame.reshape(-1, ), obstacle_state)
+    #     gradient.append([b[0, 0], b[0, 1]])
+    # gradient = np.array(gradient)
+    # t = np.arange(1.98, 2.1, 0.001)
+    # plt.plot(t, gradient[:, 0], color='k')
+    # plt.plot(t, gradient[:, 1], color='b')
 
-    plt.grid()
-    plt.show()
+    # plt.grid()
+    # plt.show()
 
     # for i in np.arange(0, 2, 0.1):
     #     robot_state = np.array([0.5, 0.6, i])

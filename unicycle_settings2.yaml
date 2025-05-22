@@ -1,6 +1,6 @@
 controller:
-  Tmax: 20
-  step_time: 0.05
+  Tmax: 40
+  step_time: 0.1
   weight_input: [1, 1]
   smooth_input: [0.0, 0.0]
   weight_slack: 10
@@ -14,7 +14,7 @@ robot:
   # vertexes: [[0, 0], [1.5, 0], [1.5, 0.8], [0.8, 0.8], [0.8, 1.5], [0, 1.5]]
   initial_state: [0.0, 0.0, 0.0]
   vertexes: [[[0.0, 0.0], [0.0, -1.0], [0.1, -1.0], [0.1, 0.0]], [[0.0, 0.0], [0.0, -0.1], [1.0, -0.1], [1.0, 0.0]]] 
-  target_state: [7.0, 5.95, -0.7853981633974483]
+  target_state: [4.0, 4.2, 0.0]
   destination_margin: 0.3
   width: 1.0  # half
   height: 0.5  # half
@@ -47,7 +47,7 @@ cir_obstacle_list:
 
 obstacle_list:
   obs_vertexes: [
-    [[1, 0.5],[8, 0.5],[8, 5],[1, 5]],
+    [[0.3, 1.0],[2, 1.0],[2, 2],[0.3, 2]],
     # [[3.5, 7.0], [5.5, 7.0], [5.5, 8.0], [3.5, 8.0]]
   ]
   obs_vels: [

@@ -24,13 +24,16 @@ class Polytopic_Robot:
         self.A = None
         self.b = None
         self.b0 = None
+        self.G = None
+        self.g = None
+        self.vertices = None
     
         self.init()
 
     def init(self):
         self.get_center()
         self.get_vertex_vectors()
-        self.get_initial_halfspace_constraints()
+        # self.get_initial_halfspace_constraints()
 
     def get_center(self):
         """ get the center state """

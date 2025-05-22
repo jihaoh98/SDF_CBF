@@ -64,9 +64,14 @@ class Scaled_Cbf:
         self.opti.solver('ipopt')
 
         self.u = self.opti.variable(self.control_dim)
+        self.lam_dot_i = self.opti.variable(1, 4)
+        self.lam_dot_j = self.opti.variable(1, 4)
+
         if robot_params['model'] == 'unicycle':
             self.slack1 = self.opti.variable()
             self.slack2 = self.opti.variable()
+            # self.slack = self.opti.variable()
+
         elif robot_params['model'] == 'integral':
             self.slack = self.opti.variable()
         self.obj = None
@@ -189,7 +194,7 @@ class Scaled_Cbf:
             elif self.robot_model == 'integral':
                 return None, None, False
         
-    def cbf_clf_qp(self, robot, obs_list, add_clf=True, u_ref=None):
+    def dual_cbf_clf_qp(self, robot, obs_list, add_clf=True, u_ref=None):
         """
         This is a function to calculate the optimal control for the polytopic-shaped robot and robots
         Returns:
@@ -241,4 +246,156 @@ class Scaled_Cbf:
                 return None, cbf_list, None, None, None, None, False
             elif self.robot_model == 'integral':
                 return None, cbf_list, None, None, False
+
+
+    def dual_qp(self, robot_):
+            s = robot_.cur_state
+            p = s[:2].reshape(2, 1)
+            theta = s[2]
+
+            Rotation_matrix = np.array([
+                [np.cos(theta), -np.sin(theta)],
+                [np.sin(theta),  np.cos(theta)]
+            ])
+
+            A_new = robot_.A @ Rotation_matrix.T
+            b_new = robot_.b + robot_.A @ Rotation_matrix.T @ p
+            G_new = robot_.G
+            g_new = robot_.g
+            
+            # solve 2 x N QP, N depends on the number of obstacles
+            opti = ca.Opti('conic');
+            lam_A = opti.variable(1, 4)
+            lam_AG = opti.variable(1, 4)
+            obj = - 0.25 * lam_A @ A_new @ A_new.T @ lam_A.T - lam_A @ b_new - lam_AG @ g_new
+            opti.minimize(-obj)  # max optimization
+            opti.subject_to(lam_A @ A_new + lam_AG @ G_new == 0)
+            opti.subject_to(lam_A >= 0)
+            opti.subject_to(lam_AG >= 0)
+
+            opti.solver('qpoases');  # the options should be alinged with the solver
+            sol=opti.solve();
+            lam_A_star = sol.value(lam_A).reshape(1, -1)
+            lam_AG_star = sol.value(lam_AG).reshape(1, -1)
+            lam_A_pos_idx = np.where(lam_A_star[0, :] < 1e-5)
+            lam_AG_pos_idx = np.where(lam_AG_star[0, :] < 1e-5)
+            dist_square = sol.value(obj)
+            dist_AG = np.sqrt(dist_square)
+
+            print('the AG distance is :', dist_AG)
+
+            return (G_new, g_new, dist_AG, lam_A_star, lam_AG_star, lam_A_pos_idx, lam_AG_pos_idx)
+
+    def add_cbf_dual_cons(self, robot_, dual_res, u_ref):
+
+        A_j, b_j = dual_res[0], dual_res[1]  # obstacle is static
+        h_ij = dual_res[2]
+        lam_star_i = dual_res[3]
+        lam_star_j = dual_res[4]
+        lam_dot_i_idx = dual_res[5]
+        lam_dot_ij_idx = dual_res[6]
+        
+        A_i_init, b_i_init = robot_.A, robot_.b
+
+        s = robot_.cur_state
+        p = s[:2].reshape(2, 1)
+        Rot = np.array([[np.cos(s[2]), -np.sin(s[2])], [np.sin(s[2]), np.cos(s[2])]])
+        dR = np.array([[-np.sin(s[2]), -np.cos(s[2])], [np.cos(s[2]), -np.sin(s[2])]])
+
+        """ set the CBF constraints """
+        # L_dot between rectangle A and obstacle G
+        L_dot_AG_1 = -0.5 * lam_star_j @ (A_j @ A_j.T) @ self.lam_dot_j.T 
+        L_dot_AG_2 = 0                          
+        L_dot_AG_3 = - self.lam_dot_i @ (b_i_init + A_i_init @ Rot.T @ p)
+        dARp_dt_1_AG = lam_star_i @ A_i_init @ dR.T  @ p * self.u[1] 
+        dARp_dt_2_AG = lam_star_i @ A_i_init @ Rot.T @ np.array([np.cos(s[2]), np.sin(s[2])]) * self.u[0]
+        L_dot_AG_4 = - (dARp_dt_2_AG + dARp_dt_1_AG)  
+        L_dot_AG_5 = - self.lam_dot_j @ b_j              
+        L_dot_AG_6 = 0                     
+        L_dot_AG = L_dot_AG_1 + L_dot_AG_2 + L_dot_AG_3 + L_dot_AG_4 + L_dot_AG_5 + L_dot_AG_6
+        self.opti.subject_to(L_dot_AG >= -0.1 * (h_ij - 0.025**2))          
+
+        # equality constraints
+        eq_AG_1 = self.lam_dot_i @ (A_i_init @ Rot.T)
+        eq_AG_2 = lam_star_i @ (A_i_init @ dR.T) * self.u[1]
+        eq_AG_3 = self.lam_dot_j @ (A_j @ Rot.T)
+        self.opti.subject_to(eq_AG_1 + eq_AG_2 + eq_AG_3 == 0)
+
+        # paper equation (18d)
+        for i in range(len(lam_dot_i_idx)):
+            self.opti.subject_to(self.lam_dot_i[lam_dot_i_idx[0][i]] >= 0)
+
+        for i in range(len(lam_dot_ij_idx)):
+            self.opti.subject_to(self.lam_dot_j[lam_dot_ij_idx[0][i]] >= 0)
+
+
+        # # # # # paper cons. (18e)
+        self.opti.subject_to(self.lam_dot_i <= 1e5)
+        self.opti.subject_to(self.lam_dot_j <= 1e5)
+        self.opti.subject_to(self.lam_dot_i >= -1e5)
+        self.opti.subject_to(self.lam_dot_j >= -1e5)  
+
+        self.opti.subject_to(self.u[0] >= -0.3)
+        self.opti.subject_to(self.u[0] <= 0.3)
+        self.opti.subject_to(self.u[1] >= -0.2) 
+        self.opti.subject_to(self.u[1] <= 0.2)
+
+        # optimize the qp problem
+        opts_setting = {
+                'ipopt.max_iter': 5000,
+                'ipopt.print_level': 0,
+                'print_time': 0,
+                'ipopt.acceptable_tol': 1e-8,
+                'ipopt.acceptable_obj_change_tol': 1e-6
+            }
+        self.opti.solver('ipopt', opts_setting)
+
+        try:
+            sol = self.opti.solve()
+            optimal_control = sol.value(self.u)
+            return optimal_control
+        except:
+            print(self.opti.return_status() + ' sdf-cbf with clf')
+            return None, None
+        
+            
+    def cbf_clf_qp(self, robot_, obs_list, add_clf=True, u_ref=None):
+        """
+        This is a function to calculate the optimal control for the polytopic-shaped robot and robots
+        Returns:
+            optimal control u
+        """
+        dual_res = self.dual_qp(robot_)
+
+        if u_ref is None:
+            u_ref = np.zeros(self.control_dim)
+        self.set_optimal_function(u_ref, add_slack=add_clf)
+
+        robot_cur_state = robot_.cur_state
+        if self.robot_model == 'unicycle':
+            clf1, clf2 = None, None
+            if add_clf:
+                clf1 = self.add_clf_distance_cons(robot_cur_state, add_slack=True)
+                clf2 = self.add_clf_theta_cons(robot_cur_state, add_slack=True)
+        elif self.robot_model == 'integral':
+            clf = None
+            if add_clf:
+                clf = self.add_clf_cons_integral(robot_cur_state, add_slack=True)
+
+        cbf_list = []
+        # for obs in obs_list:
+        opt_control = self.add_cbf_dual_cons(robot_, dual_res, u_ref)
+        cbf_list.append(dual_res[2])
+
+        if np.isnan(dual_res[2]):
+            print('nan')
+            
+            
+        if opt_control is (None, None):
+            return None, cbf_list, None, None, False
+        
+        return opt_control, cbf_list, clf1, clf2, True
+
+
+
 

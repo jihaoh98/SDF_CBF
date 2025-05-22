@@ -2,13 +2,14 @@ import numpy as np
 from integral_sdf_qp import Integral_Sdf_Cbf_Clf
 from unicycle_sdf_qp import Unicycle_Sdf_Cbf_Clf
 from obs import Circle_Obs, Polytopic_Obs
-import l_shape_robot
+import polytopic_robot as polytopic_robot
 import time
 import yaml
 import statistics
 from render_show import Render_Animation
 import casadi as ca
 from scipy.spatial import ConvexHull
+import pypoman
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
@@ -34,8 +35,7 @@ class Collision_Avoidance:
         
         # initialize the robot 
         self.robot_vertexes = robot_params['vertexes']
-        # self.robot = l_shape_robot.L_shaped_robot(indx=0, init_state=[0.05, 1.5, np.pi/4], rects=self.robot_vertexes, mode='vertices')
-        self.l_robot = l_shape_robot.L_shaped_robot(indx = 0, init_state=[0.05, 1.5, np.pi/4], rects=self.robot_vertexes,mode='vertices',center_mode='vertex')
+        self.l_robot = polytopic_robot.polytopic_robot(indx = 0, init_state=[4.0, 4.2, 0.5])
         self.robot_init_state = self.l_robot.init_state
         self.robot_cur_state = np.copy(self.l_robot.init_state)
         self.robot_target_state = np.array(robot_params['target_state'])
@@ -187,15 +187,15 @@ class Collision_Avoidance:
 
         cbf_1_list = []
         cbf_2_list = []
+        # equations from the paper
+        self.l_robot.A_init = np.vstack((np.eye(2), -np.eye(2)))
+        self.l_robot.b_init = np.array([0.5, 0.1, 0.5, 0.1]).reshape(4, 1)
+        self.l_robot.G_init = np.vstack((np.eye(2), -np.eye(2)))
+        self.l_robot.g_init = np.array([2.0, 2.0, -1.0, -1.0]).reshape(4, 1)
 
-        rect = np.vstack((np.eye(2), -np.eye(2)))
-        self.l_robot.A_init = rect
-        self.l_robot.B_init = rect
-        self.l_robot.a_init = np.array([0.1, 0.0, 0.0, 1.0]).reshape(4, 1)
-        self.l_robot.b_init = np.array([1.0, 0.0, 0.0, 0.1]).reshape(4, 1)
-        self.l_robot.G_init = rect
-        self.l_robot.g_init = np.array([8, 5, -1, -0.5]).reshape(4, 1)
+        self.l_robot.vertices = np.array(pypoman.compute_polygon_hull(self.l_robot.A_init, self.l_robot.b_init.flatten()))
 
+        # check the setup
         while (
             np.linalg.norm(self.robot_cur_state[0:2] - self.robot_target_state[0:2])
             >= self.destination_margin
@@ -221,7 +221,6 @@ class Collision_Avoidance:
             self.slackt[:, t] = np.array([slack])
             if self.obs_states_list is not None:
                 self.obs_cbf_t[:, t] = cbf[0][0]
-                self.obs_cbf_t2[:, t] = cbf[0][1]
                 for i in range(self.obs_num):
                     self.obstacle_state_t[i][:, t] = np.copy(self.obs_states_list[i])
                     self.obs_list[i].move_forward(self.step_time)
@@ -324,7 +323,7 @@ if __name__ == '__main__':
     # test_target.load_data_integral()
     # test_target.load_data_unicycle()
     test_target.render()
-    test_target.show_clf()
+    # test_target.show_clf()
     # test_target.show_slack()
     # test_target.show_controls()
     test_target.show_cbf()

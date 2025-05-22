@@ -8,6 +8,7 @@ from polytopic_obs import Polytopic_Obs
 from polytopic_robot import Polytopic_Robot
 from scaled_cbf_qp import Scaled_Cbf
 
+import pypoman
 
 class Collision_Avoidance:
     def __init__(self, file_name) -> None:
@@ -142,13 +143,17 @@ class Collision_Avoidance:
 
             start_time = time.time()
             if self.robot_model == 'integral':
-                u, cbf_list, clf, slack, feas = self.cbf_qp.cbf_clf_qp(
+                u, cbf_list, clf, slack, feas = self.cbf_qp.cbfself._clf_qp(
                     self.robot, self.obs_list, add_clf=add_clf
                 )  
             elif self.robot_model == 'unicycle':
-                u, cbf_list, clf1, clf2, slack1, slack2, feas = self.cbf_qp.cbf_clf_qp(
-                    self.robot, self.obs_list, add_clf=add_clf
-                ) 
+
+                self.robot.A = np.vstack((np.eye(2), -np.eye(2)))
+                self.robot.b= np.array([0.5, 0.1, 0.5, 0.1]).reshape(4, 1)
+                self.robot.G = np.vstack((np.eye(2), -np.eye(2)))
+                self.robot.g = np.array([2.0, 2.0, -1.0, -1.0]).reshape(4, 1)
+                # self.robot.vertices = np.array(pypoman.compute_polygon_hull(self.robot.A, self.robot.b.flatten()))
+                u, cbf_list, clf1, clf2, feas = self.cbf_qp.cbf_clf_qp(self.robot, self.obs_list, add_clf=add_clf)
             process_time.append(time.time() - start_time)
 
             if not feas:
@@ -165,7 +170,7 @@ class Collision_Avoidance:
                 self.slackt[0, t] = slack
             elif self.robot_model == 'unicycle':
                 self.clft[:, t] = np.array([clf1, clf2])
-                self.slackt[:, t] = np.array([slack1, slack2])
+                # self.slackt[:, t] = np.array([slack1, slack2])
 
             # update the state of robot and obstacle
             new_state = self.cbf_qp.robot.next_state(self.robot.cur_state, u, self.step_time)
