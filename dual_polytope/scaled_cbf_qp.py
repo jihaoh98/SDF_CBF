@@ -249,42 +249,43 @@ class Scaled_Cbf:
 
 
     def dual_qp(self, robot_):
-            s = robot_.cur_state
-            p = s[:2].reshape(2, 1)
-            theta = s[2]
+        s = robot_.cur_state
+        p = s[:2].reshape(2, 1)
+        theta = s[2]
 
-            Rotation_matrix = np.array([
-                [np.cos(theta), -np.sin(theta)],
-                [np.sin(theta),  np.cos(theta)]
-            ])
+        Rotation_matrix = np.array([
+            [np.cos(theta), -np.sin(theta)],
+            [np.sin(theta),  np.cos(theta)]
+        ])
 
-            A_new = robot_.A @ Rotation_matrix.T
-            b_new = robot_.b + robot_.A @ Rotation_matrix.T @ p
-            G_new = robot_.G
-            g_new = robot_.g
-            
-            # solve 2 x N QP, N depends on the number of obstacles
-            opti = ca.Opti('conic');
-            lam_A = opti.variable(1, 4)
-            lam_AG = opti.variable(1, 4)
-            obj = - 0.25 * lam_A @ A_new @ A_new.T @ lam_A.T - lam_A @ b_new - lam_AG @ g_new
-            opti.minimize(-obj)  # max optimization
-            opti.subject_to(lam_A @ A_new + lam_AG @ G_new == 0)
-            opti.subject_to(lam_A >= 0)
-            opti.subject_to(lam_AG >= 0)
+        A_new = robot_.A @ Rotation_matrix.T
+        b_new = robot_.b + robot_.A @ Rotation_matrix.T @ p
+        G_new = robot_.G
+        g_new = robot_.g
+        
+        # solve 2 x N QP, N depends on the number of obstacles
+        opti = ca.Opti('conic');
+        lam_A = opti.variable(1, 4)
+        lam_AG = opti.variable(1, 4)
+        obj = - 0.25 * lam_A @ A_new @ A_new.T @ lam_A.T - lam_A @ b_new - lam_AG @ g_new
+        opti.minimize(-obj)  # max optimization
+        opti.subject_to()
+        opti.subject_to(lam_A @ A_new + lam_AG @ G_new == 0)
+        opti.subject_to(lam_A >= 0)
+        opti.subject_to(lam_AG >= 0)
 
-            opti.solver('qpoases');  # the options should be alinged with the solver
-            sol=opti.solve();
-            lam_A_star = sol.value(lam_A).reshape(1, -1)
-            lam_AG_star = sol.value(lam_AG).reshape(1, -1)
-            lam_A_pos_idx = np.where(lam_A_star[0, :] < 1e-5)
-            lam_AG_pos_idx = np.where(lam_AG_star[0, :] < 1e-5)
-            dist_square = sol.value(obj)
-            dist_AG = np.sqrt(dist_square)
+        opti.solver('qpoases');  # the options should be alinged with the solver
+        sol=opti.solve();
+        lam_A_star = sol.value(lam_A).reshape(1, -1)
+        lam_AG_star = sol.value(lam_AG).reshape(1, -1)
+        lam_A_pos_idx = np.where(lam_A_star[0, :] < 1e-5)
+        lam_AG_pos_idx = np.where(lam_AG_star[0, :] < 1e-5)
+        dist_square = sol.value(obj)
+        dist_AG = dist_square
 
-            print('the AG distance is :', dist_AG)
+        print('the AG distance is :', dist_AG)
 
-            return (G_new, g_new, dist_AG, lam_A_star, lam_AG_star, lam_A_pos_idx, lam_AG_pos_idx)
+        return (G_new, g_new, dist_AG, lam_A_star, lam_AG_star, lam_A_pos_idx, lam_AG_pos_idx)
 
     def add_cbf_dual_cons(self, robot_, dual_res, u_ref):
 
@@ -322,18 +323,18 @@ class Scaled_Cbf:
         self.opti.subject_to(eq_AG_1 + eq_AG_2 + eq_AG_3 == 0)
 
         # paper equation (18d)
-        for i in range(len(lam_dot_i_idx)):
-            self.opti.subject_to(self.lam_dot_i[lam_dot_i_idx[0][i]] >= 0)
+        # for i in range(len(lam_dot_i_idx)):
+        #     self.opti.subject_to(self.lam_dot_i[lam_dot_i_idx[0][i]] >= 0)
 
-        for i in range(len(lam_dot_ij_idx)):
-            self.opti.subject_to(self.lam_dot_j[lam_dot_ij_idx[0][i]] >= 0)
+        # for i in range(len(lam_dot_ij_idx)):
+        #     self.opti.subject_to(self.lam_dot_j[lam_dot_ij_idx[0][i]] >= 0)
 
 
         # # # # # paper cons. (18e)
-        self.opti.subject_to(self.lam_dot_i <= 1e5)
-        self.opti.subject_to(self.lam_dot_j <= 1e5)
-        self.opti.subject_to(self.lam_dot_i >= -1e5)
-        self.opti.subject_to(self.lam_dot_j >= -1e5)  
+        # self.opti.subject_to(self.lam_dot_i <= 1e5)
+        # self.opti.subject_to(self.lam_dot_j <= 1e5)
+        # self.opti.subject_to(self.lam_dot_i >= -1e5)
+        # self.opti.subject_to(self.lam_dot_j >= -1e5)  
 
         self.opti.subject_to(self.u[0] >= -0.3)
         self.opti.subject_to(self.u[0] <= 0.3)
@@ -366,7 +367,7 @@ class Scaled_Cbf:
             optimal control u
         """
         dual_res = self.dual_qp(robot_)
-
+        
         if u_ref is None:
             u_ref = np.zeros(self.control_dim)
         self.set_optimal_function(u_ref, add_slack=add_clf)
@@ -383,7 +384,6 @@ class Scaled_Cbf:
                 clf = self.add_clf_cons_integral(robot_cur_state, add_slack=True)
 
         cbf_list = []
-        # for obs in obs_list:
         opt_control = self.add_cbf_dual_cons(robot_, dual_res, u_ref)
         cbf_list.append(dual_res[2])
 
