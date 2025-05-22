@@ -131,8 +131,19 @@ class Unicycle_Sdf_Cbf_Clf:
     #     return clf3
 
     def dual_qp(self, robot_):
-            # rotate and translate the L-shape robot to the cur_state, then get the vertices, A, b
-            A_new, a_new, B_new, b_new = robot_.get_h_form_rot_trans(robot_.current_state)
+            s = robot_.current_state
+            p = s[:2].reshape(2, 1)
+            theta = s[2]
+
+            Rotation_matrix = np.array([
+                [np.cos(theta), -np.sin(theta)],
+                [np.sin(theta),  np.cos(theta)]
+            ])
+
+            A_new = robot_.A_init @ Rotation_matrix.T
+            a_new = robot_.a_init + robot_.A_init @ Rotation_matrix.T @ p
+            B_new = robot_.B_init @ Rotation_matrix.T
+            b_new = robot_.b_init + robot_.B_init @ Rotation_matrix.T @ p
             G_new = robot_.G_init
             g_new = robot_.g_init
             
@@ -154,7 +165,6 @@ class Unicycle_Sdf_Cbf_Clf:
             lam_AG_pos_idx = np.where(lam_AG_star[0, :] < 1e-5)
             dist_square = sol.value(obj)
             dist_AG = np.sqrt(dist_square)
-            # dist_AG = dist_square
 
             # # ======================= the second QP problem
             opti = ca.Opti('conic');
@@ -175,12 +185,11 @@ class Unicycle_Sdf_Cbf_Clf:
             lam_BG_pos_idx = np.where(lam_BG_star[0, :] < 1e-5)
             dist_square_ = sol.value(obj)
             dist_BG = np.sqrt(dist_square_)
-            # dist_BG = dist_square_
     
             print('the AG distance is :', dist_AG)
             print('the BG distance is :', dist_BG)
 
-            return (A_new, a_new, B_new, b_new, G_new, g_new, dist_AG, dist_BG, lam_A_star, lam_AG_star, lam_A_pos_idx,
+            return (G_new, g_new, dist_AG, dist_BG, lam_A_star, lam_AG_star, lam_A_pos_idx,
                     lam_AG_pos_idx, lam_B_star, lam_BG_star, lam_B_pos_idx, lam_BG_pos_idx)
 
     def add_cbf_dual_cons(self, robot_, dual_res, u_ref):
@@ -192,14 +201,16 @@ class Unicycle_Sdf_Cbf_Clf:
         lam_dot_j_1 = opti.variable(1, 4)
         lam_dot_j_2 = opti.variable(1, 4)
 
-        A_j, b_j = dual_res[4], dual_res[5]  # obstacle is static
-        h_ij_1, h_ij_2 = dual_res[6], dual_res[7]
-        lam_star_i_1, lam_star_j_1 = dual_res[8], dual_res[9]
-        lam_dot_i_1_positive_idx = dual_res[10]
-        lam_dot_j_1_positive_idx = dual_res[11]
-        lam_star_i_2, lam_star_j_2 = dual_res[12], dual_res[13]
-        lam_dot_i_2_positive_idx = dual_res[14]
-        lam_dot_j_2_positive_idx = dual_res[15]
+        A_j, b_j = dual_res[0], dual_res[1]  # obstacle is static
+        h_ij_1, h_ij_2 = dual_res[2], dual_res[3]
+        lam_star_i_1, lam_star_j_1 = dual_res[4], dual_res[5]
+        lam_dot_i_idx = dual_res[6]
+        lam_dot_ij_idx = dual_res[7]
+
+        lam_star_i_2, lam_star_j_2 = dual_res[8], dual_res[9]
+        lam_dot_i_2_idx = dual_res[10]
+        lam_dot_j_2_idx = dual_res[11]
+        
         A_i_1_init, b_i_1_init = robot_.A_init, robot_.a_init
         A_i_2_init, b_i_2_init = robot_.B_init, robot_.b_init
 
@@ -232,7 +243,7 @@ class Unicycle_Sdf_Cbf_Clf:
         L_dot_AG_5 = - lam_dot_j_1 @ b_j              
         L_dot_AG_6 = 0                     
         L_dot_AG = L_dot_AG_1 + L_dot_AG_2 + L_dot_AG_3 + L_dot_AG_4 + L_dot_AG_5 + L_dot_AG_6
-        opti.subject_to(L_dot_AG >= -1.0 * (h_ij_1 - 0.015))          
+        opti.subject_to(L_dot_AG >= -2.0 * (h_ij_1 - 0.025**2))          
 
         # L_dot between rectangle B and obstacle G
         L_dot_BG_1 = -0.5 * lam_star_j_2 @ (A_j @ A_j.T) @ lam_dot_j_2.T    
@@ -244,7 +255,7 @@ class Unicycle_Sdf_Cbf_Clf:
         L_dot_BG_5 = - lam_dot_j_2 @ b_j              
         L_dot_BG_6 = 0
         L_dot_BG = L_dot_BG_1 + L_dot_BG_2 + L_dot_BG_3 + L_dot_BG_4 + L_dot_BG_5 + L_dot_BG_6
-        opti.subject_to(L_dot_BG >= -1.0 * (h_ij_2 - 0.015))     
+        opti.subject_to(L_dot_BG >= -2.0 * (h_ij_2 - 0.025**2))     
 
         # equality constraints
         eq_AG_1 = lam_dot_i_1 @ (A_i_1_init @ Rot.T)
@@ -258,25 +269,27 @@ class Unicycle_Sdf_Cbf_Clf:
         opti.subject_to(eq_BG_1 + eq_BG_2 + eq_BG_3 == 0)
 
         # # paper equation (18d)
-        for i in range(len(lam_dot_i_1_positive_idx)):
-            opti.subject_to(lam_dot_i_1[lam_dot_i_1_positive_idx[0][i]] >= 0)
-        for i in range(len(lam_dot_j_1_positive_idx)):
-            opti.subject_to(lam_dot_j_1[lam_dot_j_1_positive_idx[0][i]] >= 0)
+        for i in range(len(lam_dot_i_idx)):
+            opti.subject_to(lam_dot_i_1[lam_dot_i_idx[0][i]] >= 0)
 
-        for i in range(len(lam_dot_i_2_positive_idx)):
-            opti.subject_to(lam_dot_i_2[lam_dot_i_2_positive_idx[0][i]] >= 0)
-        for i in range(len(lam_dot_j_2_positive_idx)):
-            opti.subject_to(lam_dot_j_2[lam_dot_j_2_positive_idx[0][i]] >= 0)
+        for i in range(len(lam_dot_ij_idx)):
+            opti.subject_to(lam_dot_j_1[lam_dot_ij_idx[0][i]] >= 0)
+
+        for i in range(len(lam_dot_i_2_idx)):
+            opti.subject_to(lam_dot_i_2[lam_dot_i_2_idx[0][i]] >= 0)
+
+        for i in range(len(lam_dot_j_2_idx)):
+            opti.subject_to(lam_dot_j_2[lam_dot_j_2_idx[0][i]] >= 0)
         
         # # # # paper cons. (18e)
-        opti.subject_to(lam_dot_i_1 <= 1e5)
-        opti.subject_to(lam_dot_j_1 <= 1e5)
-        opti.subject_to(lam_dot_i_2 <= 1e5)
-        opti.subject_to(lam_dot_j_2 <= 1e5)
-        opti.subject_to(lam_dot_i_1 >= -1e5)
-        opti.subject_to(lam_dot_j_1 >= -1e5)
-        opti.subject_to(lam_dot_i_2 >= -1e5)
-        opti.subject_to(lam_dot_j_2 >= -1e5)  
+        # opti.subject_to(lam_dot_i_1 <= 1e5)
+        # opti.subject_to(lam_dot_j_1 <= 1e5)
+        # opti.subject_to(lam_dot_i_2 <= 1e5)
+        # opti.subject_to(lam_dot_j_2 <= 1e5)
+        # opti.subject_to(lam_dot_i_1 >= -1e5)
+        # opti.subject_to(lam_dot_j_1 >= -1e5)
+        # opti.subject_to(lam_dot_i_2 >= -1e5)
+        # opti.subject_to(lam_dot_j_2 >= -1e5)  
         
         # opti.subject_to(u[0] >= -0.3)
         # opti.subject_to(u[0] <= 0.3)
@@ -361,7 +374,7 @@ class Unicycle_Sdf_Cbf_Clf:
         opt_control, clf, slack= self.add_cbf_dual_cons(robot_, dual_res, u_ref)
         
         cbf = []
-        cbf.append([dual_res[6], dual_res[7]])
+        cbf.append([dual_res[2], dual_res[3]])
 
         if opt_control is None:
             return None, cbf, None, None, False

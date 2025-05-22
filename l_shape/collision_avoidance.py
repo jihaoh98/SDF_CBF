@@ -34,7 +34,6 @@ class Collision_Avoidance:
         
         # initialize the robot 
         self.robot_vertexes = robot_params['vertexes']
-        # self.robot = l_shape_robot.L_shaped_robot(indx=0, init_state=[0.05, 1.5, np.pi/4], rects=self.robot_vertexes, mode='vertices')
         self.l_robot = l_shape_robot.L_shaped_robot(indx = 0, init_state=[0.05, 1.5, np.pi/4], rects=self.robot_vertexes,mode='vertices',center_mode='vertex')
         self.robot_init_state = self.l_robot.init_state
         self.robot_cur_state = np.copy(self.l_robot.init_state)
@@ -188,6 +187,7 @@ class Collision_Avoidance:
         cbf_1_list = []
         cbf_2_list = []
 
+        # equations from the paper
         rect = np.vstack((np.eye(2), -np.eye(2)))
         self.l_robot.A_init = rect
         self.l_robot.B_init = rect
