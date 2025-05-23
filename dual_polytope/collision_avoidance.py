@@ -166,9 +166,9 @@ class Collision_Avoidance:
             # show obstacle and robot 
             plt.pause(0.5)
 
-            if t == 55:
+            if t == 77:
                 print('stop here')
-
+        
             if not feas:
                 print('This problem is infeasible, we can not get a feasible solution!')
                 break

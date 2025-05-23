@@ -415,7 +415,7 @@ class Scaled_Cbf:
             print('nan')
             
             
-        if opt_control is (None, None):
+        if opt_control is (None, None) or opt_control is None:
             return None, cbf_list, None, None, None, None, False
         
         return opt_control, cbf_list, clf1, clf2, lam_i, lam_j, True
