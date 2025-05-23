@@ -5,8 +5,8 @@ controller:
   smooth_input: [1.0, 0.5]
   weight_slack: [1000, 1000]
   clf_lambda: [1.0, 3.0]
-  cbf_gamma: 1.8 # static 0.8 dynamic 1.8
-  min_beta: 1.5 
+  cbf_gamma: 1.0 # static 0.8 dynamic 1.8
+  min_beta: 1.0 
 
 robot:
   model: 'unicycle'

@@ -54,26 +54,26 @@ class Scaled_Cbf:
         self.u_max = robot_params['u_max']
         self.u_min = robot_params['u_min']
 
-        self.opti = ca.Opti()
+        self.opti = None
         # opts_setting = {
         #     'printLevel': 'low',  
         #     'error_on_fail': False,
         #     'expand': True,
         #     'print_time': 0
         # }
-        self.opti.solver('ipopt')
+        # self.opti.solver('ipopt')
 
-        self.u = self.opti.variable(self.control_dim)
-        self.lam_dot_i = self.opti.variable(1, 4)
-        self.lam_dot_j = self.opti.variable(1, 4)
+        self.u = None
+        self.lam_dot_i = None
+        self.lam_dot_j = None
 
         if robot_params['model'] == 'unicycle':
-            self.slack1 = self.opti.variable()
-            self.slack2 = self.opti.variable()
+            self.slack1 = None
+            self.slack2 = None
             # self.slack = self.opti.variable()
 
         elif robot_params['model'] == 'integral':
-            self.slack = self.opti.variable()
+            self.slack = None
         self.obj = None
 
         # approach the desired control and smooth the control
@@ -89,6 +89,7 @@ class Scaled_Cbf:
                 self.obj = self.obj + self.weight_slack[1] * self.slack2 ** 2
             elif self.robot_model == 'integral':
                 self.obj = self.obj + self.weight_slack * self.slack ** 2
+
         self.opti.minimize(self.obj)
         self.opti.subject_to()
 
@@ -258,10 +259,10 @@ class Scaled_Cbf:
             [np.sin(theta),  np.cos(theta)]
         ])
 
-        A_new = robot_.A @ Rotation_matrix.T
-        b_new = robot_.b + robot_.A @ Rotation_matrix.T @ p
-        G_new = robot_.G
-        g_new = robot_.g
+        A_new = robot_.A0 @ Rotation_matrix.T
+        b_new = robot_.b0 + robot_.A0 @ Rotation_matrix.T @ p
+        G_new = robot_.G0
+        g_new = robot_.g0
         
         # solve 2 x N QP, N depends on the number of obstacles
         opti = ca.Opti('conic');
@@ -280,10 +281,12 @@ class Scaled_Cbf:
         lam_AG_star = sol.value(lam_AG).reshape(1, -1)
         lam_A_pos_idx = np.where(lam_A_star[0, :] < 1e-5)
         lam_AG_pos_idx = np.where(lam_AG_star[0, :] < 1e-5)
+        lam_A_pos_idx = lam_A_pos_idx[0].tolist()
+        lam_AG_pos_idx = lam_AG_pos_idx[0].tolist()
         dist_square = sol.value(obj)
-        dist_AG = dist_square
+        dist_AG = np.sqrt(dist_square)
 
-        print('the AG distance is :', dist_AG)
+        print('the AG distance is :', np.sqrt(dist_square))
 
         return (G_new, g_new, dist_AG, lam_A_star, lam_AG_star, lam_A_pos_idx, lam_AG_pos_idx)
 
@@ -296,7 +299,7 @@ class Scaled_Cbf:
         lam_dot_i_idx = dual_res[5]
         lam_dot_ij_idx = dual_res[6]
         
-        A_i_init, b_i_init = robot_.A, robot_.b
+        A_i_init, b_i_init = robot_.A0, robot_.b0
 
         s = robot_.cur_state
         p = s[:2].reshape(2, 1)
@@ -314,7 +317,7 @@ class Scaled_Cbf:
         L_dot_AG_5 = - self.lam_dot_j @ b_j              
         L_dot_AG_6 = 0                     
         L_dot_AG = L_dot_AG_1 + L_dot_AG_2 + L_dot_AG_3 + L_dot_AG_4 + L_dot_AG_5 + L_dot_AG_6
-        self.opti.subject_to(L_dot_AG >= -0.1 * (h_ij - 0.025**2))          
+        self.opti.subject_to(L_dot_AG >= -2.0 * (h_ij - 0.025**2))          
 
         # equality constraints
         eq_AG_1 = self.lam_dot_i @ (A_i_init @ Rot.T)
@@ -323,18 +326,18 @@ class Scaled_Cbf:
         self.opti.subject_to(eq_AG_1 + eq_AG_2 + eq_AG_3 == 0)
 
         # paper equation (18d)
-        # for i in range(len(lam_dot_i_idx)):
-        #     self.opti.subject_to(self.lam_dot_i[lam_dot_i_idx[0][i]] >= 0)
+        for i in range(len(lam_dot_i_idx)):
+            self.opti.subject_to(self.lam_dot_i[lam_dot_i_idx[i]] >= 0)
 
-        # for i in range(len(lam_dot_ij_idx)):
-        #     self.opti.subject_to(self.lam_dot_j[lam_dot_ij_idx[0][i]] >= 0)
+        for i in range(len(lam_dot_ij_idx)):
+            self.opti.subject_to(self.lam_dot_j[lam_dot_ij_idx[i]] >= 0)
 
 
         # # # # # paper cons. (18e)
-        # self.opti.subject_to(self.lam_dot_i <= 1e5)
-        # self.opti.subject_to(self.lam_dot_j <= 1e5)
-        # self.opti.subject_to(self.lam_dot_i >= -1e5)
-        # self.opti.subject_to(self.lam_dot_j >= -1e5)  
+        self.opti.subject_to(self.lam_dot_i <= 1e3)
+        self.opti.subject_to(self.lam_dot_j <= 1e3)
+        self.opti.subject_to(self.lam_dot_i >= -1e3)
+        self.opti.subject_to(self.lam_dot_j >= -1e3)  
 
         self.opti.subject_to(self.u[0] >= -0.3)
         self.opti.subject_to(self.u[0] <= 0.3)
@@ -354,22 +357,39 @@ class Scaled_Cbf:
         try:
             sol = self.opti.solve()
             optimal_control = sol.value(self.u)
-            return optimal_control
+            lam_dot_i = sol.value(self.lam_dot_i)
+            lam_dot_j = sol.value(self.lam_dot_j)
+            return optimal_control, lam_dot_i, lam_dot_j
         except:
             print(self.opti.return_status() + ' sdf-cbf with clf')
-            return None, None
+            return None, None, None
         
             
-    def cbf_clf_qp(self, robot_, obs_list, add_clf=True, u_ref=None):
+    def cbf_clf_qp(self, robot_, add_clf=True, u_ref=None):
         """
         This is a function to calculate the optimal control for the polytopic-shaped robot and robots
         Returns:
             optimal control u
         """
         dual_res = self.dual_qp(robot_)
-        
+        lam_i = dual_res[3]
+        lam_j = dual_res[4]
+        print('lam_i:', lam_i)
+        print('lam_j:', lam_j)
         if u_ref is None:
             u_ref = np.zeros(self.control_dim)
+        
+        opti = ca.Opti()
+        u = opti.variable(self.control_dim)
+        slack1 = opti.variable()
+        slack2 = opti.variable()
+        self.u = u
+        self.opti = opti
+        self.slack1 = slack1
+        self.slack2 = slack2
+        self.lam_dot_i = opti.variable(1, 4)
+        self.lam_dot_j = opti.variable(1, 4)
+        
         self.set_optimal_function(u_ref, add_slack=add_clf)
 
         robot_cur_state = robot_.cur_state
@@ -384,7 +404,11 @@ class Scaled_Cbf:
                 clf = self.add_clf_cons_integral(robot_cur_state, add_slack=True)
 
         cbf_list = []
-        opt_control = self.add_cbf_dual_cons(robot_, dual_res, u_ref)
+        opt_control, lam_dot_i, lam_dot_j = self.add_cbf_dual_cons(robot_, dual_res, u_ref)
+        print('lam_dot_i:', lam_dot_i)
+        print('lam_dot_j:', lam_dot_j)
+
+        
         cbf_list.append(dual_res[2])
 
         if np.isnan(dual_res[2]):
@@ -392,9 +416,9 @@ class Scaled_Cbf:
             
             
         if opt_control is (None, None):
-            return None, cbf_list, None, None, False
+            return None, cbf_list, None, None, None, None, False
         
-        return opt_control, cbf_list, clf1, clf2, True
+        return opt_control, cbf_list, clf1, clf2, lam_i, lam_j, True
 
 
 

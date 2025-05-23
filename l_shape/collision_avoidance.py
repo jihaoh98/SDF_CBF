@@ -34,7 +34,7 @@ class Collision_Avoidance:
         
         # initialize the robot 
         self.robot_vertexes = robot_params['vertexes']
-        self.l_robot = l_shape_robot.L_shaped_robot(indx = 0, init_state=[0.05, 1.5, np.pi/4], rects=self.robot_vertexes,mode='vertices',center_mode='vertex')
+        self.l_robot = l_shape_robot.L_shaped_robot(indx = 0, init_state=[0.0, 0.0, 0.0], rects=self.robot_vertexes,mode='vertices',center_mode='vertex')
         self.robot_init_state = self.l_robot.init_state
         self.robot_cur_state = np.copy(self.l_robot.init_state)
         self.robot_target_state = np.array(robot_params['target_state'])

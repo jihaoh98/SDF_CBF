@@ -1,14 +1,14 @@
-import numpy as np
 import time
 import yaml
+import numpy as np
 import statistics
+import pypoman
 
 from render_show import Render_Animation
 from polytopic_obs import Polytopic_Obs
 from polytopic_robot import Polytopic_Robot
 from scaled_cbf_qp import Scaled_Cbf
-
-import pypoman
+import matplotlib.pyplot as plt
 
 class Collision_Avoidance:
     def __init__(self, file_name) -> None:
@@ -25,14 +25,7 @@ class Collision_Avoidance:
         self.robot_model = robot_params['model']
         self.robot_width = robot_params['width']
         self.robot_height = robot_params['height']
-        init_state = np.array(robot_params['initial_state'])
-        robot_vertexes = np.array([
-            [init_state[0] - self.robot_width, init_state[1] - self.robot_height],
-            [init_state[0] + self.robot_width, init_state[1] - self.robot_height],
-            [init_state[0] + self.robot_width, init_state[1] + self.robot_height],
-            [init_state[0] - self.robot_width, init_state[1] + self.robot_height]
-        ])
-        self.robot = Polytopic_Robot(0, robot_vertexes)
+        self.robot = Polytopic_Robot(0, np.array(robot_params['initial_state']))
         self.robot_target_state = np.array(robot_params['target_state'])
         self.destination_margin = robot_params['destination_margin']
 
@@ -64,13 +57,13 @@ class Collision_Avoidance:
         self.slackt = np.zeros((2, self.time_steps))
 
         # plot
-        self.ani = Render_Animation(
-            self.robot, 
-            robot_params, 
-            self.obs_list, 
-            self.step_time,
-        )
-        self.show_obs = True
+        # self.ani = Render_Animation(
+        #     self.robot, 
+        #     robot_params, 
+        #     self.obs_list, 
+        #     self.step_time,
+        # )
+        # self.show_obs = True
     
     def navigation_destination(self):
         """ navigate the robot to its destination """
@@ -134,6 +127,23 @@ class Collision_Avoidance:
         process_time = []
 
         # approach the destination or exceed the maximum time
+        self.robot.A0 = np.vstack((np.eye(2), -np.eye(2)))
+        self.robot.b0= np.array([0.5, 0.1, 0.5, 0.1]).reshape(4, 1)
+        self.robot.G0 = np.vstack((np.eye(2), -np.eye(2)))
+        self.robot.g0 = np.array([2.0, 2.0, -1.0, -1.0]).reshape(4, 1)
+        self.robot.cur_state = np.copy(self.robot.init_state)
+        fig, ax = plt.subplots(figsize=(10, 10))
+        robot_vertices = np.array(pypoman.compute_polygon_hull(self.robot.A0, self.robot.b0.flatten()))
+        robot_vertices_plot = np.vstack((robot_vertices, robot_vertices[0]))
+        ax.plot(robot_vertices_plot[:, 0], robot_vertices_plot[:, 1], 'r-')
+        ax.plot(self.robot_target_state[0], self.robot_target_state[1], 'ro')
+        obs_vertices = np.array(pypoman.compute_polygon_hull(self.obs_list[0].A, self.obs_list[0].b.flatten()))
+        obs_vertices_plot = np.vstack((obs_vertices, obs_vertices[0]))
+        ax.plot(obs_vertices_plot[:, 0], obs_vertices_plot[:, 1], 'b-')
+
+        plt.axis('equal')
+        plt.grid('on')
+
         while (
             np.linalg.norm(self.robot.cur_state[0:2] - self.robot_target_state[0:2]) >= self.destination_margin
             and t - self.time_steps < 0.0
@@ -148,15 +158,16 @@ class Collision_Avoidance:
                 )  
             elif self.robot_model == 'unicycle':
 
-                self.robot.A = np.vstack((np.eye(2), -np.eye(2)))
-                self.robot.b= np.array([0.5, 0.1, 0.5, 0.1]).reshape(4, 1)
-                self.robot.G = np.vstack((np.eye(2), -np.eye(2)))
-                self.robot.g = np.array([2.0, 2.0, -1.0, -1.0]).reshape(4, 1)
-
                 # self.robot.vertices = np.array(pypoman.compute_polygon_hull(self.robot.A, self.robot.b.flatten()))
-                u, cbf_list, clf1, clf2, feas = self.cbf_qp.cbf_clf_qp(self.robot, self.obs_list, add_clf=add_clf)
-                # u, cbf_list, clf1, clf2, feas = self.cbf_qp.cbf_clf_qp(self.robot, self.obs_list, add_clf=add_clf)  
+                u, cbf_list, clf1, clf2, lam_i, lam_j, feas = self.cbf_qp.cbf_clf_qp(self.robot, add_clf=add_clf)
+
             process_time.append(time.time() - start_time)
+
+            # show obstacle and robot 
+            plt.pause(0.5)
+
+            if t == 55:
+                print('stop here')
 
             if not feas:
                 print('This problem is infeasible, we can not get a feasible solution!')
@@ -167,6 +178,20 @@ class Collision_Avoidance:
             self.xt[:, t] = np.copy(self.robot.cur_state)
             self.ut[:, t] = u
 
+
+            # plot 
+            s = self.robot.cur_state
+            p = s[0:2]
+            Rot = np.array([[np.cos(self.robot.cur_state[2]), -np.sin(self.robot.cur_state[2])],
+                            [np.sin(self.robot.cur_state[2]), np.cos(self.robot.cur_state[2])]])
+            A_cur = self.robot.A0 @ Rot.T 
+            b_cur = self.robot.b0 + A_cur @ p.reshape(2, 1)
+            rob_cur_vertices = np.array(pypoman.compute_polygon_hull(A_cur, b_cur.flatten()))
+            robot_vertices_plot = np.vstack((rob_cur_vertices, rob_cur_vertices[0]))
+
+            ax.plot(robot_vertices_plot[:, 0], robot_vertices_plot[:, 1], 'r-')
+
+
             if self.robot_model == 'integral':
                 self.clft[0, t] = clf
                 self.slackt[0, t] = slack
@@ -176,7 +201,8 @@ class Collision_Avoidance:
 
             # update the state of robot and obstacle
             new_state = self.cbf_qp.robot.next_state(self.robot.cur_state, u, self.step_time)
-            self.robot.update_state(new_state)
+            # self.robot.update_state(new_state)
+            self.robot.cur_state = new_state
 
             self.obs_cbf_t[:, t] = cbf_list
             for i in range(self.obs_num):

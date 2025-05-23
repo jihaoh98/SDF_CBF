@@ -181,7 +181,7 @@ if __name__ == '__main__':
     
     robot = L_shaped_robot(
         indx=0,
-        init_state=[0.05, 1.5, np.pi/4],  # move shared corner to (1.0, 1.0)
+        init_state=[0.0, 0.0, 0.0],  # move shared corner to (1.0, 1.0)
         rects=[rect_A, rect_B],
         mode='vertices',
         center_mode='vertex'
