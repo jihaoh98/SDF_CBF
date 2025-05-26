@@ -77,13 +77,14 @@ class Collision_Avoidance:
         ):
             if t % 100 == 0:
                 print(f't = {t}')
-        
-            start_time = time.time()
-            if self.robot_model == 'integral':
-                u, clf, feas = self.cbf_qp.clf_qp(self.robot.cur_state)
-            elif self.robot_model == 'unicycle':
-                u, clf1, clf2, feas = self.cbf_qp.clf_qp(self.robot.cur_state)
-            process_time.append(time.time() - start_time)
+
+            if t != 1:
+                start_time = time.time()
+                if self.robot_model == 'integral':
+                    u, clf, feas = self.cbf_qp.clf_qp(self.robot.cur_state)
+                elif self.robot_model == 'unicycle':
+                    u, clf1, clf2, feas = self.cbf_qp.clf_qp(self.robot.cur_state)
+                process_time.append(time.time() - start_time)
 
             if not feas:
                 print('This problem is infeasible, we can not get a feasible solution!')
@@ -121,6 +122,10 @@ class Collision_Avoidance:
         print('Median_time:', statistics.median(process_time))
         print('Average_time:', statistics.mean(process_time))
 
+        # visualize the process_time
+        fig, ax = plt.subplots(figsize=(8, 8))
+
+
     def collision_avoidance(self, add_clf=True):
         """ solve the collision avoidance between robot and obstacles based on sdf-cbf """
         t = 0
@@ -132,6 +137,7 @@ class Collision_Avoidance:
         self.robot.G0 = np.vstack((np.eye(2), -np.eye(2)))
         self.robot.g0 = np.array([2.0, 2.0, -1.0, -1.0]).reshape(4, 1)
         self.robot.cur_state = np.copy(self.robot.init_state)
+
         fig, ax = plt.subplots(figsize=(10, 10))
         robot_vertices = np.array(pypoman.compute_polygon_hull(self.robot.A0, self.robot.b0.flatten()))
         robot_vertices_plot = np.vstack((robot_vertices, robot_vertices[0]))
@@ -164,7 +170,7 @@ class Collision_Avoidance:
             process_time.append(time.time() - start_time)
 
             # show obstacle and robot 
-            plt.pause(0.5)
+            plt.pause(0.01)
 
             if t == 77:
                 print('stop here')
@@ -223,10 +229,17 @@ class Collision_Avoidance:
             print('Robot has not arrived its destination!')
         print('Finish the solve of QP with clf!')
 
-        print('Maxinum_time:', max(process_time))
-        print('Minimum_time:', min(process_time))
-        print('Median_time:', statistics.median(process_time))
-        print('Average_time:', statistics.mean(process_time))    
+        print('Maxinum_time:', max(process_time[1:]))
+        print('Minimum_time:', min(process_time[1:]))
+        print('Median_time:', statistics.median(process_time[1:]))
+        print('Average_time:', statistics.mean(process_time[1:]))    
+        # fig, ax = plt.subplots(figsize=(8, 8))  # Fixed the typo in 'figsize'
+        # plt.title('Process time of each step')
+        # plt.plot(np.arange(0, len(process_time)), process_time, 'r-')
+        # ax.set_xlabel('Time step')
+        # ax.set_ylabel('Process time (s)')
+        # ax.grid('on')
+        # plt.show()
 
     def storage_data(self, file_name):
         np.savez(

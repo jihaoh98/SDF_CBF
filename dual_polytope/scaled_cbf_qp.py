@@ -317,7 +317,7 @@ class Scaled_Cbf:
         L_dot_AG_5 = - self.lam_dot_j @ b_j              
         L_dot_AG_6 = 0                     
         L_dot_AG = L_dot_AG_1 + L_dot_AG_2 + L_dot_AG_3 + L_dot_AG_4 + L_dot_AG_5 + L_dot_AG_6
-        self.opti.subject_to(L_dot_AG >= -2.0 * (h_ij - 0.025**2))          
+        self.opti.subject_to(L_dot_AG >= -1.0 * (h_ij - 0.025**2))          
 
         # equality constraints
         eq_AG_1 = self.lam_dot_i @ (A_i_init @ Rot.T)
